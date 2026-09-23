@@ -1,0 +1,30 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "typify",
+      "devDependencies": {
+        "prettier": "^3",
+        "prettier-plugin-sh": "^0",
+      },
+    },
+  },
+  "packages": {
+    "@reteps/dockerfmt": ["@reteps/dockerfmt@0.5.4", "", { "optionalDependencies": { "@reteps/dockerfmt-darwin-arm64": "0.5.4", "@reteps/dockerfmt-darwin-x64": "0.5.4", "@reteps/dockerfmt-linux-arm64": "0.5.4", "@reteps/dockerfmt-linux-x64": "0.5.4" }, "bin": { "dockerfmt": "dist/launcher.js" } }, "sha512-HEGgXVVOb+JtGUSSzXl/XPKFIZjMDTUoHarCjaQdkY+cb5M9K/O3b5xm+x0IPIk3SfHurbc0bSgcFsQlzjitxA=="],
+
+    "@reteps/dockerfmt-darwin-arm64": ["@reteps/dockerfmt-darwin-arm64@0.5.4", "", { "os": "darwin", "cpu": "arm64" }, "sha512-urMqV+dQyvVI8/WrXwClX9e1PEyS35wFdwJjpZYmL09AkV4Io5U1oam8UBKK7jZk0+YsdF88ay6e86Kn6DIyQg=="],
+
+    "@reteps/dockerfmt-darwin-x64": ["@reteps/dockerfmt-darwin-x64@0.5.4", "", { "os": "darwin", "cpu": "x64" }, "sha512-fJORy6DFxbgDiMqxpLTPZlb5KUY0Vq0iR4NGnyKnuYZ9LdZUS508DK2kt/AJ87/jIKNV1qRG0JXG1Tc6xdvWjw=="],
+
+    "@reteps/dockerfmt-linux-arm64": ["@reteps/dockerfmt-linux-arm64@0.5.4", "", { "os": "linux", "cpu": "arm64" }, "sha512-6pVakO06eXtDuvxy1Dnjs/gQyUoGGycle8PRSt5IFRwLi/AVaOQwfkfmW0WP8VH9wNUeti6BfJ3ksTn2G+XMxg=="],
+
+    "@reteps/dockerfmt-linux-x64": ["@reteps/dockerfmt-linux-x64@0.5.4", "", { "os": "linux", "cpu": "x64" }, "sha512-OD6SIlUV1D4TgJoTui3FMBAZsGbTSPYsiT0BKhD6jMUcJb3GpFTa7dY9rL8rP9FUqfL7OTHVUGUOL4Rh64Olog=="],
+
+    "prettier": ["prettier@3.9.9", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-Z/CJHIkdujO/OtN7nXUii0Rf3VT5SRuhjBA82Xvu2XhBUgX3nhP67T0LHceBdQLex7OOFGTox+Q5Yg8Jk2Qivg=="],
+
+    "prettier-plugin-sh": ["prettier-plugin-sh@0.19.0", "", { "dependencies": { "@reteps/dockerfmt": "^0.5.4", "sh-syntax": "^0.6.0" }, "peerDependencies": { "prettier": "^3.6.0" } }, "sha512-39VXFZH/cOGtcuu8aeSvqp/hhwomOR4QroZUj+jBz2cNb3os9s0sqFZSNlYts6jdtLLDU7D2YT3Z1+abtb7adQ=="],
+
+    "sh-syntax": ["sh-syntax@0.6.0", "", {}, "sha512-52VK6z/cdZHv7UURjIcwfBUQZrAhIEEe0bY4lrkfypjnFIKsDZdD3Uaz/dBiw/sF8BeX0Mssv140s8EnrsJ9dQ=="],
+  }
+}
