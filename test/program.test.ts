@@ -2,7 +2,7 @@
 
 import { describe, expect, test } from "bun:test";
 import { readProgram } from "../src/program.ts";
-import { body, fixture, languageOf, textOf, withMeta } from "./support.ts";
+import { body, fixture, languageOf, textOf, withMeta, withMetaV2 } from "./support.ts";
 
 const VALID = textOf(fixture("declarations/valid.txt"));
 
@@ -101,6 +101,25 @@ describe("token classes in a program", () => {
   test("a line with a colon before its arrow is read as a colon line", () => {
     expect(errorsIn(VALID, "Contents", "Walden: Life in the Woods -> essay\n")).toEqual([
       "1: Contents declares no form for this line; its colon forms are `shelf : <label>`, `loan : <title> to <reader>`",
+    ]);
+  });
+});
+
+// Section 3: "a form of the file's own that uses `<Name>` was held to the list and is now free text,
+// unless the body binds a class of that name itself". The body is called Workdir, a name that version 2
+// lists, so that the same body can be read under both versions.
+describe("a form of the file's own that uses <Name>", () => {
+  const rename = ["form : rename : <Name>", "does : rename the thing called <Name>"];
+  const line = "rename : Cook Book\n"; // not a name, and on no list
+
+  test("is free text under version 3, was held to the list under version 2, and is held to a class the body binds", () => {
+    expect(errorsIn(withMeta(body("Workdir", ...rename)), "Workdir", line)).toEqual([]);
+    expect(errorsIn(withMetaV2(body("Workdir", ...rename)), "Workdir", line)).toEqual([
+      "1: 'Cook Book' is not one of: LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats (form `rename : <Name>`)",
+    ]);
+    const bound = body("Workdir", "is : Name = oak | pine", ...rename);
+    expect(errorsIn(withMeta(bound), "Workdir", line)).toEqual([
+      "1: 'Cook Book' is not one of: oak | pine (form `rename : <Name>`)",
     ]);
   });
 });
