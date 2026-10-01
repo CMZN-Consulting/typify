@@ -1,0 +1,4 @@
+// Contents is order : strict. A loan is declared after a book, so the book at line 4 is out of order.
+shelf : top
+loan : Walden to Ada
+Walden -> essay

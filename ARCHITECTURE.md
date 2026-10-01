@@ -15,11 +15,11 @@ A reader works line by line. It strips leading and trailing blanks from every li
 3. **A colon line**, `<verb> : <argument>`: the first colon splits it; blanks around the colon are stripped; the argument keeps its inner spacing and may itself contain colons.
 4. **An arrow line**, `<left> -> <right>`: the first arrow splits it, both sides stripped.
 
-A line that is none of these is an error. Every error the reader reports names the file and the line number.
+The shapes are tried in that order, so a line that holds a colon is a colon line even when it also holds an arrow. A line that is none of these is an error. Every error the reader reports names the file and the line number.
 
 ## 3. Bodies and forms
 
-Inside a body the reader accepts only the forms the meta body declares, each written as `form : <production>` followed by exactly one `does : <text>`. A production is one of the three line shapes above with placeholders in angle brackets. The placeholders are filled by token classes declared with `is : <name> = <domain>`, where the domain is either a list of literal words separated by `|`, in which case the token must be one of them, or a sentence, in which case the reader accepts any non-empty text and leaves the meaning to the executor that acts on it.
+Inside a body the reader accepts only the forms the meta body declares, each written as `form : <production>` followed by exactly one `does : <text>`. A production is one of the three line shapes above with placeholders in angle brackets. The placeholders are filled by token classes declared with `is : <name> = <domain>`, where the domain is either a list of literal words separated by `|`, in which case the token must be one of them, or a sentence, in which case the reader accepts any non-empty text and leaves the meaning to the executor that acts on it. A placeholder names the class of that name in its own body or, failing that, in the meta body. One that neither binds is unbound: in version 2 the reader accepts any non-empty text for it, as for a sentence, and reports it in a note, not an error, so that a mistyped class name shows.
 
 Four forms qualify another form rather than standing on their own: `example` gives a legal line for the form just declared and is a test vector; `once` says the form's verb may appear at most once in one program file; `order : strict` says the forms of a program appear in the order they are declared; `sees : <Name>` says programs of this language name things that programs of another language declare, and the reader checks that they exist before acting.
 

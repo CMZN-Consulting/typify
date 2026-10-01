@@ -1,0 +1,59 @@
+declare         :   LanguageDeclarations
+version         :   2
+file            :   LanguageDeclarations.txt
+required!
+comment         :   #
+# This block declares the language this file is written in. A reader validates this block against
+# itself before it reads anything else (ARCHITECTURE.md says how). A tree that uses typify copies
+# this block whole as the first block of its own file and declares its languages below it, in
+# these forms and nothing else.
+is              :   Name = LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats
+is              :   verb = a word of letters, digits and dashes
+form            :   declare : <Name>
+does            :   open a language body named <Name>; the body runs to the next end!
+example         :   declare : Structure
+form            :   version : <number>
+does            :   the version of the language declared in this body; a reader refuses a higher one than it knows
+form            :   file : <path>
+does            :   programs of this language live at <path>; <Session>, <window> and <seat> in the path are placeholders filled from the tree
+example         :   file : <Session>/<window>/Structure.txt
+form            :   required!
+does            :   the program file must exist wherever the path template can be filled
+form            :   optional!
+does            :   the program file may be missing; then absent applies
+form            :   derived!
+does            :   the program file is written by the interpreter from the other programs and is never written by hand; a hand-written copy is overwritten
+form            :   comment : <prefix>
+does            :   lines whose first non-blank characters are <prefix> are comments; blank lines are nothing
+form            :   is : <name> = <domain>
+does            :   bind <name> as a token class; <domain> is either a list of literal words separated by | or a sentence saying what the class holds
+example         :   is : axis = vertical | horizontal
+form            :   form : <production>
+does            :   a legal program line; a production is one of three shapes: `<verb> : <argument>`, `<verb>!`, or `<left> -> <right>`
+form            :   does : <text>
+does            :   the meaning of the form immediately above; every form has exactly one
+form            :   example : <line>
+does            :   a legal program line for the form above, as a test vector; a reader may check it against the form
+form            :   once : <verb>
+does            :   the form with this verb may appear at most once in one program file
+form            :   order : strict | free
+does            :   strict means the forms appear in a program in the order they are declared here; free means any order; free when absent
+form            :   sees : <Name>
+does            :   programs of this language name things that programs of <Name> declare, and a reader checks that they exist
+form            :   absent : <default>
+does            :   if an optional program file is missing, the interpreter behaves as if it held <default>
+form            :   end!
+does            :   close the language body
+end!
+
+# Error class: a name outside the meta body's Name list. Recipes, at line 51, is not one of the six.
+
+declare         :   Recipes
+version         :   1
+file            :   Recipes.txt
+required!
+is              :   unit = g | ml | piece
+form            :   serves : <number>
+does            :   how many people the dish feeds
+example         :   serves : 4
+end!

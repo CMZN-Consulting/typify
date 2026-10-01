@@ -1,0 +1,7 @@
+# A program of Structure, the bookcase language of ../declarations/valid.txt. Structure declares no
+# comment prefix, so # is assumed; it declares no order either, so its forms come in any order.
+
+shelf : top
+shelf : middle
+made-of : oak
+shelf : bottom

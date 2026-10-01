@@ -1,0 +1,4 @@
+// Line 3 is a colon line that Contents declares no form for.
+shelf : top
+colour : red
+Middlemarch -> novel

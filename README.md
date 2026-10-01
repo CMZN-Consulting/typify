@@ -55,7 +55,24 @@ Prior art, so that nobody mistakes this for new: Cucumber's step definitions bin
 
 A tree that uses typify carries its own `LanguageDeclarations.txt`. Its first body is this repository's meta body at a declared version, copied whole, so that the file stays readable by a reader that has never seen this repository; the reader verifies that the copy matches its own at that version, and refuses a version higher than it knows. The tree's languages follow, and its programs live where their `file` templates say.
 
-The first tree to use it stands up a desk of human and model seats under tmux: its languages declare sessions, windows, panes and mailboxes, and its reader is a shell script written to `ARCHITECTURE.md`. The reader this repository will ship is a Bun package, taken as a pinned dependency from this repository and moved deliberately, never by a pull at run time.
+The first tree to use it stands up a desk of human and model seats under tmux: its languages declare sessions, windows, panes and mailboxes, and its reader is a shell script written to `ARCHITECTURE.md`.
+
+## The reader
+
+The reader this repository ships is a Bun package with no runtime dependencies, taken as a pinned dependency from this repository and moved deliberately, never by a pull at run time. At version 2 it validates and does nothing else: it reads the files it is given and prints what it finds, and it never executes, creates or writes anything.
+
+```text
+bun src/cli.ts check DECLARATIONS_FILE
+bun src/cli.ts check-program DECLARATIONS_FILE LANGUAGE PROGRAM_FILE
+```
+
+`check` reads a declarations file as steps 1 and 2 of [`ARCHITECTURE.md`](ARCHITECTURE.md) say. The first body must declare `LanguageDeclarations` at version 2, pass its own forms and equal the reader's copy of the published meta body; if it does not, nothing else is read. Every further body is then read through the meta forms: it opens with `declare` and closes with `end!`, no body opens inside another, no name is declared twice, every `form` has its one `does`, every `example` fits the form above it, every `once` names a verb of its body, and every `sees` names a body of the file.
+
+`check-program` checks the declarations file the same way, then reads one program file against one language it declares: only declared forms, token classes honoured, `once` and `order` honoured.
+
+Every error is one line, `FILE:LINE: error: TEXT`, and the exit status is 0 when the file is clean, 1 on any error and 2 when the command line is wrong or a file cannot be read. A placeholder that no `is` line binds is read as free text and reported as a note, `FILE:LINE: note: TEXT`, so that a mistyped class name shows; a note is not an error. A last line, starting with `typify:`, sums up.
+
+What the reader does not do yet: walk a tree or fill a path template (step 3), resolve `sees` names across programs, apply `absent`, write a `derived!` program, or act (step 5). It does not guess at any of them.
 
 ## Versions
 

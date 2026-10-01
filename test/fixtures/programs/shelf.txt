@@ -1,0 +1,11 @@
+// A program of Contents, the shelf language of ../declarations/valid.txt. That language declares
+// its own comment prefix, so these lines are comments and a line starting with # would not be.
+
+shelf : top
+
+full!
+Middlemarch -> novel
+Walden -> essay
+    Leaves of Grass   ->   poetry
+loan : Walden to Ada
+loan : Middlemarch to Grace
