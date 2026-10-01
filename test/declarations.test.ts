@@ -57,6 +57,23 @@ describe("the published meta body", () => {
   });
 });
 
+describe("the published version-2 meta body", () => {
+  const reading = readDeclarations(textOf(PUBLISHED_V2));
+  const notes = notesOf(reading.diagnostics);
+
+  // The notes of a first body name the version of the body the file is read through, which for the
+  // first body is the version it states: here 2, where the version-3 body's notes say 3.
+  test("has the same nine notes as version 3, and they say version 2", () => {
+    expect(errorsOf(reading.diagnostics)).toEqual([]);
+    expect(notes).toHaveLength(9);
+    for (const note of notes) {
+      expect(note.text).toEndWith("; version 2 reads it as free text");
+    }
+    const version3 = notesOf(readDeclarations(textOf(PUBLISHED)).diagnostics);
+    expect(notes.map(({ line }) => line)).toEqual(version3.map(({ line }) => line));
+  });
+});
+
 describe("a file of valid bodies", () => {
   const reading = read("valid");
 
@@ -237,6 +254,26 @@ describe("step 1: the first body", () => {
     ]);
   });
 
+  // No `version` line: the body is held against the highest published body it knows, and the line
+  // where its version should stand is the first that differs.
+  test("a first body with no version line is held against the highest published body", () => {
+    const text = textOf(PUBLISHED).replace(/^version +: +3\n/m, "");
+    expect(errorLines(text)).toEqual([
+      "2: the first body is not the published version-3 meta body: expected `version : 3`, found `file : LanguageDeclarations.txt`",
+    ]);
+    expect(readDeclarations(text).meta).toBeNull();
+  });
+
+  // `03` is a whole number (digits only) and is 3, so the body is held against version 3; it is not
+  // the published line, which is `version : 3`.
+  test("a first body that states version : 03 is held against version 3 and differs at that line", () => {
+    const text = textOf(PUBLISHED).replace(/^version( +):( +)3$/m, "version$1:$203");
+    expect(errorLines(text)).toEqual([
+      "2: the first body is not the published version-3 meta body: expected `version : 3`, found `version : 03`",
+    ]);
+    expect(readDeclarations(text).meta).toBeNull();
+  });
+
   // The reader holds one published body per version it knows and compares the first body with the
   // one of the version the body states. Version 3 differs from version 2 in the `Name` line alone,
   // so a body that states one version and carries the other's line differs at line 10.
@@ -274,6 +311,28 @@ describe("step 2: every further body, read against the meta forms", () => {
     expect(errorLines(versioned("2.1"))).toEqual([
       "50: version : '2.1' is not a version: a whole number is expected",
     ]);
+  });
+
+  // `Language.version` of a further body is read from its `version` lines: the last that holds a whole
+  // number, and null when it states none (a line that is not a whole number is an error and not counted).
+  const versionOf = (...lines: readonly string[]) =>
+    readDeclarations(withMeta(body("Structure", ...lines))).languages.get("Structure")?.version;
+
+  test("a further body's Language.version is the number it states", () => {
+    expect(versionOf("version : 7")).toBe(7);
+    expect(versionOf("version : 007")).toBe(7);
+  });
+
+  test("a further body's Language.version is null when it states none", () => {
+    expect(versionOf()).toBeNull();
+    expect(versionOf("file : Structure.txt", "required!")).toBeNull();
+    expect(versionOf("version : two")).toBeNull();
+  });
+
+  test("a further body's Language.version is the last whole number when it states several", () => {
+    expect(versionOf("version : 1", "version : 2")).toBe(2);
+    expect(versionOf("version : 2", "version : 1")).toBe(1);
+    expect(versionOf("version : 4", "version : 2.1")).toBe(4);
   });
 
   // The page names the lines a body may hold and not the lines it must hold: no sentence asks for a
@@ -421,6 +480,9 @@ describe("names (version 3)", () => {
 
   test("sees names a body of the file, whatever its name, above or below", () => {
     expect(errorLines(withMeta(body("Recipes", "sees : Pantry"), body("Pantry")))).toEqual([]);
+    // Above: the name is declared before the line that sees it, and the meta body is above every body.
+    expect(errorLines(withMeta(body("Pantry"), body("Recipes", "sees : Pantry")))).toEqual([]);
+    expect(errorLines(withMeta(body("Recipes", "sees : LanguageDeclarations")))).toEqual([]);
     const unseen = withMeta(body("Recipes", "sees : Cellar"), body("Pantry"));
     expect(errorLines(unseen)).toEqual([
       `${lineOf(unseen, "sees : Cellar")}: sees : Cellar names no body of this file: a declared name is expected (LanguageDeclarations, Recipes, Pantry)`,
