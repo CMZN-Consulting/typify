@@ -10,8 +10,10 @@ import {
   lineOf,
   notesOf,
   PUBLISHED,
+  PUBLISHED_V2,
   textOf,
   withMeta,
+  withMetaV2,
 } from "./support.ts";
 
 const read = (name: string) => readDeclarations(textOf(fixture(`declarations/${name}.txt`)));
@@ -49,7 +51,7 @@ describe("the published meta body", () => {
         "43: <default>",
       ].map(
         (use) =>
-          `${use} has no \`is\` line in LanguageDeclarations; version 2 reads it as free text`,
+          `${use} has no \`is\` line in LanguageDeclarations; version 3 reads it as free text`,
       ),
     );
   });
@@ -134,9 +136,14 @@ describe("one fixture per error class", () => {
       /^the first body is not the published version-2 meta body: expected `is : Name = .* \| Seats`, found `is : Name = .* \| Seats \| Shelf`$/,
     ],
     [
-      "meta-version-3",
+      "meta-version-4",
       2,
-      /^LanguageDeclarations declares version 3; this reader knows version 2 and refuses the body$/,
+      /^LanguageDeclarations declares version 4; this reader knows versions 2 and 3 and refuses the body$/,
+    ],
+    [
+      "version-3-with-the-list-of-version-2",
+      10,
+      /^the first body is not the published version-3 meta body: expected `is : Name = one word that names a language body of the file`, found `is : Name = .* \| Seats`$/,
     ],
   ];
 
@@ -166,7 +173,7 @@ describe("step 1: the first body", () => {
     const reading = readDeclarations(`${broken}\n${body("Structure", "colour : red")}\n`);
     expect(errorsOf(reading.diagnostics).map(({ line, text }) => `${line}: ${text}`)).toEqual([
       "12: this form is not followed by its does: the next line must be `does : <text>`",
-      "13: the first body is not the published version-2 meta body: expected `does : open a language body named <Name>; the body runs to the next end!`, found `example : declare : Structure`",
+      "13: the first body is not the published version-3 meta body: expected `does : open a language body named <Name>; the body runs to the next end!`, found `example : declare : Structure`",
     ]);
     expect(reading.meta).toBeNull();
     expect(reading.languages.size).toBe(0);
@@ -178,7 +185,7 @@ describe("step 1: the first body", () => {
   test("the first body's comment prefix holds from its comment line on", () => {
     const text = textOf(PUBLISHED).replace(/^comment( +):( +)#$/m, "comment$1:$2//");
     expect(errorLines(text).map((error) => error.slice(0, 60))).toEqual([
-      "5: the first body is not the published version-2 meta body: ",
+      "5: the first body is not the published version-3 meta body: ",
       "6: not a legal line: expected a bang line `verb!`, a colon l",
       "7: not a legal line: expected a bang line `verb!`, a colon l",
       "8: not a legal line: expected a bang line `verb!`, a colon l",
@@ -187,7 +194,7 @@ describe("step 1: the first body", () => {
   });
 
   test("a failed first body leaves nothing declared", () => {
-    for (const name of ["altered-meta", "meta-version-3"]) {
+    for (const name of ["altered-meta", "meta-version-4", "version-3-with-the-list-of-version-2"]) {
       const reading = read(name);
       expect(reading.meta).toBeNull();
       expect(reading.languages.size).toBe(0);
@@ -206,10 +213,23 @@ describe("step 1: the first body", () => {
     expect(errorLines(copy)).toEqual([]);
   });
 
-  test("a first body of a lower version is not the published body", () => {
-    const text = textOf(PUBLISHED).replace(/^version( +):( +)2$/m, "version$1:$21");
+  // A body that states a version this reader holds no published body for, and not a higher one, is
+  // held against the highest it knows.
+  test("a first body of a version below the ones the reader knows is not the published body", () => {
+    const text = textOf(PUBLISHED).replace(/^version( +):( +)3$/m, "version$1:$21");
     expect(errorLines(text)).toEqual([
-      "2: the first body is not the published version-2 meta body: expected `version : 2`, found `version : 1`",
+      "2: the first body is not the published version-3 meta body: expected `version : 3`, found `version : 1`",
+    ]);
+  });
+
+  // The reader holds one published body per version it knows and compares the first body with the
+  // one of the version the body states. Version 3 differs from version 2 in the `Name` line alone,
+  // so a body that states one version and carries the other's line differs at line 10.
+  test("each version is held against its own published body", () => {
+    expect(errorLines(textOf(PUBLISHED_V2))).toEqual([]);
+    const asVersion2 = textOf(PUBLISHED).replace(/^version( +):( +)3$/m, "version$1:$22");
+    expect(errorLines(asVersion2)).toEqual([
+      "10: the first body is not the published version-2 meta body: expected `is : Name = LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats`, found `is : Name = one word that names a language body of the file`",
     ]);
   });
 
@@ -230,7 +250,7 @@ describe("step 2: every further body, read against the meta forms", () => {
   });
 
   // Section 3: "A reader that knows a lower version than a body declares refuses the body". Read
-  // literally that would refuse any body above version 2. This reader knows versions of the meta
+  // literally that would refuse any body above version 3. This reader knows versions of the meta
   // language only; a further body's version is that language's own, and any whole number is accepted.
   test("a further body's version is its own: any whole number is accepted, and only a whole number", () => {
     const versioned = (version: string) =>
@@ -337,6 +357,55 @@ describe("step 2: every further body, read against the meta forms", () => {
   });
 });
 
+describe("names (version 3)", () => {
+  // Version 2 listed, in the meta body, the names a file could declare: the languages of the first
+  // tree. Version 3 does not. A new language is a new body at the end of the file (section 6), and
+  // its name is the word on its declare line.
+  test("a file declares a language of any name", () => {
+    const reading = readDeclarations(withMeta(body("Recipes", ...BOOKCASE)));
+    expect(errorsOf(reading.diagnostics)).toEqual([]);
+    expect([...reading.languages.keys()]).toEqual(["LanguageDeclarations", "Recipes"]);
+    expect(reading.meta?.version).toBe(3);
+  });
+
+  test("the same body under version 2 is refused by the list", () => {
+    const text = withMetaV2(body("Recipes", ...BOOKCASE));
+    expect(readDeclarations(textOf(PUBLISHED_V2)).meta?.version).toBe(2);
+    expect(errorLines(text)).toEqual([
+      `${lineOf(text, "declare : Recipes")}: 'Recipes' is not one of: LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats (form \`declare : <Name>\`)`,
+    ]);
+  });
+
+  // Step 2: a name is one word. Under version 2 the list has already refused the name, and the rule
+  // adds nothing to that.
+  test("a name is one word", () => {
+    const text = withMeta(body("Cook Book", ...BOOKCASE));
+    expect(errorLines(text)).toEqual([
+      `${lineOf(text, "declare : Cook Book")}: declare : 'Cook Book' is not a name: one word is expected`,
+    ]);
+    expect(errorLines(withMetaV2(body("Cook Book", ...BOOKCASE)))).toHaveLength(1);
+  });
+
+  test("a name is declared once, the meta language's included", () => {
+    const twice = withMeta(body("Recipes"), body("Recipes"));
+    expect(errorLines(twice).map((error) => error.replace(/^[0-9]+: /, ""))).toEqual([
+      `Recipes is declared twice (first at line ${lineOf(twice, "declare : Recipes")}): a name is declared once`,
+    ]);
+    const again = withMeta(body("LanguageDeclarations"));
+    expect(errorLines(again).map((error) => error.replace(/^[0-9]+: /, ""))).toEqual([
+      "LanguageDeclarations is declared twice (first at line 1): a name is declared once",
+    ]);
+  });
+
+  test("sees names a body of the file, whatever its name, above or below", () => {
+    expect(errorLines(withMeta(body("Recipes", "sees : Pantry"), body("Pantry")))).toEqual([]);
+    const unseen = withMeta(body("Recipes", "sees : Cellar"), body("Pantry"));
+    expect(errorLines(unseen)).toEqual([
+      `${lineOf(unseen, "sees : Cellar")}: sees : Cellar names no body of this file: a declared name is expected (LanguageDeclarations, Recipes, Pantry)`,
+    ]);
+  });
+});
+
 describe("productions (section 3)", () => {
   const withForms = (...lines: readonly string[]) =>
     withMeta(body("Structure", ...BOOKCASE, ...lines));
@@ -436,7 +505,7 @@ describe("token classes (section 3)", () => {
       {
         line: lineOf(text, "form : made-of : <materail>"),
         severity: "note",
-        text: "<materail> has no `is` line in Structure or in LanguageDeclarations; version 2 reads it as free text",
+        text: "<materail> has no `is` line in Structure or in LanguageDeclarations; version 3 reads it as free text",
       },
     ]);
   });
@@ -455,20 +524,21 @@ describe("token classes (section 3)", () => {
       {
         line: lineOf(text, "form : lent-to : <who>"),
         severity: "note",
-        text: "<who> has no `is` line in Structure or in LanguageDeclarations; version 2 reads it as free text",
+        text: "<who> has no `is` line in Structure or in LanguageDeclarations; version 3 reads it as free text",
       },
     ]);
   });
 
+  // The version-2 meta body is used here because it holds a listed class, `Name`; version 3 holds none.
   test("a placeholder resolves in its own body first, then in the meta body", () => {
     const form = ["form : named : <Name>", "does : takes the Name class"];
-    const viaMeta = withMeta(body("Structure", ...BOOKCASE, ...form, "example : named : Ada"));
+    const viaMeta = withMetaV2(body("Structure", ...BOOKCASE, ...form, "example : named : Ada"));
     expect(errorLines(viaMeta)).toEqual([
       `${lineOf(viaMeta, "example : named : Ada")}: the example does not fit the form above it, \`named : <Name>\`: 'Ada' is not one of: LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats`,
     ]);
     const own = "is : Name = Ada | Grace";
     expect(
-      errorLines(withMeta(body("Structure", ...BOOKCASE, own, ...form, "example : named : Ada"))),
+      errorLines(withMetaV2(body("Structure", ...BOOKCASE, own, ...form, "example : named : Ada"))),
     ).toEqual([]);
   });
 
@@ -490,7 +560,7 @@ describe("token classes (section 3)", () => {
       {
         line: lineOf(text, "form : stands-on : <material>"),
         severity: "note",
-        text: "<material> has no `is` line in Contents or in LanguageDeclarations; version 2 reads it as free text",
+        text: "<material> has no `is` line in Contents or in LanguageDeclarations; version 3 reads it as free text",
       },
     ]);
   });

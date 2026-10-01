@@ -7,8 +7,11 @@ import { isError, readDeclarations, type Diagnostic, type Language } from "../sr
 
 const ROOT = join(import.meta.dir, "..");
 
-/** The repository's own declarations file: the published version-2 meta body and nothing else. */
+/** The repository's own declarations file: the published version-3 meta body and nothing else. */
 export const PUBLISHED = join(ROOT, "LanguageDeclarations.txt");
+
+/** The published version-2 meta body and nothing else, as this repository held it at that version. */
+export const PUBLISHED_V2 = join(ROOT, "test", "fixtures", "declarations", "published-v2.txt");
 
 export const CLI = join(ROOT, "src", "cli.ts");
 
@@ -23,6 +26,10 @@ export const body = (name: string, ...lines: readonly string[]): string =>
 /** A declarations file: the published meta body, a blank line, then the given further bodies. */
 export const withMeta = (...bodies: readonly string[]): string =>
   `${textOf(PUBLISHED)}\n${bodies.join("\n\n")}\n`;
+
+/** The same under the published version-2 meta body, whose `Name` is a closed list. */
+export const withMetaV2 = (...bodies: readonly string[]): string =>
+  `${textOf(PUBLISHED_V2)}\n${bodies.join("\n\n")}\n`;
 
 export const errorsOf = (diagnostics: readonly Diagnostic[]): readonly Diagnostic[] =>
   diagnostics.filter(isError);

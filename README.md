@@ -59,14 +59,14 @@ The first tree to use it stands up a desk of human and model seats under tmux: i
 
 ## The reader
 
-The reader this repository ships is a Bun package with no runtime dependencies, taken as a pinned dependency from this repository and moved deliberately, never by a pull at run time. At version 2 it validates and does nothing else: it reads the files it is given and prints what it finds, and it never executes, creates or writes anything.
+The reader this repository ships is a Bun package with no runtime dependencies, taken as a pinned dependency from this repository and moved deliberately, never by a pull at run time. It reads versions 2 and 3 of the meta language. It validates and does nothing else: it reads the files it is given and prints what it finds, and it never executes, creates or writes anything.
 
 ```text
 bun src/cli.ts check DECLARATIONS_FILE
 bun src/cli.ts check-program DECLARATIONS_FILE LANGUAGE PROGRAM_FILE
 ```
 
-`check` reads a declarations file as steps 1 and 2 of [`ARCHITECTURE.md`](ARCHITECTURE.md) say. The first body must declare `LanguageDeclarations` at version 2, pass its own forms and equal the reader's copy of the published meta body; if it does not, nothing else is read. Every further body is then read through the meta forms: it opens with `declare` and closes with `end!`, no body opens inside another, no name is declared twice, every `form` has its one `does`, every `example` fits the form above it, every `once` names a verb of its body, and every `sees` names a body of the file.
+`check` reads a declarations file as steps 1 and 2 of [`ARCHITECTURE.md`](ARCHITECTURE.md) say. The first body must declare `LanguageDeclarations` at version 2 or 3, pass its own forms and equal the reader's copy of the published meta body of that version; if it does not, nothing else is read. Every further body is then read through the meta forms: it opens with `declare` and closes with `end!`, no body opens inside another, a name is one word and is declared once, every `form` has its one `does`, every `example` fits the form above it, every `once` names a verb of its body, and every `sees` names a body of the file.
 
 `check-program` checks the declarations file the same way, then reads one program file against one language it declares: only declared forms, token classes honoured, `once` and `order` honoured.
 
@@ -76,7 +76,9 @@ What the reader does not do yet: walk a tree or fill a path template (step 3), r
 
 ## Versions
 
-Version 2 is what is published here. Version 3 adds, in the meta body:
+Version 3 is what is published here. It differs from version 2 in one line of the meta body. Version 2 listed, under `Name`, the names a file could declare, and the list held the languages of the first tree, so no other tree could declare a language of its own. In version 3 `Name` is a sentence: a new language is a new body at the end of the file, which is what section 6 of [`ARCHITECTURE.md`](ARCHITECTURE.md) said from the start. The reader reads both versions, each against its own published body, so a tree that carries the version 2 body keeps validating until it moves.
+
+What is planned next, in the meta body:
 
 - `acts`, a form's recipe: one or more lines expanding the form into primitives, filled from the line's tokens with the quoting done by the reader;
 - the primitives themselves, fixed and few, run by an executor with argument lists rather than shell strings, and a `plan` mode that prints them without running;

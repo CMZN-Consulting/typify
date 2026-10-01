@@ -1,7 +1,7 @@
 {
   "name": "typify",
   "description": "A small self-declaring language for declaring languages; the reader is an interface, not an interpreter.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "repository": "github:CMZN-Consulting/typify",
   "type": "module",
   "scripts": {

@@ -51,11 +51,11 @@ describe("check", () => {
   });
 
   test("a first body that fails is the only thing reported, and the last line says so", () => {
-    const file = fixture("declarations/meta-version-3.txt");
+    const file = fixture("declarations/meta-version-4.txt");
     expect(run(["check", file])).toEqual({
       code: 1,
       out: [
-        `${file}:2: error: LanguageDeclarations declares version 3; this reader knows version 2 and refuses the body`,
+        `${file}:2: error: LanguageDeclarations declares version 4; this reader knows versions 2 and 3 and refuses the body`,
         `typify: ${file}: 1 error (the first body failed, so nothing after it was read)`,
       ],
       err: [],

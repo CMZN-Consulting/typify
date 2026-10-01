@@ -2,8 +2,9 @@
 //
 // A declarations file is a list of language bodies, each from `declare : <Name>` to `end!`. The first
 // body declares the language the file itself is written in (the meta body). The reader validates that
-// body against itself, verifies it against its own copy of the published version-2 meta body, and only
-// then reads every further body through the meta forms. If the first body fails, nothing else is read.
+// body against itself, verifies it against its own copy of the published meta body of the version the
+// body states, and only then reads every further body through the meta forms. If the first body fails,
+// nothing else is read.
 
 import {
   classifyLine,
@@ -22,8 +23,12 @@ import {
 /** The name of the meta language: the first body of every declarations file declares it. */
 const META_NAME = "LanguageDeclarations";
 
-/** The version of the meta language this reader knows. */
-const KNOWN_VERSION = 2;
+/** The highest version of the meta language this reader knows. It reads version 2 as well. */
+const KNOWN_VERSION = 3;
+
+// The `Name` line of version 2: the languages of the first tree to use typify, as a closed list.
+const NAME_V2 =
+  "is : Name = LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats";
 
 // The reader's own copy of the published version-2 meta body, one entry per line that is not nothing,
 // stripped, with one blank on each side of the first colon. A tree copies the body whole as the first
@@ -34,7 +39,7 @@ const PUBLISHED_META_V2: readonly string[] = [
   "file : LanguageDeclarations.txt",
   "required!",
   "comment : #",
-  "is : Name = LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats",
+  NAME_V2,
   "is : verb = a word of letters, digits and dashes",
   "form : declare : <Name>",
   "does : open a language body named <Name>; the body runs to the next end!",
@@ -73,6 +78,23 @@ const PUBLISHED_META_V2: readonly string[] = [
   "does : close the language body",
   "end!",
 ];
+
+// Version 3 differs from version 2 in two lines: its version, and `Name`. Version 2 listed the
+// languages of the first tree under `Name`, so no other tree could declare a language of its own.
+// In version 3 `Name` is a sentence, and a new language is a new body (ARCHITECTURE.md, section 6).
+const NAME_V3 = "is : Name = one word that names a language body of the file";
+const PUBLISHED_META_V3: readonly string[] = PUBLISHED_META_V2.map((line) => {
+  if (line === "version : 2") return "version : 3";
+  return line === NAME_V2 ? NAME_V3 : line;
+});
+
+/** The published meta bodies this reader knows, by version. */
+const PUBLISHED_META: ReadonlyMap<number, readonly string[]> = new Map([
+  [2, PUBLISHED_META_V2],
+  [3, PUBLISHED_META_V3],
+]);
+
+const KNOWN_VERSIONS = [...PUBLISHED_META.keys()].join(" and ");
 
 /** One finding about one line of a file. A note is not an error. */
 export type Diagnostic = {
@@ -123,6 +145,8 @@ export type Language = {
   readonly name: string;
   /** The line of the `declare` line. */
   readonly line: number;
+  /** The version the body states, when it states a whole number; where it states several, the last. */
+  readonly version: number | null;
   /** The comment prefix of this language's programs: `#` unless the body declares another. */
   readonly commentPrefix: string;
   /** `strict` when the body says `order : strict`; free when absent. */
@@ -183,7 +207,8 @@ type First = {
 
 /**
  * Step 1: the first body must be `declare : LanguageDeclarations`, of a version this reader knows; every
- * line of it must be of a form the body itself declares; and it must be the published meta body.
+ * line of it must be of a form the body itself declares; and it must be the published meta body of
+ * the version it states.
  */
 function readFirstBody(rows: readonly string[]): First {
   const failed = (diagnostics: readonly Diagnostic[]): First => ({
@@ -220,28 +245,40 @@ function refusedVersions(rows: readonly Row[]): readonly Diagnostic[] {
     .map(({ line, text }) =>
       errorAt(
         line,
-        `${META_NAME} declares version ${text}; this reader knows version ${KNOWN_VERSION} and refuses the body`,
+        `${META_NAME} declares version ${text}; this reader knows versions ${KNOWN_VERSIONS} and refuses the body`,
       ),
     );
 }
 
 /**
- * The first body against the reader's copy, line for line, comments and blank lines left out; the first
- * line that differs is named. The copy ends at its only `end!` and so does a body that closes, so
- * neither is the start of the other: when they differ, they differ at a line both have. A body that
- * never closes is reported as such where it is taken.
+ * The first body against the reader's copy of the version it states, line for line, comments and blank
+ * lines left out; the first line that differs is named. A body that states no version this reader
+ * knows is held against the highest. The copy ends at its only `end!` and so does a body that closes,
+ * so neither is the start of the other: when they differ, they differ at a line both have. A body
+ * that never closes is reported as such where it is taken.
  */
 function differenceFromPublished(rows: readonly Row[]): readonly Diagnostic[] {
-  const at = rows.findIndex((row, index) => normalized(row.raw) !== PUBLISHED_META_V2[index]);
+  const stated = versionOf(rows);
+  const version = stated !== null && PUBLISHED_META.has(stated) ? stated : KNOWN_VERSION;
+  const published = PUBLISHED_META.get(version) ?? PUBLISHED_META_V3;
+  const at = rows.findIndex((row, index) => normalized(row.raw) !== published[index]);
   const row = rows[at];
   if (row === undefined) return [];
-  const difference = `expected \`${PUBLISHED_META_V2[at]}\`, found \`${normalized(row.raw)}\``;
+  const difference = `expected \`${published[at]}\`, found \`${normalized(row.raw)}\``;
   return [
     errorAt(
       row.number,
-      `the first body is not the published version-${KNOWN_VERSION} meta body: ${difference}`,
+      `the first body is not the published version-${version} meta body: ${difference}`,
     ),
   ];
+}
+
+/** The version a body states: the last `version` line that holds a whole number, or null. */
+function versionOf(rows: readonly Row[]): number | null {
+  const text = said(rows, "version")
+    .map((line) => line.text)
+    .findLast((candidate) => WHOLE_NUMBER.test(candidate));
+  return text === undefined ? null : Number(text);
 }
 
 /** A line as the comparison sees it: stripped, with one blank on each side of its first colon. */
@@ -260,8 +297,9 @@ type Further = {
 
 /**
  * Step 2: read every further body against the meta forms. Each opens with `declare` and closes with
- * `end!`; none opens inside another; no name is declared twice; text outside a body is an error. The
- * `sees` names are checked once every body has been read, so a body may name one declared below it.
+ * `end!`; none opens inside another; no name is declared twice; a name is one word; text outside a
+ * body is an error. The `sees` names are checked once every body has been read, so a body may name
+ * one declared below it.
  */
 function readFurtherBodies(rows: readonly string[], from: number, meta: Language): Further {
   const languages = new Map([[meta.name, meta]]);
@@ -280,7 +318,7 @@ function readFurtherBodies(rows: readonly string[], from: number, meta: Language
     const earlier = languages.get(taken.body.name);
     if (earlier === undefined) languages.set(taken.body.name, read.language);
     else diagnostics.push(declaredTwice(taken.body, earlier));
-    diagnostics.push(...taken.errors, ...read.diagnostics);
+    diagnostics.push(...taken.errors, ...read.diagnostics, ...nameErrors(taken.body, meta));
     sees.push(...said(taken.body.rows, "sees"));
     index = taken.next;
   }
@@ -293,6 +331,17 @@ function strayErrors(line: Line, number: number): readonly Diagnostic[] {
   if (line.shape === "none") return [notALine(number, line)];
   const expected = "a body opens with `declare : <Name>` and closes with `end!`";
   return [errorAt(number, `this line is outside any body: ${expected}`)];
+}
+
+/**
+ * Step 2: a name is one word. Where the meta body lists the names (version 2), the list has already
+ * refused any other, so the rule speaks only where `Name` is a sentence (version 3). An empty name is
+ * refused by the meta form.
+ */
+function nameErrors(body: Body, meta: Language): readonly Diagnostic[] {
+  const listed = meta.classes.get("Name")?.kind === "literals";
+  if (listed || body.name === "" || !/\s/.test(body.name)) return [];
+  return [errorAt(body.line, `declare : '${body.name}' is not a name: one word is expected`)];
 }
 
 function declaredTwice(body: Body, earlier: Language): Diagnostic {
@@ -388,7 +437,7 @@ function readBody(body: Body, meta: Language | null): Read {
       ...exampleErrors(body.rows, language.forms, resolve),
       ...onceErrors(body.rows, language),
       ...versionErrors(body.rows),
-      ...unboundNotes(language, resolve, meta === null),
+      ...unboundNotes(language, resolve, meta),
     ],
   };
 }
@@ -413,6 +462,7 @@ function languageOf(body: Body): Language {
   return {
     name: body.name,
     line: body.line,
+    version: versionOf(body.rows),
     commentPrefix: said(body.rows, "comment").at(-1)?.text ?? DEFAULT_COMMENT_PREFIX,
     order: said(body.rows, "order").at(-1)?.text === "strict" ? "strict" : "free",
     classes: classesOf(body.rows),
@@ -571,13 +621,15 @@ function versionErrors(rows: readonly Row[]): readonly Diagnostic[] {
 }
 
 /**
- * Section 3: a placeholder that no `is` line binds is unbound. Version 2 reads it as free text and says
- * so once per placeholder per body, at the form that uses it first, so that a mistyped class name shows.
+ * Section 3: a placeholder that no `is` line binds is unbound. Versions 2 and 3 read it as free text
+ * and say so once per placeholder per body, at the form that uses it first, so that a mistyped class
+ * name shows. The note names the version of the meta body the file is read through; `meta` is null
+ * for the first body, which is its own.
  */
 function unboundNotes(
   language: Language,
   resolve: Resolver,
-  isMeta: boolean,
+  meta: Language | null,
 ): readonly Diagnostic[] {
   const firstUse = new Map<string, number>();
   for (const form of language.forms) {
@@ -585,9 +637,13 @@ function unboundNotes(
       if (resolve(name) === undefined && !firstUse.has(name)) firstUse.set(name, form.line);
     }
   }
-  const where = isMeta ? META_NAME : `${language.name} or in ${META_NAME}`;
+  const where = meta === null ? META_NAME : `${language.name} or in ${META_NAME}`;
+  const version = (meta ?? language).version ?? KNOWN_VERSION;
   return [...firstUse].map(([name, line]) =>
-    noteAt(line, `<${name}> has no \`is\` line in ${where}; version 2 reads it as free text`),
+    noteAt(
+      line,
+      `<${name}> has no \`is\` line in ${where}; version ${version} reads it as free text`,
+    ),
   );
 }
 

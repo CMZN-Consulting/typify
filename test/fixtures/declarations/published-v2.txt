@@ -1,5 +1,5 @@
 declare         :   LanguageDeclarations
-version         :   3
+version         :   2
 file            :   LanguageDeclarations.txt
 required!
 comment         :   #
@@ -7,7 +7,7 @@ comment         :   #
 # itself before it reads anything else (ARCHITECTURE.md says how). A tree that uses typify copies
 # this block whole as the first block of its own file and declares its languages below it, in
 # these forms and nothing else.
-is              :   Name = one word that names a language body of the file
+is              :   Name = LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats
 is              :   verb = a word of letters, digits and dashes
 form            :   declare : <Name>
 does            :   open a language body named <Name>; the body runs to the next end!
