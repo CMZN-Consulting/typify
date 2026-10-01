@@ -1,0 +1,4 @@
+# A program of Pantry2, the language of ../declarations/version-3-own-name.txt. Pantry2 declares no
+# comment prefix, so # is assumed.
+
+stock : jam

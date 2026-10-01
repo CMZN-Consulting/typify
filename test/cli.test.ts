@@ -5,6 +5,8 @@ import { run } from "../src/cli.ts";
 import { CLI, fixture, PUBLISHED } from "./support.ts";
 
 const VALID = fixture("declarations/valid.txt");
+// A version-3 file whose one language has a name of its own, on no list: Pantry2.
+const OWN_NAME = fixture("declarations/version-3-own-name.txt");
 
 // FILE:LINE: error: TEXT, or FILE:LINE: note: TEXT; the file is everything up to the line number.
 const FINDING = /^(.+):([0-9]+): (error|note): (.+)$/;
@@ -50,6 +52,26 @@ describe("check", () => {
     );
   });
 
+  // Under version 3 `Name` is a sentence, so the name on a declare line is the file's own choice.
+  test("a version-3 file that declares a name of its own is clean: exit 0, notes only", () => {
+    const { code, out, err } = run(["check", OWN_NAME]);
+    expect(code).toBe(0);
+    expect(err).toEqual([]);
+    expect(findings(out)).toHaveLength(9);
+    expect(out.at(-1)).toBe(
+      `typify: ${OWN_NAME}: no errors, 9 notes (declares LanguageDeclarations, Pantry2)`,
+    );
+  });
+
+  test("a version-2 file that declares a name off the list is refused: exit 1", () => {
+    const file = fixture("declarations/name-outside-list.txt");
+    const { code, out, err } = run(["check", file]);
+    expect(code).toBe(1);
+    expect(err).toEqual([]);
+    expect(out.filter((line) => line.includes(": error: "))).toHaveLength(1);
+    expect(out.at(-1)).toStartWith(`typify: ${file}: 1 error, `);
+  });
+
   test("a first body that fails is the only thing reported, and the last line says so", () => {
     const file = fixture("declarations/meta-version-4.txt");
     expect(run(["check", file])).toEqual({
@@ -80,6 +102,24 @@ describe("check-program", () => {
       out: [
         `${program}:3: error: 'shelf' may appear at most once in a program of Contents; it first appears at line 2`,
         `typify: ${program}: 1 error (a program of Contents)`,
+      ],
+      err: [],
+    });
+  });
+
+  test("a program of a language with a name of its own, under a version-3 file", () => {
+    const program = fixture("programs/pantry.txt");
+    expect(run(["check-program", OWN_NAME, "Pantry2", program])).toEqual({
+      code: 0,
+      out: [`typify: ${program}: no errors (a program of Pantry2)`],
+      err: [],
+    });
+    const wrong = fixture("programs/pantry-token-outside-class.txt");
+    expect(run(["check-program", OWN_NAME, "Pantry2", wrong])).toEqual({
+      code: 1,
+      out: [
+        `${wrong}:3: error: 'mustard' is not one of: jam | pickle | honey (form \`stock : <jar>\`)`,
+        `typify: ${wrong}: 1 error (a program of Pantry2)`,
       ],
       err: [],
     });
@@ -142,6 +182,15 @@ describe("the command line itself", () => {
     });
   });
 
+  // The versions the help names are the ones the reader refuses a body above (the `check` test of
+  // a version-4 first body prints the same pair).
+  test("--help says which versions it reads: 2 and 3", () => {
+    const help = run(["--help"]).out.join("\n");
+    expect(help).toStartWith("typify: a reader of versions 2 and 3 of the meta language.");
+    expect(help).toContain("`declare : LanguageDeclarations` at version 2 or 3");
+    expect(help).toContain("Under version 2 a name must also be one the meta body lists.");
+  });
+
   test("--help exits 0 and says what the reader does not do", () => {
     const { code, out, err } = run(["--help"]);
     expect(code).toBe(0);
@@ -163,8 +212,14 @@ describe("the command line itself", () => {
 });
 
 describe("as a process", () => {
+  // The child must not inherit the colour settings of the run that spawned it: with FORCE_COLOR set,
+  // Bun colours what the child writes to standard error, and the usage then starts with an escape
+  // code, not with "typify:". FORCE_COLOR and CLICOLOR_FORCE are left out of the child's environment
+  // and NO_COLOR is set, so the text read back is plain whatever the parent's environment holds.
+  const { FORCE_COLOR: _force, CLICOLOR_FORCE: _clicolor, ...inherited } = process.env;
+  const env = { ...inherited, NO_COLOR: "1" };
   const spawn = (...args: readonly string[]) => {
-    const { exitCode, stdout, stderr } = Bun.spawnSync([process.execPath, CLI, ...args]);
+    const { exitCode, stdout, stderr } = Bun.spawnSync([process.execPath, CLI, ...args], { env });
     return { exitCode, stdout: stdout.toString(), stderr: stderr.toString() };
   };
 

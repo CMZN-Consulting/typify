@@ -1,0 +1,3 @@
+# A program of Pantry2 with one jar outside its class.
+
+stock : mustard
