@@ -145,7 +145,7 @@ export type Language = {
   readonly name: string;
   /** The line of the `declare` line. */
   readonly line: number;
-  /** The version the body states, when it states a whole number; where it states several, the last. */
+  /** The version the body states: its last `version` line that holds a whole number, or null. */
   readonly version: number | null;
   /** The comment prefix of this language's programs: `#` unless the body declares another. */
   readonly commentPrefix: string;
@@ -258,8 +258,7 @@ function refusedVersions(rows: readonly Row[]): readonly Diagnostic[] {
  * that never closes is reported as such where it is taken.
  */
 function differenceFromPublished(rows: readonly Row[]): readonly Diagnostic[] {
-  const stated = versionOf(rows);
-  const version = stated !== null && PUBLISHED_META.has(stated) ? stated : KNOWN_VERSION;
+  const version = heldVersion(rows);
   const published = PUBLISHED_META.get(version) ?? PUBLISHED_META_V3;
   const at = rows.findIndex((row, index) => normalized(row.raw) !== published[index]);
   const row = rows[at];
@@ -271,6 +270,20 @@ function differenceFromPublished(rows: readonly Row[]): readonly Diagnostic[] {
       `the first body is not the published version-${version} meta body: ${difference}`,
     ),
   ];
+}
+
+/**
+ * The version of the published body a first body is held against: that of its first `version` line
+ * holding a whole number, when this reader has a body of that version, and the highest it knows
+ * otherwise. The first line and not the last, so that a second `version` line is itself the line
+ * reported as differing.
+ */
+function heldVersion(rows: readonly Row[]): number {
+  const text = said(rows, "version")
+    .map((line) => line.text)
+    .find((candidate) => WHOLE_NUMBER.test(candidate));
+  const stated = text === undefined ? null : Number(text);
+  return stated !== null && PUBLISHED_META.has(stated) ? stated : KNOWN_VERSION;
 }
 
 /** The version a body states: the last `version` line that holds a whole number, or null. */
@@ -333,15 +346,19 @@ function strayErrors(line: Line, number: number): readonly Diagnostic[] {
   return [errorAt(number, `this line is outside any body: ${expected}`)];
 }
 
+// A name: one word of letters and digits that begins with a letter.
+const NAME = /^[A-Za-z][A-Za-z0-9]*$/;
+
 /**
- * Step 2: a name is one word. Where the meta body lists the names (version 2), the list has already
- * refused any other, so the rule speaks only where `Name` is a sentence (version 3). An empty name is
- * refused by the meta form.
+ * Step 2: a name is one word of letters and digits that begins with a letter. Where the meta body
+ * lists the names (version 2), the list has already refused any other, so the rule speaks only where
+ * `Name` is a sentence (version 3). An empty name is refused by the meta form.
  */
 function nameErrors(body: Body, meta: Language): readonly Diagnostic[] {
   const listed = meta.classes.get("Name")?.kind === "literals";
-  if (listed || body.name === "" || !/\s/.test(body.name)) return [];
-  return [errorAt(body.line, `declare : '${body.name}' is not a name: one word is expected`)];
+  if (listed || body.name === "" || NAME.test(body.name)) return [];
+  const expected = "one word of letters and digits, beginning with a letter, is expected";
+  return [errorAt(body.line, `declare : '${body.name}' is not a name: ${expected}`)];
 }
 
 function declaredTwice(body: Body, earlier: Language): Diagnostic {
@@ -428,6 +445,8 @@ function readBody(body: Body, meta: Language | null): Read {
   const language = languageOf(body);
   const through = meta ?? language;
   const resolve = resolver(language, through);
+  // The published body the file is read through: the first body's own, or the one the meta body passed as.
+  const version = meta === null ? heldVersion(body.rows) : (meta.version ?? KNOWN_VERSION);
   return {
     language,
     diagnostics: [
@@ -437,7 +456,7 @@ function readBody(body: Body, meta: Language | null): Read {
       ...exampleErrors(body.rows, language.forms, resolve),
       ...onceErrors(body.rows, language),
       ...versionErrors(body.rows),
-      ...unboundNotes(language, resolve, meta),
+      ...unboundNotes(language, resolve, meta === null, version),
     ],
   };
 }
@@ -623,13 +642,14 @@ function versionErrors(rows: readonly Row[]): readonly Diagnostic[] {
 /**
  * Section 3: a placeholder that no `is` line binds is unbound. Versions 2 and 3 read it as free text
  * and say so once per placeholder per body, at the form that uses it first, so that a mistyped class
- * name shows. The note names the version of the meta body the file is read through; `meta` is null
- * for the first body, which is its own.
+ * name shows. The note names the version of the published body the file is read through, which is
+ * always one this reader knows.
  */
 function unboundNotes(
   language: Language,
   resolve: Resolver,
-  meta: Language | null,
+  isMeta: boolean,
+  version: number,
 ): readonly Diagnostic[] {
   const firstUse = new Map<string, number>();
   for (const form of language.forms) {
@@ -637,8 +657,7 @@ function unboundNotes(
       if (resolve(name) === undefined && !firstUse.has(name)) firstUse.set(name, form.line);
     }
   }
-  const where = meta === null ? META_NAME : `${language.name} or in ${META_NAME}`;
-  const version = (meta ?? language).version ?? KNOWN_VERSION;
+  const where = isMeta ? META_NAME : `${language.name} or in ${META_NAME}`;
   return [...firstUse].map(([name, line]) =>
     noteAt(
       line,

@@ -46,8 +46,9 @@ form            :   end!
 does            :   close the language body
 end!
 
-# Error class: a meta body declaring version 3. This reader knows version 2 and refuses the body at
-# line 2. It stops there: the undeclared line in the body below (colour) is never read.
+# Error class: a meta body that states version 3 and carries the `Name` list of version 2. It is not
+# the published version-3 body and differs from it at line 10. The reader stops there: the undeclared
+# line in the body below (colour) is never read.
 
 declare         :   Structure
 version         :   1

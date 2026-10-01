@@ -220,6 +220,21 @@ describe("step 1: the first body", () => {
     expect(errorLines(text)).toEqual([
       "2: the first body is not the published version-3 meta body: expected `version : 3`, found `version : 1`",
     ]);
+    // The notes name the body the file was held against, never a version the reader does not know.
+    const notes = notesOf(readDeclarations(text).diagnostics);
+    expect(notes).toHaveLength(9);
+    for (const note of notes) expect(note.text).toEndWith("version 3 reads it as free text");
+  });
+
+  // The body is chosen by the first `version` line, so a second one is itself the line that differs.
+  test("a second version line is the line reported", () => {
+    const stray = (text: string, line: string) => text.replace(/\nend!\n$/, `\n${line}\nend!\n`);
+    expect(errorLines(stray(textOf(PUBLISHED), "version : 2"))).toEqual([
+      "47: the first body is not the published version-3 meta body: expected `end!`, found `version : 2`",
+    ]);
+    expect(errorLines(stray(textOf(PUBLISHED_V2), "version : 3"))).toEqual([
+      "47: the first body is not the published version-2 meta body: expected `end!`, found `version : 3`",
+    ]);
   });
 
   // The reader holds one published body per version it knows and compares the first body with the
@@ -376,14 +391,21 @@ describe("names (version 3)", () => {
     ]);
   });
 
-  // Step 2: a name is one word. Under version 2 the list has already refused the name, and the rule
-  // adds nothing to that.
-  test("a name is one word", () => {
-    const text = withMeta(body("Cook Book", ...BOOKCASE));
-    expect(errorLines(text)).toEqual([
-      `${lineOf(text, "declare : Cook Book")}: declare : 'Cook Book' is not a name: one word is expected`,
+  // Step 2: a name is one word of letters and digits that begins with a letter. Under version 2 the
+  // list has already refused the name, and the rule adds nothing to that.
+  test("a name is one word of letters and digits that begins with a letter", () => {
+    const expected = "one word of letters and digits, beginning with a letter, is expected";
+    for (const name of ["Cook Book", "->", "end!", "42", "a:b", "A|B", "Cook-Book"]) {
+      const text = withMeta(body(name, ...BOOKCASE));
+      expect(errorLines(text)).toEqual([
+        `${lineOf(text, `declare : ${name}`)}: declare : '${name}' is not a name: ${expected}`,
+      ]);
+    }
+    expect(errorLines(withMeta(body("Recipes2", ...BOOKCASE)))).toEqual([]);
+    const listed = withMetaV2(body("Cook Book", ...BOOKCASE));
+    expect(errorLines(listed)).toEqual([
+      `${lineOf(listed, "declare : Cook Book")}: 'Cook Book' is not one of: LanguageDeclarations | OrderOfSessions | Workdir | Structure | Contents | Seats (form \`declare : <Name>\`)`,
     ]);
-    expect(errorLines(withMetaV2(body("Cook Book", ...BOOKCASE)))).toHaveLength(1);
   });
 
   test("a name is declared once, the meta language's included", () => {
@@ -486,8 +508,8 @@ describe("productions (section 3)", () => {
 });
 
 describe("token classes (section 3)", () => {
-  // The page says what a listed class and a sentence admit, and nothing of a placeholder with no `is`
-  // line; the published meta body uses nine. Version 2 reads one as free text and notes it, so that a
+  // The page says what a listed class and a sentence admit, and that a placeholder with no `is` line
+  // is unbound; the published meta body uses nine. The reader takes one as free text and notes it, so that a
   // mistyped class name shows: here `materail` lets marble through, and the note says why.
   test("a mistyped class name is unbound: free text, and a note", () => {
     const text = withMeta(

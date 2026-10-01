@@ -76,7 +76,7 @@ What the reader does not do yet: walk a tree or fill a path template (step 3), r
 
 ## Versions
 
-Version 3 is what is published here. It differs from version 2 in one line of the meta body. Version 2 listed, under `Name`, the names a file could declare, and the list held the languages of the first tree, so no other tree could declare a language of its own. In version 3 `Name` is a sentence: a new language is a new body at the end of the file, which is what section 6 of [`ARCHITECTURE.md`](ARCHITECTURE.md) said from the start. The reader reads both versions, each against its own published body, so a tree that carries the version 2 body keeps validating until it moves.
+Version 3 is what is published here. Besides its `version` line it differs from version 2 in one line of the meta body. Version 2 listed, under `Name`, the names a file could declare, and the list held the languages of the first tree, so no other tree could declare a language of its own. In version 3 `Name` is a sentence: a new language is a new body at the end of the file, which is what section 6 of [`ARCHITECTURE.md`](ARCHITECTURE.md) said from the start. The reader reads both versions, each against its own published body, so a tree that carries the version 2 body keeps validating until it moves.
 
 What is planned next, in the meta body:
 

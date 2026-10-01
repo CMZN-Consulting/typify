@@ -45,3 +45,15 @@ does            :   if an optional program file is missing, the interpreter beha
 form            :   end!
 does            :   close the language body
 end!
+
+# Error class: a meta body declaring version 4. This reader knows versions 2 and 3 and refuses the body
+# at line 2. It stops there: the undeclared line in the body below (colour) is never read.
+
+declare         :   Structure
+version         :   1
+file            :   Structure.txt
+required!
+colour          :   red
+form            :   shelf : <label>
+does            :   one shelf, named <label>
+end!
