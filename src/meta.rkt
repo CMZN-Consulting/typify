@@ -162,7 +162,7 @@
    "join"
    '(2)
    "split"
-   '(2)
+   '(1)
    "ancestors"
    '(1)
    "prefix"

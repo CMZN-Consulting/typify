@@ -4,6 +4,9 @@
 
 (provide compile-classes
          class-accepts?
+         class-pattern-accepts?
+         class->description
+         class->references
          class-witnesses
          class-overlap-witness
          class-difference-witness
@@ -53,6 +56,8 @@
 (define official-machines (make-weak-hasheq))
 
 (define count-bounds-cache (make-weak-hasheq))
+
+(define class-original-trees (make-weak-hasheq))
 
 (define (register-machine! machine)
   (when (and
@@ -365,7 +370,8 @@
        (escaped? (loop #f))
        ((char=? value #\\) (loop #t))
        ((char=? value #\/)
-        (parse-pattern (substring source begin (sub1 at)) known caps #:pattern? #t))
+        (define raw (substring source begin (sub1 at)))
+        (list 'pattern raw (parse-pattern raw known caps #:pattern? #t)))
        (else (loop #f)))))
   (define (number!)
     (define begin at)
@@ -533,6 +539,7 @@
       (define end (state!))
       (edge! start end ranges)
       (values start end))
+     ((list 'pattern _ child) (build child stack))
      ((list 'text text)
       (build
        (rx-sequence
@@ -902,6 +909,7 @@
       (rx-alternation (map (lambda (child) (expand child stack)) children)))
      ((list 'repeat child minimum maximum) (list 'repeat (expand child stack) minimum maximum))
      ((list 'except child literals) (list 'except (expand child stack) literals))
+     ((list 'pattern source child) (list 'pattern source (expand child stack)))
      (_ node)))
   (for/hash
    ((name (in-list (sort (hash-keys trees) string<?))))
@@ -916,11 +924,80 @@
       "class-state-cap"
       "minimal pattern automaton exceeds the declared state cap"
       (hash 'cap (caps-ref caps 'states) 'states controls 'phase "minimal-pattern")))
-   (values name (compiled-class name (hash-ref raw name name) machine caps alphabet))))
+   (define class (compiled-class name (hash-ref raw name name) machine caps alphabet))
+   (hash-set!
+    class-original-trees
+    class
+    (if (hash-has-key? raw name) (hash-ref trees name) (list 'builtin name)))
+   (values name class)))
+
+(define (original-class-tree class)
+  (unless (compiled-class? class)
+    (fail "class-description" "a class description requires a compiled class"))
+  (hash-ref
+   class-original-trees
+   class
+   (lambda ()
+     (fail
+      "class-description"
+      "a source description is unavailable for this constructed class"
+      (hash 'class (compiled-class-name class))))))
+
+(define (class->description class #:qualify (qualify values))
+  (unless (and (procedure? qualify) (procedure-arity-includes? qualify 1))
+    (fail "class-description" "a class qualifier must accept one reference name"))
+  (define (describe node)
+    (match
+     node
+     ('epsilon (hash 'literals (list "")))
+     ('empty (hash 'literals '()))
+     ((list 'text text) (hash 'literals (list (string->immutable-string text))))
+     ((list 'pattern source _) (hash 'pattern (string->immutable-string source)))
+     ((list 'reference name)
+      (define qualified (qualify (string->immutable-string name)))
+      (unless (string? qualified)
+        (fail "class-description" "a qualified class reference must be text" (hash 'class name)))
+      (hash 'ref (string->immutable-string qualified)))
+     ((list 'sequence children) (hash 'seq (map describe children)))
+     ((list 'alternation children)
+      (define alternatives (map describe children))
+      (if (andmap (lambda (value) (hash-has-key? value 'literals)) alternatives)
+        (hash 'literals (append-map (lambda (value) (hash-ref value 'literals)) alternatives))
+        (hash 'alt alternatives)))
+     ((list 'repeat child minimum maximum)
+      (hash 'repeat (hash 'node (describe child) 'min minimum 'max (or maximum 'null))))
+     ((list 'except child literals)
+      (hash
+       'except
+       (hash 'node (describe child) 'literals (map string->immutable-string literals))))
+     ((list 'builtin name) (hash 'builtin (string->immutable-string name)))
+     (_ (fail "class-description" "the retained class node has no public description"))))
+  (describe (original-class-tree class)))
+
+(define (class->references class)
+  (define seen (make-hash))
+  (define result '())
+  (define (visit node)
+    (match
+     node
+     ((list 'reference name)
+      (unless (hash-has-key? seen name)
+        (hash-set! seen name #t)
+        (set! result (cons (string->immutable-string name) result))))
+     ((list (or 'sequence 'alternation) children) (for-each visit children))
+     ((list 'repeat child _ _) (visit child))
+     ((list 'except child _) (visit child))
+     (_ (void))))
+  (visit (original-class-tree class))
+  (reverse result))
 
 (define (class-accepts? class text)
   (and (string? text)
        (<= (string-length text) (caps-ref (compiled-class-caps class) 'token-length))
+       (class-pattern-accepts? class text)))
+
+(define (class-pattern-accepts? class text)
+  (and (string? text)
        (let ((machine (compiled-class-machine class)))
          (define final
            (for/fold

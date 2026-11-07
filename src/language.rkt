@@ -621,7 +621,21 @@
    (unless (and
             (hash-has-key? constructors (term-constructor meaning))
             (not (hash-has-key? library-arities (term-constructor meaning))))
-     (fail "E_MEANING_CONSTRUCTOR" "does must build a declared constructor" (term-span meaning)))
+     (fail
+      "E_MEANING_CONSTRUCTOR"
+      "does must build a declared constructor"
+      (term-span meaning)
+      (hash
+       'constructor
+       (term-constructor meaning)
+       'expected
+       "declared-constructor"
+       'actual
+       (cond
+        ((member (term-constructor meaning) '("prefix" "suffix" "equal")) "predicate")
+        ((member (term-constructor meaning) '("ancestors" "split")) "list")
+        ((hash-has-key? library-arities (term-constructor meaning)) "string")
+        (else "undeclared-constructor")))))
    (validate-term!
     meaning
     constructors
@@ -826,7 +840,21 @@
         "E_TERM_CLASS"
         "A string-class position cannot receive a list-valued library call"
         (term-span argument)
-        (hash 'constructor (term-constructor argument))))
+        (hash 'constructor (term-constructor argument) 'expected "string" 'actual "list")))
+     (when (member (term-constructor argument) '("prefix" "suffix" "equal"))
+       (fail
+        "E_TERM_CLASS"
+        "A predicate is permitted only in if or ensure, not a string-class position"
+        (term-span argument)
+        (hash
+         'constructor
+         (term-constructor argument)
+         'expected
+         "string"
+         'actual
+         "predicate"
+         'allowed-contexts
+         '("if" "ensure"))))
      (validate-term! argument constructors classes captures upper #:record-check record-check))
     ((literal? argument) (void))
     (else (fail "E_TERM" "The term contains an invalid argument" (term-span expression)))))
@@ -910,6 +938,10 @@
   (define origins '())
   (define quantities (hash))
   (define last-index -1)
+  (define (add-term! value origin)
+    (set! quantities (hash-update quantities (car value) add1 0))
+    (set! terms (append terms (list value)))
+    (set! origins (append origins (list origin))))
   (for
    ((record (in-list (read-lines text #:file file #:comment-prefix (language-comment body)))))
    (unless (memq (line-record-kind record) '(blank comment))
@@ -928,9 +960,35 @@
         (line-record-span record)))
      (set! last-index (max last-index (form-ordinal candidate)))
      (define value (term-value (form-meaning candidate) (cdr hit) body))
-     (set! quantities (hash-update quantities (car value) add1 0))
-     (set! terms (append terms (list value)))
-     (set! origins (append origins (list (line-record-span record))))))
+     (add-term! value (line-record-span record))))
+  (define explicit-constructors quantities)
+  (for*
+   ((candidate (in-list (language-forms body)))
+    #:unless
+    (hash-has-key? explicit-constructors (term-constructor (form-meaning candidate)))
+    (default (in-list (form-defaults candidate))))
+   (define record
+     (car
+      (read-lines
+       (car default)
+       #:file
+       (src-span-file (cdr default))
+       #:comment-prefix
+       (language-comment body))))
+   (define hit (find-form body record))
+   (unless hit
+     (fail "E_PROGRAM_FORM" "The default matches no form with valid captures" (cdr default)))
+   (add-term!
+    (term-value (form-meaning (car hit)) (cdr hit) body)
+    (hash
+     'kind
+     "default"
+     'file
+     (src-span-file (cdr default))
+     'range
+     (src-span->jsexpr (cdr default))
+     'source
+     (car default))))
   (for
    ((name (in-list (sort (hash-keys (language-counts body)) string<?))))
    (define multiplicity (hash-ref (language-counts body) name))
@@ -948,6 +1006,11 @@
       (hash 'constructor name 'multiplicity multiplicity 'actual quantity))))
   (hash 'valid #t 'language (language-name body) 'terms terms 'origins origins))
 
+(define library-domain-classes (delay (compile-classes (hash "allowed" "/.*/"))))
+
+(define (library-pattern-accepts? name text)
+  (class-pattern-accepts? (hash-ref (force library-domain-classes) name) text))
+
 (define (library-call name args span)
   (define (strings!)
     (unless (andmap string? args)
@@ -957,38 +1020,54 @@
        span
        (hash 'function name))))
   (strings!)
+  (define (domain! value index domain valid?)
+    (unless valid?
+      (fail
+       "E_LIBRARY_DOMAIN"
+       "The library argument is outside its specified domain"
+       span
+       (hash 'function name 'argument index 'domain domain))))
+  (case (string->symbol name)
+    ((parent split ancestors)
+     (domain! (car args) 1 "canonical-path" (library-pattern-accepts? "canonical-path" (car args))))
+    ((join)
+     (domain! (car args) 1 "canonical-path" (library-pattern-accepts? "canonical-path" (car args)))
+     (define relative (cadr args))
+     (domain!
+      relative
+      2
+      "relative-components"
+      (and (positive? (string-length relative))
+           (not (string-prefix? relative "/"))
+           (library-pattern-accepts? "canonical-path" (string-append "/" relative)))))
+    (else
+     (for
+      ((value (in-list args)) (index (in-naturals 1)))
+      (domain! value index "allowed-string" (library-pattern-accepts? "allowed" value)))))
   (case (string->symbol name)
     ((concat) (apply string-append args))
-    ((equal) (if (equal? (car args) (cadr args)) "true" "false"))
-    ((prefix) (if (string-prefix? (cadr args) (car args)) "true" "false"))
-    ((suffix) (if (string-suffix? (cadr args) (car args)) "true" "false"))
+    ((equal) (equal? (car args) (cadr args)))
+    ((prefix) (string-prefix? (cadr args) (car args)))
+    ((suffix) (string-suffix? (cadr args) (car args)))
     ((split)
-     (when (equal? (cadr args) "")
-       (fail "E_LIBRARY_SEPARATOR" "The split separator cannot be empty" span))
-     (string-split (car args) (cadr args) #:trim? #f))
-    ((join)
-     (string-append
-      (string-trim (car args) "/" #:left? #f)
-      "/"
-      (string-trim (cadr args) "/" #:right? #f)))
+     (if (equal? (car args) "/") '() (string-split (substring (car args) 1) "/" #:trim? #f)))
+    ((join) (string-append (if (equal? (car args) "/") "" (car args)) "/" (cadr args)))
     ((parent)
      (define value (car args))
-     (when (or (equal? value "/") (equal? value ""))
-       (fail "E_LIBRARY_PARENT" "The root or empty string has no parent" span))
+     (when (equal? value "/") (fail "E_LIBRARY_PARENT" "The root has no parent" span))
      (define positions
        (for/list
         ((character (in-string value)) (index (in-naturals)) #:when (char=? character #\/))
         index))
-     (cond
-      ((null? positions) ".")
-      ((zero? (last positions)) "/")
-      (else (substring value 0 (last positions)))))
+     (if (zero? (last positions)) "/" (substring value 0 (last positions))))
     ((ancestors)
      (let loop ((value (car args)) (result '()))
-       (if (or (equal? value "/") (equal? value ".") (equal? value ""))
+       (if (equal? value "/")
          result
          (let ((next (library-call "parent" (list value) span)))
-           (loop next (append result (list next)))))))))
+           (loop next (cons next result))))))))
+
+(module+ test-support (provide library-call))
 
 (define (normalize-terms body terms)
   (define (evaluate value)

@@ -21,6 +21,9 @@
     "test/test-syntax.rkt"
     "test/test-language.rkt"
     "test/test-language-edge.rkt"
+    "test/test-library.rkt"
+    "test/test-defaults.rkt"
+    "test/test-emission.rkt"
     "test/test-decoder.rkt"
     "test/test-import-corpus.rkt"
     "test/test-meta-mutation.rkt"))

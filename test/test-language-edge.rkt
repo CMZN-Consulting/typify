@@ -262,7 +262,7 @@
    '("primitive : output : value" "form : go!" "does : output (ancestors /)")
    "E_TERM_CLASS")
   (reject-declaration
-   '("primitive : output : value" "form : go!" "does : output (split a /)")
+   '("primitive : output : value" "form : go!" "does : output (split /a/b)")
    "E_TERM_CLASS")
   (define wrong-library-result
     (with-handlers

@@ -84,6 +84,74 @@
      (error-code "class-reserved")
      (lambda () (compile-classes (hash "letter" "\"a\"") #:caps small-caps))))
    (test-case
+    "class descriptions retain the parser tree before reference expansion"
+    (define classes
+      (compile-classes
+       (hash
+        "choice"
+        "\"book\" | \"journal\""
+        "pattern"
+        "/[^=]+/"
+        "sequence"
+        "choice /[0-9]+/"
+        "mixed"
+        "\"literal\" | choice"
+        "repeat"
+        "choice{1,3}"
+        "open"
+        "choice+"
+        "excluded"
+        "choice except \"book\""
+        "references"
+        "choice pattern choice")
+       #:caps
+       small-caps))
+    (define (qualified name) (string-append "Body." name))
+    (define (description name) (class->description (hash-ref classes name) #:qualify qualified))
+    (check-equal? (description "choice") (hash 'literals '("book" "journal")))
+    (check-equal? (description "pattern") (hash 'pattern "[^=]+"))
+    (check-equal?
+     (description "sequence")
+     (hash 'seq (list (hash 'ref "Body.choice") (hash 'pattern "[0-9]+"))))
+    (check-equal?
+     (description "mixed")
+     (hash 'alt (list (hash 'literals '("literal")) (hash 'ref "Body.choice"))))
+    (check-equal?
+     (description "repeat")
+     (hash 'repeat (hash 'node (hash 'ref "Body.choice") 'min 1 'max 3)))
+    (check-equal?
+     (description "open")
+     (hash 'repeat (hash 'node (hash 'ref "Body.choice") 'min 1 'max 'null)))
+    (check-equal?
+     (description "excluded")
+     (hash 'except (hash 'node (hash 'ref "Body.choice") 'literals '("book"))))
+    (check-equal? (description "letter") (hash 'builtin "letter"))
+    (check-equal? (description "canonical-path") (hash 'builtin "canonical-path"))
+    (check-equal? (class->references (hash-ref classes "references")) '("choice" "pattern"))
+    (check-equal? (class->references (hash-ref classes "letter")) '())
+    (check-equal?
+     (class->description (hash-ref classes "open"))
+     (hash 'repeat (hash 'node (hash 'ref "choice") 'min 1 'max 'null)))
+    (define raw "a\\/.*")
+    (define escaped (one (string-append "/" raw "/")))
+    (check-equal? (class->description escaped) (hash 'pattern raw))
+    (define foreign
+      (compiled-class
+       "foreign"
+       "source"
+       (compiled-class-machine escaped)
+       (compiled-class-caps escaped)
+       (compiled-class-alphabet escaped)))
+    (check-exn (error-code "class-description") (lambda () (class->description foreign)))
+    (check-exn (error-code "class-description") (lambda () (class->references foreign))))
+   (test-case
+    "pattern membership is independent of the receiving capture length"
+    (define path (one "canonical-path" (hash 'length 1)))
+    (check-true (class-pattern-accepts? path "/long"))
+    (check-false (class-accepts? path "/long"))
+    (check-false (class-pattern-accepts? path "/a/../b"))
+    (check-false (class-pattern-accepts? path (string-append "/a" (string #\nul)))))
+   (test-case
     "Unicode letters are pinned, multiple scripts and non-BMP included"
     (define single (one "letter"))
     (check-true (class-accepts? single "A"))

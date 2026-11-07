@@ -21,15 +21,82 @@
   (string-append "\"" (apply string-append (map escape (string->list text))) "\""))
 
 (define (language->grammar body)
+  (define local-names
+    (for/hash
+     ((row (in-list (language-rows body))) #:when (eq? (hash-ref row 'kind) 'class))
+     (values (hash-ref (hash-ref row 'captures) "name") #t)))
+  (define (qualify name)
+    (string-append (if (hash-has-key? local-names name) (language-name body) "Typify") "." name))
+  (define classes (language-classes body))
+  (define roots
+    (remove-duplicates
+     (append-map
+      (lambda (candidate)
+        (for/list
+         ((part (in-list (append (form-left candidate) (or (form-right candidate) '()))))
+          #:when
+          (slot? part))
+         (slot-name part)))
+      (language-forms body))))
+  (define reachable
+    (let loop ((pending roots) (seen (hash)))
+      (cond
+       ((null? pending) seen)
+       ((hash-has-key? seen (car pending)) (loop (cdr pending) seen))
+       (else
+        (define name (car pending))
+        (loop
+         (append (class->references (hash-ref classes name)) (cdr pending))
+         (hash-set seen name #t))))))
+  (define caps (compiled-class-caps (hash-ref classes "letter")))
   (hash
-   'source
-   (emit-declarations (hash (language-name body) body))
    'language
-   (declaration->jsexpr body)
+   (language-name body)
+   'version
+   (string->number (language-version body))
+   'caps
+   (hash
+    'states
+    (hash-ref caps 'states)
+    'repetition
+    (hash-ref caps 'repetition)
+    'depth
+    (hash-ref caps 'reference-depth)
+    'length
+    (hash-ref caps 'token-length))
    'classes
    (for/hash
-    ((name (in-list (sort (hash-keys (language-classes body)) string<?))))
-    (values name (class-witnesses (hash-ref (language-classes body) name))))))
+    ((name (in-list (sort (hash-keys reachable) string<?))))
+    (values (qualify name) (class->description (hash-ref classes name) #:qualify qualify)))
+   'forms
+   (for/list
+    ((candidate (in-list (language-forms body))))
+    (define left (template-production (form-left candidate)))
+    (define verb
+      (if (and (memq (form-kind candidate) '(colon bang))
+               (andmap string? (form-left candidate))
+               (positive? (string-length left))
+               (for/and ((character (in-string left))) (not (char-whitespace? character))))
+        left
+        'null))
+    (define description
+      (hash
+       'shape
+       (symbol->string (form-kind candidate))
+       'production
+       (form-source candidate)
+       'verb
+       verb))
+    (if (eq? (form-kind candidate) 'arrow)
+      (hash-set* description 'left left 'right (template-production (form-right candidate)))
+      description))))
+
+(define (template-production parts)
+  (apply
+   string-append
+   (for/list
+    ((part (in-list parts)))
+    (if (slot? part) (string-append "<" (slot-name part) ">") part))))
 
 (define (language->gbnf body)
   (define rules (make-hash))
