@@ -72,6 +72,8 @@
 
 (define current-source-lines (make-parameter (hash)))
 
+(define current-source-text-lines (make-parameter (hash)))
+
 (define (source-line-span span)
   (hash-ref (current-source-lines) (cons (src-span-file span) (src-span-start-line span)) span))
 
@@ -102,7 +104,29 @@
       (current-program-span))
      ((and span whole-line?) (source-line-span span))
      (else span)))
-  (if selected (struct-copy diagnostic item (file (src-span-file selected)) (range selected)) item))
+  (define data (diagnostic-data item))
+  (define kind (hash-ref data 'kind #f))
+  (define line-payload?
+    (or (member code '("E_LINE_SHAPE" "E_FORM_NONE" "E_QUESTION"))
+        (and (equal? code "E_DECLARATION")
+             (member kind '("header" "body" "orphan" "syntax"))
+             (not (and (equal? kind "body") (equal? (hash-ref data 'actual #f) "EOF"))))))
+  (define raw
+    (and selected
+         (hash-ref
+          (current-source-text-lines)
+          (cons (src-span-file selected) (src-span-start-line selected))
+          #f)))
+  (define projected-data
+    (if (and line-payload? raw) (hash-set data 'actual (string-trim raw #px"[ \t]")) data))
+  (if selected
+    (struct-copy
+     diagnostic
+     item
+     (file (src-span-file selected))
+     (range selected)
+     (data projected-data))
+    (struct-copy diagnostic item (data projected-data))))
 
 (define (record-diagnostics! items)
   (define sink (current-diagnostic-sink))
@@ -165,6 +189,29 @@
 
 (define (words text) (string-split text))
 
+(define (top-level-delimiters source delimiter)
+  (define width (string-length delimiter))
+  (define size (string-length source))
+  (let loop ((index 0) (depth 0) (quoted? #f) (positions '()))
+    (cond
+     ((>= index size) (reverse positions))
+     (quoted?
+      (case (string-ref source index)
+        ((#\\) (loop (min size (+ index 2)) depth #t positions))
+        ((#\") (loop (add1 index) depth #f positions))
+        (else (loop (add1 index) depth #t positions))))
+     (else
+      (case (string-ref source index)
+        ((#\") (loop (add1 index) depth #t positions))
+        ((#\() (loop (add1 index) (add1 depth) #f positions))
+        ((#\)) (loop (add1 index) (max 0 (sub1 depth)) #f positions))
+        (else
+         (if (and (zero? depth)
+                  (<= (+ index width) size)
+                  (equal? (substring source index (+ index width)) delimiter))
+           (loop (+ index width) depth #f (cons index positions))
+           (loop (add1 index) depth #f positions))))))))
+
 (define (class-run thunk span)
   (with-handlers
    ((class-error?
@@ -203,7 +250,7 @@
          ((equal? code "class-reserved")
           (values "E_DECLARATION" (hash 'kind "duplicate" 'actual (hash-ref data 'class))))
          ((equal? code "class-reference-cycle")
-          (values "E_DECLARATION" (hash 'kind "class-cycle" 'actual (hash-ref data 'chain))))
+          (values "E_DECLARATION" (hash 'kind "class-cycle" 'actual (hash-ref data 'class))))
          ((member code '("class-syntax" "class-except" "class-host-predicate"))
           (if (hash-has-key? data 'source)
             (values "E_DECLARATION" (hash 'kind "syntax" 'actual (hash-ref data 'source)))
@@ -464,37 +511,59 @@
 (define (ordered-constructors constructors)
   (sort (hash-values constructors) < #:key constructor-ordinal))
 
-(define (check-rule-cycles! constructors)
-  (define colors (make-hash))
-  (define cyclic (make-hash))
-  (define (visit item path)
-    (define name (constructor-name item))
-    (define next-path (append path (list name)))
-    (hash-set! colors name 'active)
+(define (check-rule-cycles! constructors rule-lefts)
+  (define indices (make-hash))
+  (define lowlinks (make-hash))
+  (define active (make-hash))
+  (define stack '())
+  (define next-index 0)
+  (define components '())
+  (define (dependencies name)
+    (define item (hash-ref constructors name))
+    (for/list
+     ((right (in-list (cdr (constructor-rule item))))
+      #:when
+      (let ((next (hash-ref constructors (term-constructor right) #f)))
+        (and next (constructor-rule next))))
+     (term-constructor right)))
+  (define (position name) (src-span-start-byte (term-span (hash-ref rule-lefts name))))
+  (define (visit name)
+    (hash-set! indices name next-index)
+    (hash-set! lowlinks name next-index)
+    (set! next-index (add1 next-index))
+    (set! stack (cons name stack))
+    (hash-set! active name #t)
     (for
-     ((right (in-list (cdr (constructor-rule item)))))
-     (define next (hash-ref constructors (term-constructor right) #f))
-     (when (and next (constructor-rule next))
-       (case (hash-ref colors (constructor-name next) #f)
-         ((active)
-          (for
-           ((member (in-list (member (constructor-name next) next-path))))
-           (hash-set! cyclic member #t))
-          (recover
-           (lambda ()
-             (fail
-              "E_RULE_CYCLE"
-              "Rewrite dependencies form a cycle"
-              (term-span right)
-              (hash 'constructor (constructor-name next))))))
-         ((done) (void))
-         (else (visit next next-path)))))
-    (hash-set! colors name 'done))
+     ((next (in-list (dependencies name))))
+     (cond
+      ((not (hash-has-key? indices next))
+       (visit next)
+       (hash-set! lowlinks name (min (hash-ref lowlinks name) (hash-ref lowlinks next))))
+      ((hash-ref active next #f)
+       (hash-set! lowlinks name (min (hash-ref lowlinks name) (hash-ref indices next))))))
+    (when (= (hash-ref lowlinks name) (hash-ref indices name))
+      (define component
+        (let pop ((members '()))
+          (define member (car stack))
+          (set! stack (cdr stack))
+          (hash-remove! active member)
+          (define collected (cons member members))
+          (if (equal? member name) collected (pop collected))))
+      (when (or (> (length component) 1) (member name (dependencies name)))
+        (set! components (cons (sort component < #:key position) components)))))
   (for
-   ((item (in-list (ordered-constructors constructors))))
-   (when (and (constructor-rule item) (not (hash-has-key? colors (constructor-name item))))
-     (visit item '())))
-  cyclic)
+   ((name (in-list (sort (hash-keys rule-lefts) < #:key position))))
+   (unless (hash-has-key? indices name) (visit name)))
+  (for
+   ((component (in-list (sort components < #:key (lambda (names) (position (car names)))))))
+   (define name (car component))
+   (recover
+    (lambda ()
+      (fail
+       "E_RULE_CYCLE"
+       "Rewrite dependencies form a cycle"
+       (term-span (hash-ref rule-lefts name))
+       (hash 'constructor name))))))
 
 (struct declaration-automata (fields whole checks) #:transparent)
 
@@ -583,23 +652,33 @@
        (src-span-file (line-record-span record))
        (src-span-start-line (line-record-span record)))
       (line-record-span record))))
+  (define source-text-lines
+    (for/hash
+     ((record (in-list (read-lines text #:file file))))
+     (values
+      (cons
+       (src-span-file (line-record-span record))
+       (src-span-start-line (line-record-span record)))
+      (line-record-raw record))))
   (define model
     (parameterize
      ((current-reader-meta meta)
       (current-bootstrap? (equal? text (meta-source)))
       (current-source-lines source-lines)
+      (current-source-text-lines source-text-lines)
       (current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics)))))
      (read-declarations/internal text file)))
   (values model (diagnostics-sort (reverse diagnostics))))
 
 (define (read-declarations/internal text file)
   (define lines (read-lines text #:file file))
-  (recover
-   (lambda ()
-     (unless (and
-              (pair? lines)
-              (not (regexp-match? #rx"\r" (line-record-raw (car lines))))
-              (equal? (string-trim (line-record-raw (car lines)) #px"[ \t]") "#lang typify"))
+  (define header-valid?
+    (and (pair? lines)
+         (not (regexp-match? #rx"\r" (line-record-raw (car lines))))
+         (equal? (string-trim (line-record-raw (car lines)) #px"[ \t]") "#lang typify")))
+  (unless header-valid?
+    (recover
+     (lambda ()
        (fail
         "E_DECLARATION"
         "A declaration file must open with #lang typify"
@@ -609,8 +688,20 @@
   (define current #f)
   (define opening #f)
   (define rows '())
+  (define enclosing '())
+  (define (finish-body!)
+    (define completed (recover (lambda () (compile-body current rows opening))))
+    (when completed (set! bodies (cons completed bodies)))
+    (cond
+     ((pair? enclosing)
+      (define frame (car enclosing))
+      (set! current (car frame))
+      (set! opening (cadr frame))
+      (set! rows (caddr frame))
+      (set! enclosing (cdr enclosing)))
+     (else (set! current #f) (set! opening #f) (set! rows '()))))
   (for
-   ((record (in-list (if (pair? lines) (cdr lines) '()))))
+   ((record (in-list (if header-valid? (cdr lines) lines))))
    (recover
     (lambda ()
       (case (line-record-kind record)
@@ -633,18 +724,14 @@
                   "Close the current language before declaring another"
                   (row-span row)
                   (hash 'kind "body" 'actual (row-source row)))))
-              (define body (recover (lambda () (compile-body current rows opening))))
-              (when body (set! bodies (append bodies (list body)))))
+              (set! enclosing (cons (list current opening rows) enclosing)))
             (set! current (capture-value row "name"))
             (set! opening (row-span row))
             (set! rows '()))
            ((end)
             (unless current
               (declaration-fail "body" (row-source row) "No language is open" (row-span row)))
-            (define body-name current)
-            (set! current #f)
-            (define body (recover (lambda () (compile-body body-name rows opening))))
-            (when body (set! bodies (append bodies (list body)))))
+            (finish-body!))
            (else
             (unless current
               (declaration-fail
@@ -653,14 +740,17 @@
                "Declare a language before its contents"
                (row-span row)))
             (set! rows (append rows (list row))))))))))
-  (when current
-    (recover (lambda () (declaration-fail "body" "EOF" "The language has no end!" opening)))
-    (define body (recover (lambda () (compile-body current rows opening))))
-    (when body (set! bodies (append bodies (list body)))))
+  (let loop ()
+    (when current
+      (recover (lambda () (declaration-fail "body" "EOF" "The language has no end!" opening)))
+      (finish-body!)
+      (loop)))
+  (define ordered-bodies
+    (sort bodies < #:key (lambda (body) (src-span-start-byte (language-span body)))))
   (define result
     (for/fold
      ((result (hash)))
-     ((body (in-list bodies)))
+     ((body (in-list ordered-bodies)))
      (recover
       (lambda ()
         (when (hash-has-key? result (language-name body))
@@ -673,14 +763,18 @@
        result
        (hash-set result (language-name body) body))))
   (for*
-   ((body (in-list bodies)) (name (in-list (language-sees body))))
-   (recover
-    (lambda ()
-      (unless (hash-has-key? result name)
+   ((body (in-list ordered-bodies))
+    (row (in-list (language-rows body)))
+    #:when
+    (eq? (hash-ref row 'kind) 'sees))
+   (define name (capture-value row "name"))
+   (unless (hash-has-key? result name)
+     (recover
+      (lambda ()
         (fail
          "E_DECLARATION"
          "The referenced language is not declared"
-         (language-span body)
+         (row-span row)
          (hash 'kind "reference" 'actual name))))))
   result)
 
@@ -699,6 +793,8 @@
   (define forms '())
   (define counts (hash))
   (define rules '())
+  (define rule-attempts (make-hash))
+  (define rule-lefts (make-hash))
   (define facts (hash))
   (define properties (hash))
   (define defaults '())
@@ -944,12 +1040,15 @@
    (recover
     (lambda ()
       (define source (capture-value row "value"))
-      (define sides (string-split source "->" #:trim? #f))
-      (unless (= (length sides) 2)
+      (define attempted (regexp-match #px"^[ \t]*([^ \t()<>\"]+)" source))
+      (when (and attempted (hash-has-key? constructors (cadr attempted)))
+        (hash-set! rule-attempts (cadr attempted) #t))
+      (define arrows (top-level-delimiters source "->"))
+      (unless (= (length arrows) 1)
         (declaration-fail "syntax" source "A rule has one arrow" (row-span row)))
       (define value-span (line-right-span (hash-ref row 'record)))
-      (define arrow-position (caar (regexp-match-positions #rx"->" source)))
-      (define left-text (car sides))
+      (define arrow-position (car arrows))
+      (define left-text (substring source 0 arrow-position))
       (define left (parse-source-term left-text (span-slice value-span source 0 arrow-position)))
       (define key (term-constructor left))
       (unless (hash-has-key? constructors key)
@@ -984,17 +1083,20 @@
          (check-duplicates names)
          "A rule variable is repeated"
          (row-span row)))
-      (define right-source (cadr sides))
       (define right-start (+ arrow-position 2))
+      (define right-source (substring source right-start))
+      (define cuts
+        (append (top-level-delimiters right-source ";") (list (string-length right-source))))
       (define right
-        (let loop ((remaining (string-split right-source ";" #:trim? #f)) (offset right-start))
+        (let loop ((remaining cuts) (offset 0))
           (if (null? remaining)
             '()
             (cons
              (parse-source-term
-              (car remaining)
-              (span-slice value-span source offset (+ offset (string-length (car remaining)))))
-             (loop (cdr remaining) (+ offset (string-length (car remaining)) 1))))))
+              (substring right-source offset (car remaining))
+              (span-slice value-span source (+ right-start offset) (+ right-start (car remaining))))
+             (loop (cdr remaining) (add1 (car remaining)))))))
+      (hash-set! rule-lefts key left)
       (set! constructors
         (hash-set constructors key (struct-copy constructor item (rule (cons names right))))))))
   (define effect-body? (ormap constructor-primitive? (hash-values constructors)))
@@ -1019,16 +1121,37 @@
      (values
       key
       (struct-copy constructor item (fact? (or (not effect-body?) (hash-has-key? facts key)))))))
-  (define cyclic-constructors (check-rule-cycles! constructors))
+  (check-rule-cycles! constructors rule-lefts)
+  (define (constructor-use-span item)
+    (define uses
+      (append
+       (for/list
+        ((pending (in-list pending-forms))
+         #:when
+         (equal? (term-constructor (hash-ref pending 'meaning)) (constructor-name item)))
+        (term-span (hash-ref pending 'meaning)))
+       (for*/list
+        ((owner (in-list (ordered-constructors constructors)))
+         #:when
+         (constructor-rule owner)
+         (right (in-list (cdr (constructor-rule owner))))
+         #:when
+         (equal? (term-constructor right) (constructor-name item)))
+        (term-span right))))
+    (if (null? uses) (constructor-span item) (car (sort uses < #:key src-span-start-byte))))
   (for
    ((item (in-list (ordered-constructors constructors))))
    (recover
     (lambda ()
-      (unless (or (constructor-primitive? item) (constructor-fact? item) (constructor-rule item))
+      (unless (or
+               (constructor-primitive? item)
+               (constructor-fact? item)
+               (constructor-rule item)
+               (hash-ref rule-attempts (constructor-name item) #f))
         (fail
          "E_CONSTRUCTOR_UNBOUND"
          "A constructor must be primitive or have one rule"
-         (constructor-span item)
+         (constructor-use-span item)
          (hash 'constructor (constructor-name item))))))
    (when (constructor-rule item)
      (for
@@ -1052,8 +1175,7 @@
              ((name (in-list (car (constructor-rule item))))
               (class-name (in-list (constructor-signature item))))
              (values name (hash-ref classes class-name)))
-            (and (not (hash-ref cyclic-constructors (constructor-name item) #f))
-                 (constructor-ordinal item))
+            (constructor-ordinal item)
             #:record-check
             (lambda (entry)
               (record-signature!
@@ -1070,11 +1192,6 @@
         (kind left right)
         (parts (hash-ref pending 'source) (hash-ref pending 'production-span)))
        (define slots (append (filter slot? left) (if right (filter slot? right) '())))
-       (when (for/or
-              ((placeholder (in-list slots)))
-              (and (not (hash-has-key? classes (slot-name placeholder)))
-                   (hash-has-key? class-sources (slot-name placeholder))))
-         (skip-form #f))
        (when (check-duplicates (map slot-name slots))
          (declaration-fail
           "duplicate"
@@ -1086,19 +1203,23 @@
         ((placeholder (in-list slots)))
         (unless (hash-has-key? classes (slot-name placeholder))
           (set! missing-placeholder? #t)
-          (recover
-           (lambda ()
-             (fail
-              "E_DECLARATION"
-              "A form placeholder has no class"
-              span
-              (hash 'kind "capture" 'actual (string-append "<" (slot-name placeholder) ">")))))))
-       (when missing-placeholder? (skip-form #f))
+          (unless (hash-has-key? class-sources (slot-name placeholder))
+            (recover
+             (lambda ()
+               (fail
+                "E_DECLARATION"
+                "A form placeholder has no class"
+                span
+                (hash 'kind "capture" 'actual (string-append "<" (slot-name placeholder) ">"))))))))
        (for
         ((side (in-list (filter values (list left right)))))
         (for
          ((a (in-list side)) (b (in-list (if (pair? side) (append (cdr side) (list #f)) '()))))
-         (when (and (slot? a) (string? b) (positive? (string-length b)))
+         (when (and
+                (slot? a)
+                (hash-has-key? classes (slot-name a))
+                (string? b)
+                (positive? (string-length b)))
            (define class (hash-ref classes (slot-name a)))
            (define witness (class-delimiter-witness class b))
            (when witness
@@ -1129,12 +1250,11 @@
               delimiter-checks)))))
        (define meaning (hash-ref pending 'meaning))
        (define meaning-constructor (hash-ref constructors (term-constructor meaning) #f))
-       (when (and
-              meaning-constructor
+       (define missing-signature-class?
+         (and meaning-constructor
               (ormap
                (lambda (class-name) (not (hash-has-key? classes class-name)))
-               (constructor-signature meaning-constructor)))
-         (skip-form #f))
+               (constructor-signature meaning-constructor))))
        (unless (and
                 (hash-has-key? constructors (term-constructor meaning))
                 (not (hash-has-key? library-arities (term-constructor meaning))))
@@ -1168,10 +1288,11 @@
         classes
         (for/hash
          ((part (in-list slots)))
-         (values (slot-name part) (hash-ref classes (slot-name part))))
+         (values (slot-name part) (hash-ref classes (slot-name part) #f)))
         #f
         #:record-check
         (lambda (entry) (record-signature! (hash 'kind "form" 'ordinal index) entry)))
+       (when (or missing-placeholder? missing-signature-class?) (skip-form #f))
        (set! forms
          (append
           forms
@@ -1383,7 +1504,7 @@
      "The term constructor is undeclared"
      (term-span expression)
      (hash 'kind "reference" 'actual name)))
-  (when (and upper item (not (constructor-primitive? item)) (>= (constructor-ordinal item) upper))
+  (when (and upper item (not (constructor-primitive? item)) (> (constructor-ordinal item) upper))
     (fail
      "E_DECLARATION"
      "A rule may refer only to earlier constructors, primitives and library functions"
@@ -1392,12 +1513,21 @@
   (define arities
     (if item (list (length (constructor-signature item))) (hash-ref library-arities name)))
   (unless (member (length args) arities)
-    (declaration-fail
-     "arity"
-     (term-source expression)
+    (fail
+     "E_TERM_CLASS"
      "The term has the wrong number of arguments"
      (term-span expression)
-     (hash 'expected arities 'count (length args))))
+     (hash
+      'kind
+      "arity"
+      'constructor
+      name
+      'class
+      (if item
+        (string-join (constructor-signature item) " ")
+        (string-join (make-list (car arities) "string") " "))
+      'actual
+      (length args))))
   (for
    ((argument (in-list args)) (index (in-naturals)))
    (define receiving-class (if item (list-ref (constructor-signature item) index) "string"))
@@ -1484,7 +1614,7 @@
          class-name
          'actual
          (literal-value argument))))
-     (when (and (capture? argument) (hash? captures))
+     (when (and (capture? argument) (hash? captures) (hash-ref captures (capture-name argument) #f))
        (define source-class (hash-ref captures (capture-name argument)))
        (define target-class (hash-ref classes class-name))
        (define witness (class-difference-witness source-class target-class))
@@ -1694,7 +1824,15 @@
        (list (hash 'kind kind 'path (src-span-file span) 'line (src-span-start-line span)))))
     (set! term-spans (append term-spans (list span))))
   (parameterize
-   ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics)))))
+   ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics))))
+    (current-source-text-lines
+     (for/hash
+      ((record (in-list records)))
+      (values
+       (cons
+        (src-span-file (line-record-span record))
+        (src-span-start-line (line-record-span record)))
+       (line-record-raw record)))))
    (for
     ((record (in-list records)))
     (unless (memq (line-record-kind record) '(blank comment))

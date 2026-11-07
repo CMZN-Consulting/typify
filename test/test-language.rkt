@@ -254,7 +254,7 @@
    (lambda ()
      (read-declarations
       (string-replace catalog "does : item <category> <title>" "does : item <category>")))
-   "E_DECLARATION")
+   "E_TERM_CLASS")
   (reject
    (lambda ()
      (read-declarations

@@ -43,7 +43,7 @@
    ((text '("unknown!" "other : [a]" "item : missing-brackets" "item : [a")))
    (reject (lambda () (check-program text bracket)) "E_FORM_NONE" (hash 'actual text)))
   (define outer-raw " \tother : [a]\t ")
-  (reject (lambda () (check-program outer-raw bracket)) "E_FORM_NONE" (hash 'actual outer-raw))
+  (reject (lambda () (check-program outer-raw bracket)) "E_FORM_NONE" (hash 'actual "other : [a]"))
   (reject
    (lambda () (check-program "item:[123]" bracket))
    "E_CLASS"

@@ -314,7 +314,7 @@
      (error-code "class-reference-cap")
      (lambda ()
        (compile-classes
-        (hash "a" "b" "b" "c" "c" "\"x\"")
+        (hash "a" "b" "b" "c" "c" "d" "d" "\"x\"")
         #:caps
         (hash-set small-caps 'reference-depth 2))))
     (check-exn

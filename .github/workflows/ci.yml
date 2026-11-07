@@ -9,6 +9,7 @@ permissions:
   contents: read
 
 env:
+  TYPIFY_BLIND_MODE: deferred
   TYPIFY_GBNF_VALIDATOR_REVISION: fd27b2034905f8dadd8bd6d2cc44595f4929d391
 
 jobs:
@@ -16,9 +17,21 @@ jobs:
     name: Kernel checks
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    outputs:
+      blind-mode: ${{ steps.mode.outputs.mode }}
     steps:
+      - name: Select frozen replay mode
+        id: mode
+        shell: bash
+        run: |
+          case "$TYPIFY_BLIND_MODE" in
+            deferred|full) printf 'mode=%s\n' "$TYPIFY_BLIND_MODE" >> "$GITHUB_OUTPUT" ;;
+            *) printf 'Unknown frozen replay mode\n' >&2; exit 2 ;;
+          esac
+          printf 'Frozen corpus replay: %s. Deferred mode does not claim stage-one acceptance.\n' "$TYPIFY_BLIND_MODE" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Install verified Racket 9.3 CS
         shell: bash
@@ -51,8 +64,8 @@ jobs:
             -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CUDA=OFF -DGGML_BLAS=OFF
           cmake --build "$RUNNER_TEMP/decoder-build" --target test-gbnf-validator --parallel 4
           printf 'TYPIFY_GBNF_VALIDATOR=%s\n' "$RUNNER_TEMP/decoder-build/bin/test-gbnf-validator" >> "$GITHUB_ENV"
-      - name: Measure stage one against the frozen v3 corpus
-        run: racket scripts/ci.rkt --output "${{ runner.temp }}/kernel-check.json"
+      - name: Measure internal kernel checks without frozen corpus replay
+        run: racket scripts/ci.rkt --group kernel --defer-blind --output "${{ runner.temp }}/kernel-check.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -61,14 +74,116 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  language-replay:
+    name: Frozen language replay
+    needs: kernel
+    if: ${{ always() && needs.kernel.outputs.blind-mode == 'full' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install verified Racket 9.3 CS
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://download.racket-lang.org/releases/9.3/installers/racket-9.3-x86_64-linux-buster.sh \
+            --output "$RUNNER_TEMP/racket-installer.sh"
+          printf '%s  %s\n' \
+            30dc59d9b5af083eacf793253d35782c5231e8bfb7a7331fe32ccd9a41fd792f \
+            "$RUNNER_TEMP/racket-installer.sh" | sha256sum --check --strict
+          sh "$RUNNER_TEMP/racket-installer.sh" --create-dir --in-place --dest "$RUNNER_TEMP/racket"
+          printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
+      - name: Replay language verdicts, declarations and witnesses
+        run: racket scripts/ci.rkt --group language --output "${{ runner.temp }}/language-replay.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: language-replay
+          path: ${{ runner.temp }}/language-replay.json
+          if-no-files-found: error
+          retention-days: 30
+
+  mutation-replay:
+    name: Frozen mutation replay
+    needs: kernel
+    if: ${{ always() && needs.kernel.outputs.blind-mode == 'full' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install verified Racket 9.3 CS
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://download.racket-lang.org/releases/9.3/installers/racket-9.3-x86_64-linux-buster.sh \
+            --output "$RUNNER_TEMP/racket-installer.sh"
+          printf '%s  %s\n' \
+            30dc59d9b5af083eacf793253d35782c5231e8bfb7a7331fe32ccd9a41fd792f \
+            "$RUNNER_TEMP/racket-installer.sh" | sha256sum --check --strict
+          sh "$RUNNER_TEMP/racket-installer.sh" --create-dir --in-place --dest "$RUNNER_TEMP/racket"
+          printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
+      - name: Replay the unchanged mutation operator set and independent oracles
+        run: racket scripts/ci.rkt --group mutation --output "${{ runner.temp }}/mutation-replay.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: mutation-replay
+          path: ${{ runner.temp }}/mutation-replay.json
+          if-no-files-found: error
+          retention-days: 30
+
   stage1:
     name: Stage one acceptance
-    needs: kernel
-    if: always()
+    needs: [kernel, language-replay, mutation-replay]
+    if: ${{ always() && needs.kernel.outputs.blind-mode == 'full' }}
     runs-on: ubuntu-22.04
+    timeout-minutes: 10
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install verified Racket 9.3 CS
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://download.racket-lang.org/releases/9.3/installers/racket-9.3-x86_64-linux-buster.sh \
+            --output "$RUNNER_TEMP/racket-installer.sh"
+          printf '%s  %s\n' \
+            30dc59d9b5af083eacf793253d35782c5231e8bfb7a7331fe32ccd9a41fd792f \
+            "$RUNNER_TEMP/racket-installer.sh" | sha256sum --check --strict
+          sh "$RUNNER_TEMP/racket-installer.sh" --create-dir --in-place --dest "$RUNNER_TEMP/racket"
+          printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: kernel-check
-      - name: Require every registered stage one gate
-        run: jq --exit-status '.stage1.pass == true' kernel-check.json
+          path: ${{ runner.temp }}/evidence/kernel
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: language-replay
+          path: ${{ runner.temp }}/evidence/language
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: mutation-replay
+          path: ${{ runner.temp }}/evidence/mutation
+      - name: Require complete evidence and every registered stage-one gate
+        if: always()
+        run: |
+          racket scripts/ci.rkt --aggregate \
+            "${{ runner.temp }}/evidence/kernel/kernel-check.json" \
+            "${{ runner.temp }}/evidence/language/language-replay.json" \
+            "${{ runner.temp }}/evidence/mutation/mutation-replay.json" \
+            --output "${{ runner.temp }}/stage1-acceptance.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: stage1-acceptance
+          path: ${{ runner.temp }}/stage1-acceptance.json
+          if-no-files-found: error
+          retention-days: 30

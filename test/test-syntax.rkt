@@ -42,7 +42,7 @@
   (check (verb-word? "Alpha_beta") #f)
   (check (verb-word? "") #f)
   (define lone-cr (read-lines "a : x\rb : y\nnext!" #:file "cr.txt"))
-  (check (map line-record-kind lone-cr) '(unclassified bang))
+  (check (map line-record-kind lone-cr) '(colon bang))
   (check (line-record-raw (car lone-cr)) "a : x\rb : y")
   (check (line-record-span (car lone-cr)) (src-span "cr.txt" 1 1 1 12 0 11))
   (check (line-record-span (second lone-cr)) (src-span "cr.txt" 2 1 2 6 12 17))

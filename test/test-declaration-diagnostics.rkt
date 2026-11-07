@@ -33,7 +33,7 @@
   (kind '("primitive : output" "primitive : output") "duplicate")
   (kind '("does : missing") "orphan")
   (kind '("count : missing = 1") "reference")
-  (kind '("primitive : output : value" "form : run!" "does : output") "arity")
+  (kind '("primitive : output" "term : action : value value" "rule : action <x> -> output") "arity")
   (kind '("primitive : output : value" "form : run!" "does : output <missing>") "capture")
   (kind '("primitive : output" "rule : output -> output") "conflict")
   (kind

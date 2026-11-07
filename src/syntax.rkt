@@ -1,6 +1,9 @@
 #lang racket/base
 
-(require racket/list racket/string "diagnostics.rkt")
+(require racket/list
+         racket/string
+         "diagnostics.rkt"
+         (only-in "classes.rkt" decode-quoted-literal class-error?))
 
 (provide (all-from-out "diagnostics.rkt")
          (struct-out line-record)
@@ -107,9 +110,11 @@
   (define colon (find-literal source ":"))
   (define arrow (find-literal source "->"))
   (cond
-   ((find-literal raw "\r") (line-record 'unclassified source "" span raw))
    ((string=? source "") (line-record 'blank "" "" span raw))
-   ((and prefix (not (string=? prefix "")) (string-prefix? source prefix))
+   ((and prefix
+         (not (string=? prefix ""))
+         (string-prefix? source prefix)
+         (not (find-literal raw "\r")))
     (line-record 'comment "" "" span raw))
    ((and colon (not (string=? (trim (substring source 0 colon)) "")))
     (line-record
@@ -289,11 +294,28 @@
              (not (at-end?))
              (not
               (or (char-whitespace? (string-ref source index))
-                  (memv (string-ref source index) '(#\( #\) #\< #\>)))))
+                  (memv (string-ref source index) '(#\( #\) #\< #\> #\")))))
         (set! index (add1 index))
         (loop)))
     (when (= start index) (failure "Expected a literal word"))
     (values (substring source start index) start index))
+  (define (quoted!)
+    (define start index)
+    (set! index (add1 index))
+    (let loop ((escaped? #f))
+      (when (at-end?) (failure "Unclosed quoted term literal" start size))
+      (define value (string-ref source index))
+      (set! index (add1 index))
+      (cond
+       (escaped? (loop #f))
+       ((char=? value #\\) (loop #t))
+       ((char=? value #\")
+        (define decoded
+          (with-handlers
+           ((class-error? (lambda (error) (failure (exn-message error) start index))))
+           (decode-quoted-literal (substring source start index))))
+        (literal decoded (span-slice span source start index)))
+       (else (loop #f)))))
   (define (argument!)
     (define start index)
     (case (string-ref source index)
@@ -305,6 +327,7 @@
        (set! index (add1 close))
        (capture name (span-slice span source start index)))
       ((#\() (parenthesized!))
+      ((#\") (quoted!))
       (else
        (define-values (value begin end) (word!))
        (literal value (span-slice span source begin end)))))

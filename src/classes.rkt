@@ -3,6 +3,7 @@
 (require racket/list racket/match racket/set racket/string "automata-minimize.rkt")
 
 (provide compile-classes
+         decode-quoted-literal
          class-accepts?
          class-pattern-accepts?
          class-empty?
@@ -559,6 +560,70 @@
      (hash 'source source)))
   (values (parse-pattern trimmed known caps) '()))
 
+(define (decode-quoted-literal source)
+  (unless (and
+           (string? source)
+           (>= (string-length source) 2)
+           (char=? (string-ref source 0) #\")
+           (char=? (string-ref source (sub1 (string-length source))) #\"))
+    (fail "class-syntax" "expected one quoted literal" (hash 'source source)))
+  (match
+   (parse-pattern source (set) default-class-caps)
+   ((list 'text value) value)
+   (_ (fail "class-syntax" "expected one quoted literal" (hash 'source source)))))
+
+(define (tree-references node)
+  (define seen (make-hash))
+  (define result '())
+  (define (visit node)
+    (match
+     node
+     ((list 'reference name)
+      (unless (hash-has-key? seen name) (hash-set! seen name #t) (set! result (cons name result))))
+     ((list (or 'sequence 'alternation) children) (for-each visit children))
+     ((list 'repeat child _ _) (visit child))
+     ((list 'except child _) (visit child))
+     ((list 'pattern _ child) (visit child))
+     (_ (void))))
+  (visit node)
+  (reverse result))
+
+(define (cyclic-components names references)
+  (define next 0)
+  (define indices (make-hash))
+  (define lowlinks (make-hash))
+  (define stack '())
+  (define active (make-hash))
+  (define result '())
+  (define ranks (for/hash ((name (in-list names)) (index (in-naturals))) (values name index)))
+  (define (before? left right) (< (hash-ref ranks left) (hash-ref ranks right)))
+  (define (visit name)
+    (hash-set! indices name next)
+    (hash-set! lowlinks name next)
+    (set! next (add1 next))
+    (set! stack (cons name stack))
+    (hash-set! active name #t)
+    (for
+     ((target (in-list (hash-ref references name '()))))
+     (cond
+      ((not (hash-has-key? indices target))
+       (visit target)
+       (hash-set! lowlinks name (min (hash-ref lowlinks name) (hash-ref lowlinks target))))
+      ((hash-ref active target #f)
+       (hash-set! lowlinks name (min (hash-ref lowlinks name) (hash-ref indices target))))))
+    (when (= (hash-ref lowlinks name) (hash-ref indices name))
+      (define component
+        (let pop ((members '()))
+          (define top (car stack))
+          (set! stack (cdr stack))
+          (hash-remove! active top)
+          (define collected (cons top members))
+          (if (equal? top name) collected (pop collected))))
+      (when (or (pair? (cdr component)) (member name (hash-ref references name '())))
+        (set! result (cons (sort component before?) result)))))
+  (for ((name (in-list names))) (unless (hash-has-key? indices name) (visit name)))
+  (sort result (lambda (left right) (before? (car left) (car right)))))
+
 (define (make-nfa tree resolve caps alphabet)
   (define next 0)
   (define epsilon (make-hash))
@@ -599,11 +664,6 @@
          "class-reference-cycle"
          "class references must be acyclic"
          (hash 'class name 'chain (reverse (cons name stack)))))
-      (when (>= (length stack) (caps-ref caps 'reference-depth))
-        (fail
-         "class-reference-cap"
-         "class reference depth exceeds the declared cap"
-         (hash 'class name 'cap (caps-ref caps 'reference-depth) 'actual (add1 (length stack)))))
       (build (resolve name) (cons name stack)))
      ((list 'except child literals)
       (define-values
@@ -987,6 +1047,49 @@
      ((list 'except child _) (blocked? child seen))
      ((list 'pattern _ child) (blocked? child seen))
      (_ #f)))
+  (define nodes
+    (filter
+     (lambda (name) (hash-has-key? trees name))
+     (remove-duplicates (append ordered builtin-class-names))))
+  (define references
+    (for/hash
+     ((name (in-list nodes)))
+     (values
+      name
+      (filter
+       (lambda (target) (hash-has-key? trees target))
+       (tree-references (hash-ref trees name))))))
+  (for
+   ((component (in-list (cyclic-components nodes references))))
+   (define earliest (car component))
+   (for ((name (in-list component))) (hash-set! failed name #t))
+   (attempt
+    earliest
+    (lambda ()
+      (fail
+       "class-reference-cycle"
+       "class references must be acyclic"
+       (hash 'class earliest 'chain component)))))
+  (define depths (make-hash))
+  (define (reference-depth name)
+    (hash-ref!
+     depths
+     name
+     (lambda ()
+       (define targets (hash-ref references name '()))
+       (if (null? targets) 0 (add1 (apply max (map reference-depth targets)))))))
+  (for ((name (in-list nodes)) #:unless (blocked? (hash-ref trees name))) (reference-depth name))
+  (for
+   ((name (in-list nodes)) #:when (hash-has-key? depths name))
+   (define actual (hash-ref depths name))
+   (when (> actual (caps-ref caps 'reference-depth))
+     (attempt
+      name
+      (lambda ()
+        (fail
+         "class-reference-cap"
+         "class reference depth exceeds the declared cap"
+         (hash 'class name 'cap (caps-ref caps 'reference-depth) 'actual actual))))))
   (define (resolve name)
     (hash-ref
      trees
@@ -1004,11 +1107,6 @@
          "class-reference-cycle"
          "class references must be acyclic"
          (hash 'class name 'chain (reverse (cons name stack)))))
-      (when (>= (length stack) (caps-ref caps 'reference-depth))
-        (fail
-         "class-reference-cap"
-         "class reference depth exceeds the declared cap"
-         (hash 'class name 'cap (caps-ref caps 'reference-depth) 'actual (add1 (length stack)))))
       (define body (expand (resolve name) (cons name stack)))
       (define literals (hash-ref exclusions name '()))
       (if (null? literals) body (list 'except body literals)))
@@ -1097,21 +1195,7 @@
   (describe (original-class-tree class)))
 
 (define (class->references class)
-  (define seen (make-hash))
-  (define result '())
-  (define (visit node)
-    (match
-     node
-     ((list 'reference name)
-      (unless (hash-has-key? seen name)
-        (hash-set! seen name #t)
-        (set! result (cons (string->immutable-string name) result))))
-     ((list (or 'sequence 'alternation) children) (for-each visit children))
-     ((list 'repeat child _ _) (visit child))
-     ((list 'except child _) (visit child))
-     (_ (void))))
-  (visit (original-class-tree class))
-  (reverse result))
+  (map string->immutable-string (tree-references (original-class-tree class))))
 
 (define (class-accepts? class text)
   (and (string? text)

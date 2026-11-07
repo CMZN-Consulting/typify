@@ -264,11 +264,11 @@
   (check-body-actual (string-append "#lang typify\n" unclosed-line "\n") "EOF" unclosed-line)
   (define inner-line " \tdeclare : Inner \t")
   (check-body-actual
-   (string-append "#lang typify\ndeclare : Outer\n" inner-line "\nend!\n")
-   inner-line
+   (string-append "#lang typify\ndeclare : Outer\n" inner-line "\nend!\nend!\n")
+   "declare : Inner"
    inner-line)
   (define outside-line "  version : 1 \t")
-  (check-body-actual (string-append "#lang typify\n" outside-line "\n") outside-line outside-line)
+  (check-body-actual (string-append "#lang typify\n" outside-line "\n") "version : 1" outside-line)
   (define absent-class
     (one-error
      '("primitive : output" "form : item : <unknown>" "does : output")
@@ -290,9 +290,9 @@
        "primitive : output : word word"
        "form : item : <word>"
        "does : output <word>")
-     "E_DECLARATION"
-     (hash 'kind "arity" 'actual "output <word>")))
-  (check (src-span-start-column (diagnostic-range arity)) 1 "arity covers declaring line")
+     "E_TERM_CLASS"
+     (hash 'kind "arity" 'constructor "output" 'class "word word" 'actual 1)))
+  (check (src-span-start-column (diagnostic-range arity)) 8 "use arity covers its own term")
   (define nested
     (one-error
      '("is : word = /[a-z]+/"
