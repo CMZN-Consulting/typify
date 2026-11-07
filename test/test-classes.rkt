@@ -267,6 +267,16 @@
     (check-true (string-contains? grammar "\\u0061-\\u0063"))
     (check-equal? grammar (class->gbnf class #:name "subject")))
    (test-case
+    "boundary witnesses choose maximum length before lexicographic branch ties"
+    (define (boundary source) (hash-ref (class-witnesses (one source)) 'boundary))
+    (check-equal? (boundary "\"z\" | \"aa\"") "aa")
+    (check-equal? (boundary "\"az\" | \"ba\"") "ba")
+    (check-equal? (boundary "\"aa\" | \"az\"") "az")
+    (check-equal? (boundary "/[a-z]/ \"a\" | \"a\" \"zz\"") "azz")
+    (check-equal? (boundary "/[a-z]{2}/ except \"zz\"") "zy")
+    (check-equal? (boundary "\"\"") "")
+    (check-false (boundary "\"a\" except \"a\"")))
+   (test-case
     "unsupported host escapes and invalid ranges are rejected"
     (for
      ((source (in-list '("@[host]:predicate" "/\\d+/" "/[z-a]/" "/a{3,2}/" "/[a-z/" "/\\uD800/"))))

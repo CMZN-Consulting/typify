@@ -8,7 +8,8 @@
          racket/string
          "../src/diagnostics.rkt"
          "../src/emission.rkt"
-         "../src/language.rkt")
+         "../src/language.rkt"
+         "witness-report.rkt")
 
 (provide run-tests parse-gbnf gbnf-accepts?)
 
@@ -378,6 +379,9 @@
   (define total 0)
   (define delimiter-count 0)
   (define decoder-total 0)
+  (define models '())
+  (define roundtrip-total 0)
+  (define roundtrip-failures 0)
   (define disagreements '())
   (define (check! actual expected context)
     (set! checks (add1 checks))
@@ -423,6 +427,19 @@
                (string-prefix? (hash-ref (hash-ref family 'reference) 'url) "https://"))
         (oracle-error "outside format lacks slots or official provenance"))
       (define body (hash-ref (read-declarations (declaration family)) (hash-ref family 'language)))
+      (define model (hash (language-name body) body))
+      (set! models (cons (cons (hash-ref family 'id) model) models))
+      (define roundtrip
+        (hash-ref (read-declarations (emit-declarations model)) (language-name body)))
+      (define roundtrip-actual (declaration->jsexpr roundtrip #:origins? #f))
+      (define roundtrip-expected (declaration->jsexpr body #:origins? #f))
+      (set! roundtrip-total (add1 roundtrip-total))
+      (unless (equal? roundtrip-actual roundtrip-expected)
+        (set! roundtrip-failures (add1 roundtrip-failures)))
+      (check!
+       roundtrip-actual
+       roundtrip-expected
+       (hash 'family (hash-ref family 'id) 'operation "structural-roundtrip"))
       (define emitted (language->gbnf body))
       (define oracle (parse-gbnf emitted))
       (define grammar-path (build-path directory "grammar.gbnf"))
@@ -447,6 +464,12 @@
           reader-accepts?
           context)))))
    (lambda () (delete-directory/files directory)))
+  (define differential-failures (- failures roundtrip-failures))
+  (define differential-status
+    (cond ((not available?) "pending") ((zero? differential-failures) "passed") (else "failed")))
+  (define witness-report (measure-witnesses (reverse models)))
+  (set! checks (+ checks (hash-ref witness-report 'checks)))
+  (set! failures (+ failures (hash-ref witness-report 'failures)))
   (define status (cond ((not available?) "pending") ((zero? failures) "passed") (else "failed")))
   (hash
    'suite
@@ -457,14 +480,26 @@
    status
    'gates
    (hash
+    'outside-witnesses
+    witness-report
+    'outside-structural-roundtrip
+    (hash
+     'status
+     (if (zero? roundtrip-failures) "passed" "failed")
+     'total
+     roundtrip-total
+     'failures
+     roundtrip-failures
+     'namespaces
+     (length models))
     'decoder-differential
     (hash
      'status
-     status
+     differential-status
      'total
      total
      'failures
-     failures
+     differential-failures
      'outside-formats
      (length families)
      'delimiter-insertions

@@ -342,6 +342,7 @@
            (define diagnostic (exn:fail:typify-diagnostic failure))
            (hash 'admitted #f 'code (diagnostic-code diagnostic)))))
        (hash 'admitted #t 'body (body lines))))
+    (check (hash-ref admitted 'admitted) #t (hash 'probe id 'judgment "declaration admission"))
     (define result
       (if (hash-ref admitted 'admitted)
         (let* ((language (hash-ref admitted 'body))

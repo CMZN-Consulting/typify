@@ -37,6 +37,8 @@
 
 (struct compiled-class (name source machine caps alphabet) #:transparent)
 
+(struct boundary-choice (distance point target))
+
 (define class-error-message exn-message)
 
 (define default-class-caps
@@ -1013,12 +1015,12 @@
       (and (caps-ref left key) (caps-ref right key))
       (min (caps-ref left key) (caps-ref right key))))))
 
-(define (product-outgoing left right state)
+(define (product-outgoing left right state (intersection intersect-intervals))
   (append-map
    (lambda (first)
      (filter-map
       (lambda (second)
-        (define ranges (intersect-intervals (edge-ranges first) (edge-ranges second)))
+        (define ranges (intersection (edge-ranges first) (edge-ranges second)))
         (and (pair? ranges) (edge ranges (cons (edge-target first) (edge-target second)))))
       (vector-ref right (cdr state))))
    (vector-ref left (car state))))
@@ -1027,13 +1029,18 @@
   (define a (compiled-class-machine left))
   (define b (compiled-class-machine right))
   (define caps (intersection-caps (compiled-class-caps left) (compiled-class-caps right)))
+  (define intersections (make-hasheq))
+  (define (intersection left-ranges right-ranges)
+    (define against (hash-ref! intersections left-ranges make-hasheq))
+    (hash-ref! against right-ranges (lambda () (intersect-intervals left-ranges right-ranges))))
   (define machine
     (build-machine
      (cons (automaton-start a) (automaton-start b))
      (lambda (state)
        (and (vector-ref (automaton-accepting a) (car state))
             (vector-ref (automaton-accepting b) (cdr state))))
-     (lambda (state) (product-outgoing (automaton-transitions a) (automaton-transitions b) state))
+     (lambda (state)
+       (product-outgoing (automaton-transitions a) (automaton-transitions b) state intersection))
      caps))
   (when (or
          (and (bounded? a)
@@ -1156,6 +1163,7 @@
         target))
       (else
        (define machine (bounded-class-machine part))
+       (define same-alphabet? (equal? alphabet (compiled-class-alphabet part)))
        (define copies
          (build-vector (vector-length (automaton-transitions machine)) (lambda (_) (state!))))
        (define end (state!))
@@ -1172,7 +1180,9 @@
           (lambda (options)
             (cons
              (edge
-              (intersect-intervals alphabet (edge-ranges transition))
+              (if same-alphabet?
+                (edge-ranges transition)
+                (intersect-intervals alphabet (edge-ranges transition)))
               (vector-ref copies (edge-target transition)))
              options))
           '())))
@@ -1307,31 +1317,29 @@
      state
      (lambda ()
        (for/fold
-        ((best (and (vector-ref accepting state) "")))
+        ((best (boundary-choice (if (vector-ref accepting state) 0 -1) #f #f)))
         ((transition (in-list (vector-ref transitions state))))
         (define suffix (longest (edge-target transition)))
-        (define candidate
-          (and suffix
-               (string-append
-                (string (integer->char (cdr (last (edge-ranges transition)))))
-                suffix)))
-        (if (and candidate
-                 (or (not best)
-                     (> (string-length candidate) (string-length best))
-                     (and (= (string-length candidate) (string-length best))
-                          (string>? candidate best))))
-          candidate
+        (define distance (add1 (boundary-choice-distance suffix)))
+        (define point (cdr (last (edge-ranges transition))))
+        (if (and (>= (boundary-choice-distance suffix) 0)
+                 (or (> distance (boundary-choice-distance best))
+                     (and (= distance (boundary-choice-distance best))
+                          (> point (boundary-choice-point best)))))
+          (boundary-choice distance point (edge-target transition))
           best)))))
+  (define initial (longest (automaton-start machine)))
+  (define boundary
+    (and (>= (boundary-choice-distance initial) 0)
+         (let ((text (make-string (boundary-choice-distance initial))))
+           (let loop ((state (automaton-start machine)) (index 0))
+             (when (< index (string-length text))
+               (define choice (hash-ref memo state))
+               (string-set! text index (integer->char (boundary-choice-point choice)))
+               (loop (boundary-choice-target choice) (add1 index))))
+           text)))
   (define near (if (not (vector-ref accepting (automaton-start machine))) "" (string #\nul)))
-  (hash
-   'shortest
-   shortest
-   'boundary
-   (longest (automaton-start machine))
-   'near-miss
-   near
-   'bounds
-   (class-count-bounds class)))
+  (hash 'shortest shortest 'boundary boundary 'near-miss near 'bounds (class-count-bounds class)))
 
 (define (gbnf-point point)
   (define width (if (<= point 65535) 4 8))

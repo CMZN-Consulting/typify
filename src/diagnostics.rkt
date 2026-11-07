@@ -121,18 +121,22 @@
 
 (define (src-span->jsexpr span)
   (hasheq
-   'startLine
-   (src-span-start-line span)
-   'startColumn
-   (src-span-start-column span)
-   'endLine
-   (src-span-end-line span)
-   'endColumn
-   (src-span-end-column span)
-   'startByte
-   (src-span-start-byte span)
-   'endByte
-   (src-span-end-byte span)))
+   'start
+   (hasheq
+    'line
+    (src-span-start-line span)
+    'column
+    (src-span-start-column span)
+    'byteOffset
+    (src-span-start-byte span))
+   'end
+   (hasheq
+    'line
+    (src-span-end-line span)
+    'column
+    (src-span-end-column span)
+    'byteOffset
+    (src-span-end-byte span))))
 
 (define (diagnostic->jsexpr item)
   (hasheq

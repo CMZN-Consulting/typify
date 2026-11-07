@@ -34,6 +34,9 @@
     byte-smoke
     hostile-corpus
     class-witnesses
+    declaration-witnesses
+    outside-witnesses
+    outside-structural-roundtrip
     worked-example-classes
     emission-contract
     meta-selfcheck))
@@ -158,7 +161,35 @@
          ((class-witnesses)
           (and (positive? (field evidence 'classes))
                (equal? (field evidence 'classes) (field evidence 'written))))
-         ((worked-example-classes) (equal? (field evidence 'host-predicates) 0))
+         ((declaration-witnesses)
+          (and (eq? (field evidence 'complete) #t)
+               (eq? (field evidence 'exact-coverage) #t)
+               (positive? (field evidence 'classes))
+               (equal? (field evidence 'classes) (field evidence 'written))))
+         ((outside-witnesses)
+          (and (eq? (field evidence 'exact-coverage) #t)
+               (positive? (field evidence 'classes))
+               (equal? (field evidence 'classes) (field evidence 'written))
+               (positive? (field evidence 'namespaces))
+               (>= (field evidence 'namespaces) 5)))
+         ((outside-structural-roundtrip)
+          (and (positive? (field evidence 'namespaces))
+               (>= (field evidence 'namespaces) 5)
+               (= total (field evidence 'namespaces))))
+         ((worked-example-classes)
+          (define coverage (field evidence 'coverage '()))
+          (and (equal? (field evidence 'host-predicates) 0)
+               (list? coverage)
+               (andmap
+                (lambda (probe)
+                  (and (text? (field probe 'class))
+                       (positive? (field probe 'accepted))
+                       (positive? (field probe 'refused))))
+                coverage)
+               (equal?
+                (sort (map (lambda (probe) (field probe 'class)) coverage) string<?)
+                '("Catalog.category" "Catalog.title" "Mounts.mode" "Mounts.path"))))
+         ((emission-contract) (equal? (field evidence 'not-admitted) 0))
          ((meta-selfcheck)
           (and (eq? (field evidence 'term-normalization) #t)
                (equal? (field evidence 'exemptions) 0)
@@ -230,8 +261,6 @@
     dependencies)))
 
 (define (run-kernel-check (given-root (current-directory)) #:checkpoint (checkpoint #f))
-  (unless (equal? (getenv "GITHUB_ACTIONS") "true")
-    (error 'ci "the full suite runs on GitHub Actions only"))
   (define root (simplify-path (path->complete-path given-root)))
   (define completed '())
   (define (save-progress phase)

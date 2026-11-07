@@ -374,8 +374,6 @@
 (define (field data name (default #f)) (if (hash? data) (hash-ref data name default) default))
 
 (define (run-tests)
-  (unless (equal? (getenv "GITHUB_ACTIONS") "true")
-    (error 'test-meta-mutation "mutation enumeration runs on GitHub Actions only"))
   (define forms (current-meta-forms))
   (define classes (current-meta-classes))
   (define baseline (map evaluate-oracle internal-oracles))

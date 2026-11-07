@@ -5,9 +5,11 @@
          racket/list
          racket/runtime-path
          racket/string
+         "../src/classes.rkt"
          "../src/diagnostics.rkt"
          "../src/language.rkt"
-         "../src/meta.rkt")
+         "../src/meta.rkt"
+         "witness-report.rkt")
 
 (provide run-tests run-blind-corpus)
 
@@ -167,6 +169,34 @@
    (declaration->jsexpr (hash-ref through-meta "Catalog") #:origins? #f)
    (declaration->jsexpr body #:origins? #f))
   (define public-models (list declarations (hash "Flags" flags) mounts (hash "Typify" meta)))
+  (define worked-class-probes
+    (list
+     (list
+      "Catalog.category"
+      (hash-ref (language-classes body) "category")
+      '("book" "journal")
+      '("pamphlet" ""))
+     (list
+      "Catalog.title"
+      (hash-ref (language-classes body) "title")
+      '("Algebra" "Market Research")
+      '("a=b" ""))
+     (list
+      "Mounts.mode"
+      (hash-ref (language-classes (hash-ref mounts "Mounts")) "mode")
+      '("rw" "ro")
+      '("owner" ""))
+     (list
+      "Mounts.path"
+      (hash-ref (language-classes (hash-ref mounts "Mounts")) "path")
+      '("/" "/vaults/research")
+      '("relative" "/vaults/" "/a/../b" "/a//b"))))
+  (define worked-coverage
+    (for/list
+     ((probe (in-list worked-class-probes)))
+     (for ((input (in-list (caddr probe)))) (check (class-accepts? (cadr probe) input) #t))
+     (for ((input (in-list (cadddr probe)))) (check (class-accepts? (cadr probe) input) #f))
+     (hash 'class (car probe) 'accepted (length (caddr probe)) 'refused (length (cadddr probe)))))
   (define (model-data model)
     (for/hash
      (((name item) (in-hash model)))
@@ -174,6 +204,9 @@
   (for
    ((model (in-list public-models)))
    (check (model-data (read-declarations (emit-declarations model))) (model-data model)))
+  (define declaration-witnesses
+    (measure-witnesses (map cons '("catalog" "flags" "mounts" "meta") public-models)))
+  (check (hash-ref declaration-witnesses 'failures) 0)
   (define blind (run-blind-corpus))
   (hash
    'suite
@@ -202,16 +235,10 @@
      "public-passed-blind-pending")
     'byte-smoke
     (hash 'total 1 'failures 0)
+    'declaration-witnesses
+    (hash-set* declaration-witnesses 'complete #f 'status "public-passed-blind-pending")
     'worked-example-classes
-    (hash
-     'total
-     4
-     'failures
-     0
-     'host-predicates
-     0
-     'classes
-     '("Catalog.category" "Catalog.title" "Mounts.mode" "Mounts.path"))
+    (hash 'total (length worked-coverage) 'failures 0 'host-predicates 0 'coverage worked-coverage)
     'meta-selfcheck
     (hash
      'total

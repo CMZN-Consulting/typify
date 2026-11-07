@@ -38,8 +38,6 @@
 (define (rejects? procedure) (with-handlers ((exn:fail? (lambda (_) #t))) (procedure) #f))
 
 (define (run-tests)
-  (unless (equal? (getenv "GITHUB_ACTIONS") "true")
-    (error 'test-import-corpus "custody fixtures run on GitHub Actions only"))
   (define count 0)
   (define passed 0)
   (define failures '())

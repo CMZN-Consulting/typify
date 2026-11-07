@@ -120,7 +120,11 @@
   (check (diagnostic-fingerprints d1) (diagnostic-fingerprints d2))
   (check
    (hash-ref (diagnostic->jsexpr d1) 'range)
-   (hasheq 'startLine 2 'startColumn 3 'endLine 2 'endColumn 5 'startByte 7 'endByte 11))
+   (hasheq
+    'start
+    (hasheq 'line 2 'column 3 'byteOffset 7)
+    'end
+    (hasheq 'line 2 'column 5 'byteOffset 11)))
   (check (canonical-json (hash 'z 1 'a 2)) "{\"a\":2,\"z\":1}")
   (check
    (canonical-json (hash 'unicode "😀" 'array (list "x" (hash 'b 2 'a 1))))
