@@ -362,7 +362,7 @@
       '(("store" "/sample" "blue"))
       "the root failure snapshot groups its expanded terms")
      (write-declaration
-      (string-replace library-failure "end!" "reads : output : exists = reject\nend!"))
+      (string-replace library-failure "end!" "reads : output : (exists <1>) = reject\nend!"))
      (write-program "parent : /")
      (define failed-normalization
        (execute (list "plan" declarations "Failure" program "--facts" facts "--json")))
