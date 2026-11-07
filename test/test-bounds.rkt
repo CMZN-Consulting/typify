@@ -9,11 +9,12 @@
          "../src/classes.rkt"
          "../src/diagnostics.rkt"
          "../src/language.rkt"
-         "../src/main.rkt")
+         "../src/main.rkt"
+         "../src/model.rkt")
 
 (provide run-tests)
 
-(define-runtime-path main-path "../src/main.rkt")
+(define-runtime-path main-path "../src/main.rkt" "../src/model.rkt")
 
 (define declarations
   (string-append
@@ -22,7 +23,7 @@
    "primitive : output : word\n"
    "form : first : [<word>]\ndoes : output <word>\n"
    "form : second : (<word>)\ndoes : output <word>\n"
-   "count : output = 1\nend!\n"
+   "count : output = 1\neffect : output = external\nend!\n"
    "declare : Alpha\ncap : length = 8\nterm : flag\nend!\n"))
 
 (define (run-tests)
@@ -83,7 +84,16 @@
          ((name '("Alpha" "Zeta")))
          (hash 'language name 'checks (declaration-check-bounds (hash-ref parsed name))))
         'host
-        (hash 'name "racket" 'version (version) 'guards class-host-guards)))
+        (hash
+         'name
+         "racket"
+         'version
+         (version)
+         'guards
+         (for/fold
+          ((guards class-host-guards))
+          (((key value) (in-hash model-host-guards)))
+          (hash-set guards key value)))))
      (define all-response (request (list "check" declaration-path "--bounds" "--json")))
      (check
       all-response

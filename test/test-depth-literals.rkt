@@ -156,7 +156,7 @@
   (define declaration
     (string-append
      "#lang typify\ndeclare : Quoted\nis : sample = /[a-z ]+/\n"
-     "primitive : output : sample\nform : ready!\ndoes : output \"two words\"\nend!\n"))
+     "primitive : output : sample\neffect : output = external\nform : ready!\ndoes : output \"two words\"\nend!\n"))
   (define body
     (hash-ref (read-declarations declaration #:file "quoted-declaration.typify") "Quoted"))
   (check
@@ -166,7 +166,7 @@
   (define cr-declaration
     (string-append
      "#lang typify\ndeclare : CR\nis : sample = /[a-z]+/\n"
-     "primitive : output : sample\nform : item : <sample>\ndoes : output <sample>\nend!\n"))
+     "primitive : output : sample\neffect : output = external\nform : item : <sample>\ndoes : output <sample>\nend!\n"))
   (define cr-body (hash-ref (read-declarations cr-declaration) "CR"))
   (define cr-diagnostics (hash-ref (check-program/diagnostics "item : a\rb" cr-body) 'diagnostics))
   (check

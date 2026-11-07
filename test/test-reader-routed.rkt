@@ -11,7 +11,20 @@
 (provide run-tests)
 
 (define (source rows (name "Example"))
-  (string-append "#lang typify\ndeclare : " name "\n" (string-join rows "\n") "\nend!\n"))
+  (string-append
+   "#lang typify\ndeclare : "
+   name
+   "\n"
+   (string-join
+    (append
+     rows
+     (for/list
+      ((row (in-list (remove-duplicates rows)))
+       #:when
+       (regexp-match? #px"^primitive : [^:]+(?: : .+)?$" row))
+      (string-append "effect : " (cadr (string-split row " : ")) " = external")))
+    "\n")
+   "\nend!\n"))
 
 (define basic-rows
   '("is : word = /[a-z]+/"

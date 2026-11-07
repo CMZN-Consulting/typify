@@ -9,6 +9,7 @@
          class-empty?
          class->description
          class->references
+         relative-path-role?
          class-witnesses
          class-overlap-witness
          class-difference-witness
@@ -304,7 +305,7 @@
   (define (peek) (and (< at size) (string-ref source at)))
   (define (take!) (define value (peek)) (set! at (add1 at)) value)
   (define (blank? value) (and value (memv value '(#\space #\tab #\newline #\return))))
-  (define (skip!) (let loop () (when (blank? (peek)) (take!) (loop))))
+  (define (skip!) (let loop () (when (and (not pattern?) (blank? (peek))) (take!) (loop))))
   (define (except?)
     (and (not pattern?)
          (<= (+ at 6) size)
@@ -1193,6 +1194,20 @@
      ((list 'builtin name) (hash 'builtin (string->immutable-string name)))
      (_ (fail "class-description" "the retained class node has no public description"))))
   (describe (original-class-tree class)))
+
+(define (relative-path-role? classes name)
+  (unless (hash? classes) (raise-argument-error 'relative-path-role? "hash?" classes))
+  (let loop ((name name) (seen '()))
+    (define class (hash-ref classes name #f))
+    (and class
+         (not (member name seen))
+         (match
+          (hash-ref class-original-trees class #f)
+          ((list 'builtin "relative-path") #t)
+          ((list 'reference reference)
+           (and (equal? (string-trim (compiled-class-source class)) reference)
+                (loop reference (cons name seen))))
+          (_ #f)))))
 
 (define (class->references class)
   (map string->immutable-string (tree-references (original-class-tree class))))

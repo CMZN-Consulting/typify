@@ -147,7 +147,8 @@
      "class-cycle"
      "stratification"
      "reference"
-     "conflict")
+     "conflict"
+     "effect")
    "E_TERM_CLASS"
    '("literal" "capture" "result" "arity" "sort")))
 
@@ -230,7 +231,7 @@
   (diagnostic
    (text code)
    (text severity)
-   (portable-file (src-span-file span))
+   (if (equal? (text code) "E_USAGE") "" (portable-file (src-span-file span)))
    (if (member (text code) '("E_REQUIRED" "E_FILE" "E_USAGE")) #f span)
    message
    related

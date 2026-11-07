@@ -9,7 +9,18 @@
 (provide run-tests)
 
 (define (source rows)
-  (string-append "#lang typify\ndeclare : Example\n" (string-join rows "\n") "\nend!\n"))
+  (string-append
+   "#lang typify\ndeclare : Example\n"
+   (string-join
+    (append
+     rows
+     (for/list
+      ((row (in-list (remove-duplicates rows)))
+       #:when
+       (regexp-match? #px"^primitive : [^:]+(?: : .+)?$" row))
+      (string-append "effect : " (cadr (string-split row " : ")) " = external")))
+    "\n")
+   "\nend!\n"))
 
 (define (errors text)
   (define-values (model diagnostics) (read-declarations/diagnostics text #:file "rules.typify"))

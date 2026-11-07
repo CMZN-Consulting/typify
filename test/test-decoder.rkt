@@ -318,7 +318,7 @@
        "does : record "
        (string-join (map (lambda (name) (string-append "<" name ">")) slots) " ")))
      (map (lambda (example) (string-append "example : " example)) (hash-ref family 'examples))
-     (list "end!"))
+     (list "effect : record = external" "end!"))
     "\n")
    "\n"))
 

@@ -7,6 +7,7 @@
          "classes.rkt"
          "diagnostics.rkt"
          "meta.rkt"
+         "model.rkt"
          "syntax.rkt")
 
 (provide (struct-out language)
@@ -23,6 +24,11 @@
          meta-language
          declaration-bound
          declaration-check-bounds
+         language-model
+         evaluate-rule-expression
+         primitive-events
+         language-needs-facts?
+         program-guarded?
          form-automata)
 
 (struct constructor (name signature primitive? fact? rule span ordinal) #:transparent)
@@ -65,6 +71,8 @@
 (define term-source-cache (make-weak-hasheq))
 
 (define value-origin-cache (make-weak-hasheq))
+
+(define value-meaning-spans (make-weak-hasheq))
 
 (define form-restriction-spans (make-weak-hasheq))
 
@@ -523,7 +531,7 @@
   (define (dependencies name)
     (define item (hash-ref constructors name))
     (for/list
-     ((right (in-list (cdr (constructor-rule item))))
+     ((right (in-list (append-map effect-term-calls (cdr (constructor-rule item)))))
       #:when
       (let ((next (hash-ref constructors (term-constructor right) #f)))
         (and next (constructor-rule next))))
@@ -567,9 +575,252 @@
        (term-span (hash-ref rule-lefts name))
        (hash 'constructor name))))))
 
+(define (effect-term-calls expression)
+  (define args (term-arguments expression))
+  (cond
+   ((equal? (term-constructor expression) "if")
+    (if (and (= (length args) 2) (term? (cadr args))) (effect-term-calls (cadr args)) '()))
+   ((equal? (term-constructor expression) "each")
+    (if (and (= (length args) 4) (term? (cadddr args))) (effect-term-calls (cadddr args)) '()))
+   (else (list expression))))
+
+(define fact-names '("exists" "directory" "symlink" "mode" "owner"))
+
+(define state-predicate-names '("bound" "masked" "visible" "absent"))
+
+(define library-predicate-names '("prefix" "suffix" "equal"))
+
+(define (expression-arity-fail expression signature)
+  (fail
+   "E_TERM_CLASS"
+   "The expression has the wrong number of arguments"
+   (term-span expression)
+   (hash
+    'kind
+    "arity"
+    'constructor
+    (term-constructor expression)
+    'class
+    signature
+    'actual
+    (length (term-arguments expression)))))
+
+(define (validate-string-expression!
+         expression
+         constructors
+         classes
+         captures
+         upper
+         record-check
+         #:receiving
+         (receiving "string"))
+  (cond
+   ((literal? expression) (void))
+   ((capture? expression)
+    (unless (hash-has-key? captures (capture-name expression))
+      (declaration-fail
+       "capture"
+       (string-append "<" (capture-name expression) ">")
+       "The expression uses an unbound capture"
+       (capture-span expression))))
+   ((term? expression)
+    (when (hash-has-key? constructors (term-constructor expression))
+      (fail
+       "E_TERM_NESTED"
+       "A string expression cannot contain a user constructor"
+       (term-span expression)
+       (hash 'constructor receiving 'actual (term-source expression))))
+    (unless (or
+             (hash-has-key? library-arities (term-constructor expression))
+             (equal? (term-constructor expression) "context")
+             (member (term-constructor expression) fact-names)
+             (member (term-constructor expression) state-predicate-names))
+      (declaration-fail
+       "reference"
+       (term-constructor expression)
+       "The expression names no function"
+       (term-span expression)))
+    (unless (member (term-constructor expression) '("parent" "join" "concat" "context"))
+      (fail
+       "E_TERM_CLASS"
+       "The expression must have string sort"
+       (term-span expression)
+       (hash
+        'kind
+        "sort"
+        'constructor
+        (term-constructor expression)
+        'class
+        "string"
+        'actual
+        (if (member (term-constructor expression) '("split" "ancestors")) "list" "predicate"))))
+    (validate-term! expression constructors classes captures upper #:record-check record-check))
+   (else
+    (declaration-fail
+     "syntax"
+     (term-data expression)
+     "The expression is not a string expression"
+     (src-span "<input>" 1 1 1 1 0 0)))))
+
+(define (validate-predicate! expression constructors classes captures upper model record-check)
+  (unless (term? expression)
+    (declaration-fail
+     "syntax"
+     (term-data expression)
+     "A predicate must be a parenthesized call"
+     (if (literal? expression) (literal-span expression) (capture-span expression))))
+  (define name (term-constructor expression))
+  (define args (term-arguments expression))
+  (unless (or
+           (member name library-predicate-names)
+           (member name state-predicate-names)
+           (member name fact-names))
+    (declaration-fail
+     "reference"
+     name
+     "The predicate is not a library, state or collector predicate"
+     (term-span expression)))
+  (when (and (member name library-predicate-names) (not (= (length args) 2)))
+    (expression-arity-fail expression "string string"))
+  (when (member name state-predicate-names)
+    (unless (and
+             (pair? args)
+             (literal? (car args))
+             (hash-has-key? (compiled-model-cells model) (literal-value (car args))))
+      (declaration-fail
+       "reference"
+       (if (pair? args) (term-data (car args)) "")
+       "The state predicate names no declared cell"
+       (term-span expression))))
+  (when (and
+         (member name state-predicate-names)
+         (model-cell-stacking? (hash-ref (compiled-model-cells model) (literal-value (car args))))
+         (not (= (length args) 2)))
+    (expression-arity-fail expression "cell canonical-path"))
+  (when (member name state-predicate-names)
+    (define width (model-key-width model (literal-value (car args))))
+    (when (and width (not (= (length args) (add1 width))))
+      (expression-arity-fail
+       expression
+       (string-join (cons "cell" (make-list width "string")) " "))))
+  (for
+   ((argument (in-list args)))
+   (validate-string-expression!
+    argument
+    constructors
+    classes
+    captures
+    upper
+    record-check
+    #:receiving
+    name)))
+
+(define (validate-list-expression! expression constructors classes captures upper record-check)
+  (unless (and (term? expression) (member (term-constructor expression) '("split" "ancestors")))
+    (declaration-fail
+     "syntax"
+     (term-data expression)
+     "A list source must be split or ancestors"
+     (cond
+      ((term? expression) (term-span expression))
+      ((literal? expression) (literal-span expression))
+      (else (capture-span expression)))))
+  (when (and
+         (member (term-constructor expression) '("split" "ancestors"))
+         (not (= (length (term-arguments expression)) 1)))
+    (expression-arity-fail expression "canonical-path"))
+  (for
+   ((argument (in-list (term-arguments expression))))
+   (validate-string-expression!
+    argument
+    constructors
+    classes
+    captures
+    upper
+    record-check
+    #:receiving
+    (term-constructor expression))))
+
+(define (validate-effect! expression constructors classes captures upper model fuel record-check)
+  (define name (term-constructor expression))
+  (define args (term-arguments expression))
+  (cond
+   ((equal? name "if")
+    (unless (and (= (length args) 2) (term? (cadr args)))
+      (declaration-fail
+       "syntax"
+       (term-data expression)
+       "if requires a predicate and an effect term"
+       (term-span expression)))
+    (when (and (term? (car args)) (member (term-constructor (car args)) state-predicate-names))
+      (declaration-fail
+       "syntax"
+       (term-data (car args))
+       "State predicates are evaluated in ensure clauses"
+       (term-span (car args))))
+    (validate-predicate! (car args) constructors classes captures upper model record-check)
+    (validate-effect! (cadr args) constructors classes captures upper model fuel record-check))
+   ((equal? name "each")
+    (unless (and
+             (= (length args) 4)
+             (capture? (car args))
+             (literal? (cadr args))
+             (equal? (literal-value (cadr args)) "in")
+             (term? (cadddr args)))
+      (declaration-fail
+       "syntax"
+       (term-data expression)
+       "each requires a binder, in, a list and an effect term"
+       (term-span expression)))
+    (unless fuel
+      (declaration-fail
+       "syntax"
+       (term-data expression)
+       "each requires a fuel declaration on its constructor"
+       (term-span expression)))
+    (validate-list-expression! (caddr args) constructors classes captures upper record-check)
+    (validate-effect!
+     (cadddr args)
+     constructors
+     classes
+     (hash-set captures (capture-name (car args)) 'string)
+     upper
+     model
+     fuel
+     record-check))
+   (else
+    (unless (hash-has-key? constructors name)
+      (declaration-fail
+       "reference"
+       name
+       "A rule emits declared constructors"
+       (term-span expression)))
+    (validate-term! expression constructors classes captures upper #:record-check record-check))))
+
 (struct declaration-automata (fields whole checks) #:transparent)
 
 (define declaration-automata-cache (make-weak-hasheq))
+
+(define language-model-cache (make-weak-hasheq))
+
+(define (language-model body) (hash-ref language-model-cache body))
+
+(define (constructor-descriptors constructors)
+  (for/hash
+   (((name item) (in-hash constructors)))
+   (values
+    name
+    (hash
+     'signature
+     (constructor-signature item)
+     'primitive?
+     (constructor-primitive? item)
+     'rule?
+     (and (constructor-rule item) #t)
+     'fact?
+     (constructor-fact? item)
+     'ordinal
+     (constructor-ordinal item)))))
 
 (define check-bounds-scope
   "Recorded successful signature inclusion, delimiter and form overlap checks; automaton size and product-state upper bounds, not CPU steps or elapsed time")
@@ -891,6 +1142,7 @@
                 (equal? signature (make-list (car (hash-ref library-arities key)) "value"))))
          (when (or
                 (hash-has-key? constructors key)
+                (member key '("if" "each" "context"))
                 (and (reserved-name? key) (not kernel-library?)))
            (fail
             "E_DECLARATION"
@@ -1125,6 +1377,15 @@
      (values
       key
       (struct-copy constructor item (fact? (or (not effect-body?) (hash-has-key? facts key)))))))
+  (define model
+    (compile-model
+     rows
+     (constructor-descriptors constructors)
+     classes
+     opening
+     #:on-error
+     (lambda (item) (record-diagnostics! (list item)))))
+  (record-diagnostics! (model-check-notes model))
   (check-rule-cycles! constructors rule-lefts)
   (define (constructor-use-span item)
     (define uses
@@ -1138,7 +1399,7 @@
         ((owner (in-list (ordered-constructors constructors)))
          #:when
          (constructor-rule owner)
-         (right (in-list (cdr (constructor-rule owner))))
+         (right (in-list (append-map effect-term-calls (cdr (constructor-rule owner)))))
          #:when
          (equal? (term-constructor right) (constructor-name item)))
         (term-span right))))
@@ -1158,33 +1419,65 @@
          (constructor-use-span item)
          (hash 'constructor (constructor-name item))))))
    (when (constructor-rule item)
+     (define captures
+       (for/hash
+        ((name (in-list (car (constructor-rule item))))
+         (class-name (in-list (constructor-signature item))))
+        (values
+         name
+         (hash-ref
+          classes
+          (if (relative-path-role? classes class-name) "canonical-path" class-name)
+          #f))))
      (for
       ((right (in-list (cdr (constructor-rule item)))))
       (recover
        (lambda ()
-         (unless (hash-has-key? constructors (term-constructor right))
-           (fail
-            "E_DECLARATION"
-            "A rule emits terms; library calls are arguments of those terms"
-            (term-span right)
-            (hash 'kind "reference" 'actual (term-constructor right))))
-         (when (andmap
-                (lambda (class-name) (hash-has-key? classes class-name))
-                (constructor-signature item))
-           (validate-term!
-            right
-            constructors
-            classes
-            (for/hash
-             ((name (in-list (car (constructor-rule item))))
-              (class-name (in-list (constructor-signature item))))
-             (values name (hash-ref classes class-name)))
-            (constructor-ordinal item)
-            #:record-check
-            (lambda (entry)
-              (record-signature!
-               (hash 'kind "rewrite" 'ordinal (constructor-ordinal item))
-               entry)))))))))
+         (validate-effect!
+          right
+          constructors
+          classes
+          captures
+          (constructor-ordinal item)
+          model
+          (model-fuel model (constructor-name item))
+          (lambda (entry)
+            (record-signature!
+             (hash 'kind "rewrite" 'ordinal (constructor-ordinal item))
+             entry))))))))
+  (for
+   ((item (in-list (ordered-constructors constructors))))
+   (define captures
+     (for/hash
+      ((class-name (in-list (constructor-signature item))) (index (in-naturals 1)))
+      (values
+       (number->string index)
+       (hash-ref
+        classes
+        (if (relative-path-role? classes class-name) "canonical-path" class-name)
+        #f))))
+   (for
+    ((clause (in-list (hash-ref (compiled-model-ensures model) (constructor-name item) '()))))
+    (recover
+     (lambda ()
+       (validate-predicate!
+        (model-ensure-expression clause)
+        constructors
+        classes
+        captures
+        #f
+        model
+        void))))
+   (for
+    ((clause (in-list (hash-ref (compiled-model-reads model) (constructor-name item) '())))
+     #:when
+     (term? (model-read-fact clause)))
+    (recover
+     (lambda ()
+       (validate-predicate! (model-read-fact clause) constructors classes captures #f model void))))
+   (define guard (hash-ref (compiled-model-guards model) (constructor-name item) #f))
+   (when (term? guard)
+     (recover (lambda () (validate-predicate! guard constructors classes captures #f model void)))))
   (for
    ((pending (in-list pending-forms)) (index (in-naturals)))
    (recover
@@ -1489,6 +1782,7 @@
      'overlaps
      (reverse overlap-checks)))
   (hash-set! declaration-automata-cache body (declaration-automata fields machines checks))
+  (hash-set! language-model-cache body model)
   body)
 
 (define (validate-term!
@@ -1502,7 +1796,7 @@
   (define name (term-constructor expression))
   (define args (term-arguments expression))
   (define item (hash-ref constructors name #f))
-  (unless (or item (hash-has-key? library-arities name))
+  (unless (or item (hash-has-key? library-arities name) (equal? name "context"))
     (fail
      "E_DECLARATION"
      "The term constructor is undeclared"
@@ -1515,7 +1809,10 @@
      (term-span expression)
      (hash 'kind "stratification" 'actual name)))
   (define arities
-    (if item (list (length (constructor-signature item))) (hash-ref library-arities name)))
+    (cond
+     (item (list (length (constructor-signature item))))
+     ((equal? name "context") '(1))
+     (else (hash-ref library-arities name))))
   (unless (member (length args) arities)
     (fail
      "E_TERM_CLASS"
@@ -1532,6 +1829,12 @@
         (string-join (make-list (car arities) "string") " "))
       'actual
       (length args))))
+  (when (and (equal? name "context") (not (literal? (car args))))
+    (declaration-fail
+     "syntax"
+     (term-source expression)
+     "context names one literal constructor"
+     (term-span expression)))
   (for
    ((argument (in-list args)) (index (in-naturals)))
    (define receiving-class (if item (list-ref (constructor-signature item) index) "string"))
@@ -1547,7 +1850,9 @@
         (capture-span argument)
         (hash 'kind "capture" 'actual (string-append "<" (capture-name argument) ">")))))
     ((term? argument)
-     (unless (hash-has-key? library-arities (term-constructor argument))
+     (unless (or
+              (hash-has-key? library-arities (term-constructor argument))
+              (equal? (term-constructor argument) "context"))
        (fail
         "E_TERM_NESTED"
         "A string-class position permits a library call, not a nested user constructor"
@@ -1618,7 +1923,10 @@
          class-name
          'actual
          (literal-value argument))))
-     (when (and (capture? argument) (hash? captures) (hash-ref captures (capture-name argument) #f))
+     (when (and
+            (capture? argument)
+            (hash? captures)
+            (compiled-class? (hash-ref captures (capture-name argument) #f)))
        (define source-class (hash-ref captures (capture-name argument)))
        (define target-class (hash-ref classes class-name))
        (define witness (class-difference-witness source-class target-class))
@@ -1780,12 +2088,481 @@
              (valid-question? record)
              (and (find-form body record) #t))))))
 
-(define (term-value expression captures body)
+(define (missing-context constructor origin)
+  (define span (current-program-span))
+  (unless span
+    (raise-arguments-error 'context "the producing source span is unavailable" "origin" origin))
+  (fail
+   "E_CONTEXT"
+   "No enclosing program supplies the requested constructor"
+   span
+   (hash 'constructor constructor 'key "")))
+
+(define (producing-spans body terms spans)
+  (define result
+    (or spans
+        (for/list
+         ((value (in-list terms)))
+         (hash-ref value-origin-cache value (language-span body)))))
+  (unless (and (list? result) (= (length terms) (length result)) (andmap src-span? result))
+    (raise-arguments-error 'producing-spans "terms need aligned exact source spans"))
+  result)
+
+(define (absent-fact name arguments origin) #f)
+
+(define (query-fact query name arguments origin list-value?)
+  (define answer (call-with-values (lambda () (query name arguments origin)) list))
+  (cond
+   ((= (length answer) 2) (if list-value? (if (car answer) (cadr answer) #f) (and (car answer) #t)))
+   ((= (length answer) 1) (if list-value? (car answer) (and (car answer) #t)))
+   (else (raise-arguments-error 'query-fact "a fact query returns a value or presence and value"))))
+
+(define (json-expression value span)
+  (cond
+   ((and (list? value) (pair? value) (string? (car value)))
+    (term (car value) (map (lambda (item) (json-expression item span)) (cdr value)) span))
+   (else (literal value span))))
+
+(define (evaluate-rule-expression
+         body
+         expression
+         bindings
+         #:context
+         (context missing-context)
+         #:fact
+         (fact absent-fact)
+         #:sort
+         (sort "value")
+         #:binding-resolver
+         (binding-resolver (lambda (name value) value))
+         #:origin
+         (origin (hash 'kind "program" 'path "<input>" 'line 1)))
+  (define (evaluate value)
+    (cond
+     ((literal? value) (literal-value value))
+     ((capture? value)
+      (define bound
+        (hash-ref
+         bindings
+         (capture-name value)
+         (lambda ()
+           (declaration-fail
+            "capture"
+            (capture-name value)
+            "The expression uses an unbound capture"
+            (capture-span value)))))
+      (define received (binding-resolver (capture-name value) bound))
+      (if (list? received) (evaluate (json-expression received (capture-span value))) received))
+     ((term? value)
+      (define name (term-constructor value))
+      (define arguments (map evaluate (term-arguments value)))
+      (cond
+       ((equal? name "context") (context (car arguments) origin))
+       ((hash-has-key? library-arities name) (library-call name arguments (term-span value)))
+       ((member name fact-names) (query-fact fact name arguments origin (equal? sort "list")))
+       ((member name state-predicate-names) (fact name arguments origin))
+       (else
+        (declaration-fail "reference" name "The expression names no evaluator" (term-span value)))))
+     (else
+      (declaration-fail
+       "syntax"
+       (term-data value)
+       "The value is not an expression"
+       (language-span body)))))
+  (evaluate expression))
+
+(define (positional-bindings arguments)
+  (for/hash
+   ((value (in-list arguments)) (index (in-naturals 1)))
+   (values (number->string index) value)))
+
+(define (program-guard-observation
+         body
+         terms
+         #:facts
+         (fact absent-fact)
+         #:context
+         (context missing-context)
+         #:origins
+         (origins
+          (for/list ((value (in-list terms))) (hash 'kind "program" 'path "<input>" 'line 1)))
+         #:spans
+         (spans #f)
+         #:resolve
+         (resolve identity-resolver))
+  (unless (= (length terms) (length origins))
+    (raise-arguments-error 'program-guard-observation "terms and origins must align"))
+  (define model (language-model body))
+  (define exact-spans (producing-spans body terms spans))
+  (for/or
+   ((value (in-list terms)) (origin (in-list origins)) (span (in-list exact-spans)))
+   (parameterize
+    ((current-program-span span))
+    (define name (car value))
+    (define guard (hash-ref (compiled-model-guards model) name #f))
+    (and guard
+         (let* ((arguments (cdr value))
+                (item (hash-ref (language-constructors body) name))
+                (scope (model-scope model name))
+                (fact-name (if (string? guard) guard (term-constructor guard))))
+           (define (receive index argument)
+             (define evaluated
+               (evaluate-rule-expression
+                body
+                (json-expression argument span)
+                (hash)
+                #:context
+                context
+                #:fact
+                fact
+                #:origin
+                origin))
+             (define class-name (list-ref (constructor-signature item) index))
+             (define-values
+              (received receiving-class)
+              (resolve body name index class-name evaluated origin scope name))
+             (unless (and
+                      (string? received)
+                      (class-accepts? (hash-ref (language-classes body) receiving-class) received))
+               (fail
+                "E_TERM_CLASS"
+                "A guard key fails its receiving string class"
+                span
+                (hash 'kind "result" 'constructor name 'class receiving-class 'actual received)))
+             received)
+           (define key
+             (if (string? guard)
+               (let* ((write (hash-ref (compiled-model-writes model) name #f))
+                      (width
+                       (if (constructor-primitive? item)
+                         (if write (model-write-width write) 0)
+                         (min 1 (length arguments)))))
+                 (for/list
+                  ((argument (in-list (take arguments width))) (index (in-naturals)))
+                  (receive index argument)))
+               (for/list
+                ((argument (in-list (term-arguments guard))))
+                (evaluate-rule-expression
+                 body
+                 argument
+                 (positional-bindings arguments)
+                 #:context
+                 context
+                 #:fact
+                 fact
+                 #:origin
+                 origin
+                 #:binding-resolver
+                 (lambda (position bound)
+                   (define number (string->number position))
+                   (if (and (exact-positive-integer? number) (<= number (length arguments)))
+                     (receive (sub1 number) bound)
+                     bound))))))
+           (define result (query-fact fact fact-name key origin #f))
+           (unless (boolean? result)
+             (fail
+              "E_TERM_CLASS"
+              "A guard requires predicate sort"
+              span
+              (hash 'kind "sort" 'constructor name 'class "predicate" 'actual "list")))
+           (and (not result)
+                (hash
+                 'constructor
+                 name
+                 'fact
+                 fact-name
+                 'args
+                 key
+                 'reason
+                 "guard"
+                 'origin
+                 origin)))))))
+
+(define (program-guarded?
+         body
+         terms
+         #:facts
+         (fact absent-fact)
+         #:context
+         (context missing-context)
+         #:origins
+         (origins
+          (for/list ((value (in-list terms))) (hash 'kind "program" 'path "<input>" 'line 1)))
+         #:spans
+         (spans #f)
+         #:resolve
+         (resolve identity-resolver))
+  (and (program-guard-observation
+        body
+        terms
+        #:facts
+        fact
+        #:context
+        context
+        #:origins
+        origins
+        #:spans
+        spans
+        #:resolve
+        resolve)
+       #t))
+
+(define (language-needs-facts? body)
+  (define (external? expression)
+    (and (term? expression)
+         (or (member (term-constructor expression) fact-names)
+             (ormap external? (term-arguments expression)))))
+  (or (model-needs-facts? (language-model body))
+      (for/or
+       ((item (in-list (ordered-constructors (language-constructors body)))))
+       (and (constructor-rule item) (ormap external? (cdr (constructor-rule item))) #t))))
+
+(define (primitive-events
+         body
+         terms
+         origins
+         #:context
+         (context missing-context)
+         #:fact
+         (fact absent-fact)
+         #:spans
+         (spans #f)
+         #:resolve
+         (resolve identity-resolver))
+  (unless (= (length terms) (length origins))
+    (raise-arguments-error 'primitive-events "terms and origins must have equal lengths"))
+  (define model (language-model body))
+  (define events '())
+  (define ensures '())
+  (define skips '())
+  (define normal-forms '())
+  (define (expression-value expression bindings origin #:sort (sort "value"))
+    (evaluate-rule-expression
+     body
+     expression
+     bindings
+     #:context
+     context
+     #:fact
+     fact
+     #:origin
+     origin
+     #:sort
+     sort))
+  (define (expand-effect expression bindings carrier fuel origin scope scope-constructor)
+    (define name (term-constructor expression))
+    (define args (term-arguments expression))
+    (cond
+     ((equal? name "if")
+      (define condition (car args))
+      (define fact-name (term-constructor condition))
+      (define fact-args
+        (map
+         (lambda (argument) (expression-value argument bindings origin))
+         (term-arguments condition)))
+      (define predicate
+        (if (member fact-name library-predicate-names)
+          (library-call fact-name fact-args (term-span condition))
+          (query-fact fact fact-name fact-args origin #f)))
+      (unless (boolean? predicate)
+        (fail
+         "E_TERM_CLASS"
+         "if requires predicate sort"
+         (term-span (car args))
+         (hash 'kind "sort" 'constructor "if" 'class "predicate" 'actual "list")))
+      (if predicate
+        (expand-effect (cadr args) bindings carrier fuel origin scope scope-constructor)
+        (set! skips
+          (cons
+           (hash 'constructor carrier 'fact fact-name 'args fact-args 'reason "if" 'origin origin)
+           skips))))
+     ((equal? name "each")
+      (define values (expression-value (caddr args) bindings origin #:sort "list"))
+      (unless (and (list? values) (andmap string? values))
+        (fail
+         "E_TERM_CLASS"
+         "each requires a list of strings"
+         (term-span (caddr args))
+         (hash
+          'kind
+          "sort"
+          'constructor
+          "each"
+          'class
+          "list"
+          'actual
+          (if (boolean? values) "predicate" "string"))))
+      (when (> (length values) fuel)
+        (fail
+         "E_RULE_FUEL"
+         "The loop exceeds its carrying constructor's fuel cap"
+         (term-span expression)
+         (hash 'constructor carrier 'limit fuel 'actual (length values))))
+      (for
+       ((value (in-list values)))
+       (expand-effect
+        (cadddr args)
+        (hash-set bindings (capture-name (car args)) value)
+        carrier
+        fuel
+        origin
+        scope
+        scope-constructor)))
+     (else
+      (expand-value
+       (cons name (map (lambda (argument) (expression-value argument bindings origin)) args))
+       origin
+       scope
+       scope-constructor
+       (term-span expression)))))
+  (define (expand-value value origin inherited-scope inherited-constructor (use-span #f))
+    (unless (and (list? value) (pair? value) (string? (car value)))
+      (declaration-fail
+       "syntax"
+       value
+       "A normalized value must be a constructor term"
+       (language-span body)))
+    (define name (car value))
+    (define supplied-args (cdr value))
+    (define item (hash-ref (language-constructors body) name #f))
+    (unless item
+      (declaration-fail "reference" name "The constructor is undeclared" (language-span body)))
+    (unless (= (length supplied-args) (length (constructor-signature item)))
+      (fail
+       "E_TERM_CLASS"
+       "The constructor has the wrong number of arguments"
+       (or use-span (constructor-span item))
+       (hash
+        'kind
+        "arity"
+        'constructor
+        name
+        'class
+        (string-join (constructor-signature item) " ")
+        'actual
+        (length supplied-args))))
+    (define explicit-scope? (hash-has-key? (compiled-model-scopes model) name))
+    (define scope (if explicit-scope? (model-scope model name) inherited-scope))
+    (define scope-constructor (if explicit-scope? name inherited-constructor))
+    (define args
+      (for/list
+       ((argument (in-list supplied-args))
+        (class-name (in-list (constructor-signature item)))
+        (index (in-naturals)))
+       (define-values
+        (received receiving-class)
+        (resolve body name index class-name argument origin scope scope-constructor))
+       (unless (and
+                (string? received)
+                (class-accepts? (hash-ref (language-classes body) receiving-class) received))
+         (fail
+          "E_TERM_CLASS"
+          "The expanded argument fails its receiving string class"
+          (or use-span (constructor-span item))
+          (hash 'kind "result" 'constructor name 'class receiving-class 'actual received)))
+       received))
+    (define normalized-value (cons name args))
+    (define bindings (positional-bindings args))
+    (for
+     ((ensure (in-list (hash-ref (compiled-model-ensures model) name '()))))
+     (set! ensures
+       (cons
+        (hash
+         'ensure
+         ensure
+         'bindings
+         bindings
+         'origin
+         origin
+         'body
+         body
+         'scope
+         scope
+         'scope-constructor
+         scope-constructor
+         'arguments-resolved?
+         #t)
+        ensures)))
+    (cond
+     ((constructor-rule item)
+      (define rule-bindings
+        (for/hash
+         ((name (in-list (car (constructor-rule item)))) (argument (in-list args)))
+         (values name argument)))
+      (for
+       ((right (in-list (cdr (constructor-rule item)))))
+       (expand-effect
+        right
+        rule-bindings
+        name
+        (model-fuel model name)
+        origin
+        scope
+        scope-constructor)))
+     (else
+      (set! normal-forms (cons normalized-value normal-forms))
+      (when (constructor-primitive? item)
+        (set! events
+          (cons
+           (hash
+            'term
+            normalized-value
+            'origin
+            origin
+            'body
+            body
+            'stage
+            (model-stage model name)
+            'bindings
+            bindings
+            'scope
+            scope
+            'scope-constructor
+            scope-constructor)
+           events))))))
+  (define diagnostics '())
+  (parameterize
+   ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics)))))
+   (for
+    ((value (in-list terms))
+     (origin (in-list origins))
+     (span (in-list (producing-spans body terms spans))))
+    (parameterize
+     ((current-program-span span))
+     (recover
+      (lambda ()
+        (expand-value
+         value
+         origin
+         "program"
+         (car value)
+         (hash-ref value-meaning-spans value #f)))))))
+  (raise-diagnostics (diagnostics-sort (reverse diagnostics)))
+  (hash
+   'events
+   (reverse events)
+   'ensures
+   (reverse ensures)
+   'skips
+   (reverse skips)
+   'normal-forms
+   (reverse normal-forms)))
+
+(define (term-value
+         expression
+         captures
+         body
+         #:context
+         (context missing-context)
+         #:origin
+         (origin (hash 'kind "program" 'path "<input>" 'line 1)))
   (define (evaluate item)
     (if (list? item)
-      (if (hash-has-key? library-arities (car item))
-        (library-call (car item) (map evaluate (cdr item)) (term-span expression))
-        (cons (car item) (map evaluate (cdr item))))
+      (cond
+       ((equal? (car item) "context") (context (cadr item) origin))
+       ((hash-has-key? library-arities (car item))
+        (library-call (car item) (map evaluate (cdr item)) (term-span expression)))
+       (else (cons (car item) (map evaluate (cdr item)))))
       item))
   (define value (evaluate (instantiate-term expression captures)))
   (define (check item)
@@ -1803,30 +2580,88 @@
             (term-span expression)
             (hash 'kind "result" 'constructor (car item) 'class class-name 'actual argument)))))))
   (check value)
+  (hash-set! value-meaning-spans value (term-span expression))
   value)
 
-(define (check-program text body #:file (file "<input>"))
-  (define result (check-program/diagnostics text body #:file file))
+(define (identity-resolver body name index class value origin scope scope-constructor)
+  (values value class))
+
+(define (check-program
+         text
+         body
+         #:file
+         (file "<input>")
+         #:context
+         (context missing-context)
+         #:facts
+         (facts #f)
+         #:guard
+         (guard #f)
+         #:resolve
+         (resolve identity-resolver)
+         #:guard-resolver
+         (guard-resolver #f))
+  (define result
+    (check-program/diagnostics
+     text
+     body
+     #:file
+     file
+     #:context
+     context
+     #:facts
+     facts
+     #:guard
+     guard
+     #:resolve
+     resolve
+     #:guard-resolver
+     guard-resolver))
   (raise-diagnostics (hash-ref result 'diagnostics))
   (hash-remove result 'diagnostics))
 
-(define (check-program/diagnostics text body #:file (file "<input>"))
+(define (check-program/diagnostics
+         text
+         body
+         #:file
+         (file "<input>")
+         #:context
+         (context missing-context)
+         #:facts
+         (facts #f)
+         #:guard
+         (guard #f)
+         #:resolve
+         (resolve identity-resolver)
+         #:guard-resolver
+         (guard-resolver #f))
   (define diagnostics '())
+  (define raw-terms '())
+  (define raw-origins '())
+  (define raw-spans '())
+  (define entries '())
   (define terms '())
   (define origins '())
   (define term-spans '())
   (define quantities (hash))
   (define last-index -1)
+  (define guarded? #f)
+  (define skips '())
   (define records (read-lines text #:file file #:comment-prefix (language-comment body)))
-  (define (add-term! value span kind)
+  (define line-spans
+    (for/hash
+     ((record (in-list records)))
+     (values (src-span-start-line (line-record-span record)) (line-record-span record))))
+  (define (add-term! hit span kind)
+    (define value (instantiate-term (form-meaning (car hit)) (cdr hit)))
+    (define origin (hash 'kind kind 'path (src-span-file span) 'line (src-span-start-line span)))
     (hash-set! value-origin-cache value span)
+    (hash-set! value-meaning-spans value (term-span (form-meaning (car hit))))
     (set! quantities (hash-update quantities (car value) add1 0))
-    (set! terms (append terms (list value)))
-    (set! origins
-      (append
-       origins
-       (list (hash 'kind kind 'path (src-span-file span) 'line (src-span-start-line span)))))
-    (set! term-spans (append term-spans (list span))))
+    (set! raw-terms (append raw-terms (list value)))
+    (set! raw-origins (append raw-origins (list origin)))
+    (set! raw-spans (append raw-spans (list span)))
+    (set! entries (append entries (list hit))))
   (parameterize
    ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics))))
     (current-source-text-lines
@@ -1873,10 +2708,7 @@
                    'actual
                    (form-ordinal candidate))))))
             (set! last-index (max last-index (form-ordinal candidate)))
-            (add-term!
-             (term-value (form-meaning candidate) (cdr hit) body)
-             (line-record-span record)
-             "program"))))))))
+            (add-term! hit (line-record-span record) "program"))))))))
    (define explicit-constructors quantities)
    (for*
     ((candidate (in-list (language-forms body)))
@@ -1902,7 +2734,7 @@
            "The default matches no form with valid captures"
            (cdr default)
            (hash 'actual (car default))))
-        (add-term! (term-value (form-meaning (car hit)) (cdr hit) body) (cdr default) "default")))))
+        (add-term! hit (cdr default) "default")))))
    (for
     ((name (in-list (sort (hash-keys (language-counts body)) string<?))))
     (define multiplicity (hash-ref (language-counts body) name))
@@ -1911,13 +2743,12 @@
              ((equal? multiplicity "1") (= quantity 1))
              ((equal? multiplicity "0..1") (<= quantity 1))
              ((equal? multiplicity "1..*") (>= quantity 1))
-             ((equal? multiplicity "*") #t)
-             (else #f))
+             (else (equal? multiplicity "*")))
       (define matching
         (for/list
-         ((value (in-list terms))
-          (origin (in-list origins))
-          (span (in-list term-spans))
+         ((value (in-list raw-terms))
+          (origin (in-list raw-origins))
+          (span (in-list raw-spans))
           #:when
           (equal? (car value) name))
          (cons origin span)))
@@ -1936,7 +2767,52 @@
           #:related
           (map car matching)
           #:data
-          (hash 'constructor name 'expected multiplicity 'actual quantity)))))))
+          (hash 'constructor name 'expected multiplicity 'actual quantity))))))
+   (define actual-resolve (if guard-resolver (guard-resolver raw-terms raw-origins) resolve))
+   (define failed-guard (gensym 'failed-guard))
+   (define guard-observation
+     (recover
+      (lambda ()
+        (and facts
+             (program-guard-observation
+              body
+              raw-terms
+              #:facts
+              facts
+              #:context
+              context
+              #:origins
+              raw-origins
+              #:spans
+              raw-spans
+              #:resolve
+              actual-resolve)))
+      failed-guard))
+   (set! guarded?
+     (and (not (eq? guard-observation failed-guard))
+          (or guard-observation (and guard (guard raw-terms raw-origins)))
+          #t))
+   (when (hash? guard-observation) (set! skips (list guard-observation)))
+   (unless (or guarded? (eq? guard-observation failed-guard))
+     (for
+      ((entry (in-list entries)) (origin (in-list raw-origins)) (span (in-list raw-spans)))
+      (parameterize
+       ((current-program-span span))
+       (recover
+        (lambda ()
+          (define value
+            (term-value
+             (form-meaning (car entry))
+             (cdr entry)
+             body
+             #:context
+             context
+             #:origin
+             origin))
+          (hash-set! value-origin-cache value span)
+          (set! terms (append terms (list value)))
+          (set! origins (append origins (list origin)))
+          (set! term-spans (append term-spans (list span)))))))))
   (define ordered (diagnostics-sort (reverse diagnostics)))
   (hash
    'valid
@@ -1948,7 +2824,23 @@
    'origins
    origins
    'diagnostics
-   ordered))
+   ordered
+   'raw-terms
+   raw-terms
+   'raw-origins
+   raw-origins
+   'effective-lines
+   (length raw-terms)
+   'guarded?
+   guarded?
+   'skips
+   skips
+   '_term-spans
+   term-spans
+   '_raw-term-spans
+   raw-spans
+   'line-spans
+   line-spans))
 
 (define library-domain-classes (delay (compile-classes (hash "allowed" "/.*/"))))
 
@@ -2020,71 +2912,50 @@
 
 (module+ test-support (provide library-call))
 
-(define (normalize-terms body terms)
-  (define diagnostics '())
-  (define (evaluate value)
-    (cond
-     ((not (list? value)) value)
-     ((hash-has-key? library-arities (car value))
-      (library-call (car value) (map evaluate (cdr value)) (language-span body)))
-     (else (cons (car value) (map evaluate (cdr value))))))
-  (define (normalize value)
-    (define evaluated (evaluate value))
-    (unless (and (list? evaluated) (pair? evaluated))
-      (declaration-fail
-       "syntax"
-       evaluated
-       "A top-level meaning must be a term"
-       (language-span body)))
-    (define item (hash-ref (language-constructors body) (car evaluated) #f))
-    (unless item
-      (declaration-fail
-       "reference"
-       (car evaluated)
-       "The term constructor is undeclared"
-       (language-span body)))
-    (for
-     ((argument (in-list (cdr evaluated))) (class-name (in-list (constructor-signature item))))
-     (unless (and
-              (string? argument)
-              (class-accepts? (hash-ref (language-classes body) class-name) argument))
-       (fail
-        "E_TERM_CLASS"
-        "The normalized argument fails its declared string class"
-        (language-span body)
-        (hash
-         'kind
-         "result"
-         'constructor
-         (constructor-name item)
-         'class
-         class-name
-         'actual
-         argument))))
-    (if (or (constructor-primitive? item)
-            (and (constructor-fact? item) (not (constructor-rule item))))
-      (list evaluated)
-      (let ((bindings
-             (for/hash
-              ((name (in-list (car (constructor-rule item)))) (argument (in-list (cdr evaluated))))
-              (values name argument))))
-        (append-map
-         (lambda (right) (normalize (instantiate-term right bindings)))
-         (cdr (constructor-rule item))))))
-  (define result
-    (parameterize
-     ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics)))))
-     (append-map
-      (lambda (value)
-        (parameterize
-         ((current-program-span (hash-ref value-origin-cache value #f)))
-         (recover (lambda () (normalize value)) '())))
-      terms)))
-  (raise-diagnostics (diagnostics-sort (reverse diagnostics)))
-  result)
+(define (normalize-terms
+         body
+         terms
+         #:context
+         (context missing-context)
+         #:fact
+         (fact absent-fact)
+         #:spans
+         (spans #f)
+         #:resolve
+         (resolve identity-resolver))
+  (define producing-spans
+    (or spans
+        (for/list
+         ((value (in-list terms)))
+         (hash-ref value-origin-cache value (language-span body)))))
+  (define origins
+    (for/list
+     ((span (in-list producing-spans)))
+     (hash 'kind "program" 'path (src-span-file span) 'line (src-span-start-line span))))
+  (hash-ref
+   (primitive-events
+    body
+    terms
+    origins
+    #:context
+    context
+    #:fact
+    fact
+    #:spans
+    producing-spans
+    #:resolve
+    resolve)
+   'normal-forms))
 
 (define (declaration-bound body)
+  (define model (language-model body))
   (define memo (make-hash))
+  (define (expression-cost expression fuel)
+    (define args (term-arguments expression))
+    (cond
+     ((equal? (term-constructor expression) "if") (expression-cost (cadr args) fuel))
+     ((equal? (term-constructor expression) "each") (* fuel (expression-cost (cadddr args) fuel)))
+     (else (cost (term-constructor expression)))))
   (define (cost name)
     (hash-ref!
      memo
@@ -2092,7 +2963,9 @@
      (lambda ()
        (define item (hash-ref (language-constructors body) name))
        (if (constructor-rule item)
-         (for/sum ((right (in-list (cdr (constructor-rule item))))) (cost (term-constructor right)))
+         (for/sum
+          ((right (in-list (cdr (constructor-rule item)))))
+          (expression-cost right (model-fuel model name)))
          1))))
   (hash
    'c

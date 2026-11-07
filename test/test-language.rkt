@@ -18,7 +18,7 @@
    "primitive : output : category title\nterm : item : category title\n"
    "rule : item <kind> <heading> -> output <kind> <heading>\n"
    "form : item : <category> = <title>\ndoes : item <category> <title>\n"
-   "example : item : book = Algebra\ncount : item = 1..*\nend!\n"))
+   "example : item : book = Algebra\ncount : item = 1..*\neffect : output = external\nend!\n"))
 
 (define (declarations-data model)
   (for/hash (((name body) (in-hash model))) (values name (declaration->jsexpr body #:origins? #f))))
@@ -215,7 +215,7 @@
   (check (language-version body) "1")
   (check (language-comment body) "#")
   (check (hash-ref (declaration->jsexpr body) 'file) 'null)
-  (check (length (hash-ref (declaration->jsexpr body) 'declarations)) 10)
+  (check (length (hash-ref (declaration->jsexpr body) 'declarations)) 11)
   (check
    (hash-ref (car (hash-ref (declaration->jsexpr body) 'forms)) 'examples)
    '("item : book = Algebra"))
@@ -293,10 +293,10 @@
      "form : item : book = <title>\ndoes : item book <title>\ncount : item = 1..*"))
   (reject (lambda () (read-declarations overlap)) "E_FORM_SHADOW")
   (define swallowed
-    "#lang typify\ndeclare : Demo\ncomment : go\nis : choice = \"yes\" | \"no\"\nprimitive : output : choice\nform : go : <choice>\ndoes : output <choice>\nexample : go : yes\nend!\n")
+    "#lang typify\ndeclare : Demo\ncomment : go\nis : choice = \"yes\" | \"no\"\nprimitive : output : choice\nform : go : <choice>\ndoes : output <choice>\nexample : go : yes\neffect : output = external\nend!\n")
   (reject (lambda () (read-declarations swallowed)) "E_EXAMPLE")
   (define nullary
-    "#lang typify\ndeclare : Flags\nprimitive : ready\nform : ready!\ndoes : ready\nexample : ready!\ncount : ready = 1\nend!\n")
+    "#lang typify\ndeclare : Flags\nprimitive : ready\nform : ready!\ndoes : ready\nexample : ready!\ncount : ready = 1\neffect : ready = external\nend!\n")
   (define flags (hash-ref (read-declarations nullary) "Flags"))
   (check (hash-ref (check-program "ready!" flags) 'terms) '(("ready")))
   (reject (lambda () (check-program "ready!\nready!" flags)) "E_PROGRAM_COUNT")

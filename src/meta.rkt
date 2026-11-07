@@ -209,6 +209,7 @@
     "primitive : "
     constructor
     (if (null? arguments) "" (string-append " : " (string-join arguments " "))))
+   (string-append "effect : " constructor " = external")
    (string-append "form : " (hash-ref row 'production))
    (string-append
     "does : "
@@ -236,13 +237,16 @@
      (for/list
       ((name (in-list (sort (hash-keys (current-meta-classes)) string<?))))
       (string-append "is : " name " = " (hash-ref (current-meta-classes) name)))
-     (for/list
-      ((name (in-list (sort (hash-keys library-arities) string<?))))
-      (string-append
-       "primitive : "
-       name
-       " : "
-       (string-join (make-list (car (hash-ref library-arities name)) "value") " ")))
+     (append-map
+      (lambda (name)
+        (list
+         (string-append
+          "primitive : "
+          name
+          " : "
+          (string-join (make-list (car (hash-ref library-arities name)) "value") " "))
+         (string-append "effect : " name " = external")))
+      (sort (hash-keys library-arities) string<?))
      (append-map signature-lines (current-meta-forms))
      '("end!"))
     "\n")

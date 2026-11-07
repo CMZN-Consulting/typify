@@ -1,17 +1,24 @@
 #lang racket/base
 
-(require racket/file
+(require json
+         file/sha1
+         racket/file
          racket/list
          racket/match
+         racket/path
          racket/promise
          racket/string
          "classes.rkt"
          "diagnostics.rkt"
          "emission.rkt"
          "language.rkt"
-         "meta.rkt")
+         "meta.rkt"
+         "model.rkt"
+         "facts.rkt"
+         "plan.rkt"
+         "tree.rkt")
 
-(provide run-command render-bounds display-diagnostics)
+(provide run-command render-bounds render-tree render-plan display-diagnostics)
 
 (define typify-version "1.0")
 
@@ -75,7 +82,16 @@
     ((body (in-list (sort bodies string<? #:key language-name))))
     (hash 'language (language-name body) 'checks (declaration-check-bounds body)))
    'host
-   (hash 'name "racket" 'version (version) 'guards class-host-guards)))
+   (hash
+    'name
+    "racket"
+    'version
+    (version)
+    'guards
+    (for/fold
+     ((guards class-host-guards))
+     (((key value) (in-hash model-host-guards)))
+     (hash-set guards key value)))))
 
 (define (render-bounds report)
   (define output (open-output-string))
@@ -144,20 +160,124 @@
      (hash-ref (hash-ref item 'bounds) 'states-upper-bound))))
   (get-output-string output))
 
+(define (read-facts path)
+  (define bytes
+    (with-handlers
+     ((exn:fail:filesystem?
+       (lambda (_)
+         (raise-typify
+          "E_FILE"
+          "The facts file cannot be read"
+          #:span
+          (src-span path 1 1 1 1 0 0)
+          #:data
+          (hash 'path (string-replace path "\\" "/"))))))
+     (file->bytes path)))
+  (define input (open-input-bytes bytes))
+  (define data
+    (with-handlers
+     ((exn:fail:read?
+       (lambda (_)
+         (raise-typify
+          "E_FILE"
+          "The facts file is not JSON"
+          #:span
+          (src-span path 1 1 1 1 0 0)
+          #:data
+          (hash 'path path)))))
+     (define value (read-json input))
+     (unless (eof-object? (read-json input))
+       (raise-typify
+        "E_FILE"
+        "The facts file contains multiple documents"
+        #:span
+        (src-span path 1 1 1 1 0 0)
+        #:data
+        (hash 'path path)))
+     value))
+  (values
+   (validate-facts data #:path path)
+   (string-append "sha256:" (bytes->hex-string (sha256-bytes bytes)))))
+
+(define (facts-input required? path root)
+  (cond
+   ((not required?) (values #f "none"))
+   (path (define-values (data hash) (read-facts path)) (values data (if required? hash "none")))
+   (required?
+    (define data (collect-facts root))
+    (values
+     data
+     (string-append
+      "sha256:"
+      (bytes->hex-string
+       (sha256-bytes (string->bytes/utf-8 (string-append (canonical-json data) "\n")))))))
+   (else (values #f "none"))))
+
+(define (render-tree programs)
+  (apply
+   string-append
+   (for/list
+    ((program (in-list programs)))
+    (format "~a ~a\n" (hash-ref program 'status) (hash-ref program 'path)))))
+
+(define (render-plan report events)
+  (string-append
+   (hash-ref report 'status)
+   "\n"
+   (apply
+    string-append
+    (for/list
+     ((event (in-list events)))
+     (format
+      "~a ~a~a\n"
+      (hash-ref (hash-ref event 'program) 'path)
+      (canonical-json (hash-ref event 'term))
+      (if (hash-ref event 'modelled?) "" " unchecked"))))))
+
+(define (parse-options arguments)
+  (let loop ((remaining arguments) (positionals '()) (options (hash)))
+    (cond
+     ((null? remaining) (values (reverse positionals) options))
+     ((equal? (car remaining) "--facts")
+      (when (or
+             (hash-has-key? options "--facts")
+             (null? (cdr remaining))
+             (string-prefix? (cadr remaining) "--"))
+        (raise-typify "E_USAGE" "--facts needs one file" #:data (hash 'actual "--facts")))
+      (loop (cddr remaining) positionals (hash-set options "--facts" (cadr remaining))))
+     ((member (car remaining) '("--json" "--gbnf" "--bounds"))
+      (when (hash-has-key? options (car remaining))
+        (raise-typify
+         "E_USAGE"
+         "A command-line flag was repeated"
+         #:data
+         (hash 'actual (car remaining))))
+      (loop (cdr remaining) positionals (hash-set options (car remaining) #t)))
+     ((and (string-prefix? (car remaining) "--") (not (equal? (car remaining) "--version")))
+      (raise-typify
+       "E_USAGE"
+       "The command-line flag is not recognized"
+       #:data
+       (hash 'actual (car remaining))))
+     (else (loop (cdr remaining) (cons (car remaining) positionals) options)))))
+
 (define (run-command arguments)
-  (define json? (and (member "--json" arguments) #t))
-  (define gbnf? (and (member "--gbnf" arguments) #t))
-  (define bounds? (and (member "--bounds" arguments) #t))
-  (for
-   ((value (in-list arguments)) #:when (string-prefix? value "--"))
-   (unless (member value '("--json" "--gbnf" "--bounds" "--version"))
-     (raise-typify
-      "E_USAGE"
-      "The command-line flag is not recognized"
-      #:data
-      (hash 'actual value))))
-  (define positional
-    (filter (lambda (value) (not (member value '("--json" "--gbnf" "--bounds")))) arguments))
+  (define-values (result json? grammar? text) (run-command/details arguments))
+  (values result json? grammar?))
+
+(define (run-command/details arguments)
+  (define-values (positional options) (parse-options arguments))
+  (define json? (hash-ref options "--json" #f))
+  (define gbnf? (hash-ref options "--gbnf" #f))
+  (define bounds? (hash-ref options "--bounds" #f))
+  (define facts-path (hash-ref options "--facts" #f))
+  (define text-output #f)
+  (when (and facts-path (not (and (pair? positional) (member (car positional) '("tree" "plan")))))
+    (raise-typify
+     "E_USAGE"
+     "--facts is available only with tree or plan"
+     #:data
+     (hash 'actual "--facts")))
   (when (and bounds? (not (and (pair? positional) (equal? (car positional) "check"))))
     (raise-typify
      "E_USAGE"
@@ -180,6 +300,10 @@
     (if (and body (ormap constructor-rule (hash-values (language-constructors body))))
       (hash-set response 'bound (declaration-bound body))
       response))
+  (define (planned-response report events declaration-diagnostics ensure-diagnostics)
+    (define diagnostics (diagnostics-sort (append declaration-diagnostics ensure-diagnostics)))
+    (set! text-output (render-plan report events))
+    (hash-set report 'diagnostics (map diagnostic->jsexpr diagnostics)))
   (define result
     (match
      positional
@@ -202,6 +326,94 @@
       (if bounds?
         (with-diagnostics (bounds-report (list body)) (hash-ref complete 'diagnostics))
         (checked-response complete body)))
+     ((list "facts" root) (collect-facts root))
+     ((list "tree" path root)
+      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+      (define-values
+       (facts facts-hash)
+       (facts-input (tree-facts-required? declarations) facts-path root))
+      (define checked
+        (read-tree/diagnostics
+         declarations
+         root
+         #:facts
+         facts
+         #:guard-resolver
+         (lambda (record raw-terms raw-origins)
+           (program-resolver (hash-set* record 'terms raw-terms 'origins raw-origins)))))
+      (define entries (tree->jsexpr (hash-ref checked 'programs)))
+      (define complete-diagnostics
+        (diagnostics-sort (append diagnostics (hash-ref checked 'diagnostics))))
+      (set! text-output (render-tree entries))
+      (hash
+       'ok
+       (not (diagnostics-error? complete-diagnostics))
+       'programs
+       entries
+       'diagnostics
+       (map diagnostic->jsexpr complete-diagnostics)))
+     ((list "plan" path root)
+      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+      (define-values
+       (facts facts-hash)
+       (facts-input
+        (for/or ((body (in-hash-values declarations))) (language-needs-facts? body))
+        facts-path
+        root))
+      (define checked
+        (read-tree/diagnostics
+         declarations
+         root
+         #:facts
+         facts
+         #:guard-resolver
+         (lambda (record raw-terms raw-origins)
+           (program-resolver (hash-set* record 'terms raw-terms 'origins raw-origins)))))
+      (define tree-diagnostics (hash-ref checked 'diagnostics))
+      (raise-diagnostics tree-diagnostics)
+      (define programs (hash-ref checked 'programs))
+      (define ensure-diagnostics '())
+      (define-values
+       (report events)
+       (plan-programs/details
+        programs
+        #:facts
+        facts
+        #:facts-hash
+        facts-hash
+        #:on-error
+        (lambda (item) (set! ensure-diagnostics (cons item ensure-diagnostics)))))
+      (planned-response report events (append diagnostics tree-diagnostics) ensure-diagnostics))
+     ((list "plan" path name program)
+      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+      (define body (select-language declarations name))
+      (when (language-file body)
+        (raise-typify
+         "E_USAGE"
+         "A language with a file template is planned over a tree"
+         #:data
+         (hash 'actual name)))
+      (define-values
+       (facts facts-hash)
+       (facts-input
+        (language-needs-facts? body)
+        facts-path
+        (or (path-only (path->complete-path program)) (current-directory))))
+      (define ensure-diagnostics '())
+      (define-values
+       (report events)
+       (plan-program/details
+        body
+        (read-source program)
+        #:path
+        program
+        #:facts
+        facts
+        #:facts-hash
+        facts-hash
+        #:on-error
+        (lambda (item) (set! ensure-diagnostics (cons item ensure-diagnostics)))))
+      (planned-response report events diagnostics ensure-diagnostics))
      ((list "emit" "Typify")
       (if gbnf? (hash 'text (language->gbnf (meta-language))) (language->grammar (meta-language))))
      ((list "emit" path name)
@@ -213,10 +425,10 @@
      (_
       (raise-typify
        "E_USAGE"
-       "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"
+       "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | facts ROOT | tree DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS LANGUAGE PROGRAM [--facts FILE] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"
        #:data
-       (hash 'actual arguments)))))
-  (values (public-data result) json? gbnf?))
+       (hash 'actual (if (null? positional) "" (car positional)))))))
+  (values (public-data result) json? gbnf? text-output))
 
 (module+
  main
@@ -245,11 +457,16 @@
        (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items)
          2
          1)))))
-  (define-values (result json-output? grammar?) (run-command arguments))
+  (define-values (result json-output? grammar? text-output) (run-command/details arguments))
   (unless json-output? (display-diagnostics (hash-ref result 'diagnostics '())))
   (cond
    ((equal? arguments '("--version")) (displayln typify-version))
    ((and (member "--bounds" arguments) (not json-output?)) (display (render-bounds result)))
    ((and (pair? arguments) (equal? (car arguments) "check") (not json-output?)) (void))
+   ((and text-output (not json-output?)) (display text-output))
    ((and (hash-has-key? result 'text) (not json-output?)) (display (hash-ref result 'text)))
-   (else (displayln (canonical-json result))))))
+   (else (displayln (canonical-json result))))
+  (when (for/or
+         ((item (in-list (hash-ref result 'diagnostics '()))))
+         (equal? (hash-ref item 'severity) "error"))
+    (exit 1))))

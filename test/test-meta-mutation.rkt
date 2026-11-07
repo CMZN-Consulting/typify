@@ -60,7 +60,7 @@
      "cell : content = shadow"
      "writes : output : content = put 1"
      "reads : output : exists = reject"
-     "ensure : wrap : stable = (bound <c>)"
+     "ensure : wrap : stable = (bound content <1>)"
      "join : modes : \"ro\" \"ro\" = \"ro\""
      "join : modes : \"ro\" \"rw\" = \"rw\""
      "join : modes : \"rw\" \"ro\" = \"rw\""
@@ -78,11 +78,15 @@
      "end!")
    "\n"))
 
+(define (ordinary-facts name arguments origin)
+  (if (and (equal? name "exists") (equal? arguments '("blue"))) (values #t #t) (values #f #f)))
+
 (define (ordinary-model)
   (define declarations (read-declarations ordinary-source))
   (define body (hash-ref declarations "Lexicon"))
   (define auxiliary (hash-ref declarations "Auxiliary_2-N"))
-  (define checked (check-program "// annotation\nitem : blue = Warm sky\nhalt!" body))
+  (define checked
+    (check-program "// annotation\nitem : blue = Warm sky\nhalt!" body #:facts ordinary-facts))
   (list
    (language-name body)
    (language-version body)
@@ -96,7 +100,7 @@
    (hash-ref (language-caps body) "states")
    (map car (form-defaults (car (language-forms body))))
    (hash-ref checked 'terms)
-   (normalize-terms body (hash-ref checked 'terms))))
+   (normalize-terms body (hash-ref checked 'terms) #:fact ordinary-facts)))
 
 (define ordinary-expected
   '("Lexicon"
@@ -118,7 +122,7 @@
    "#lang typify\ndeclare : Counter\norder : free\nprimitive : tick\n"
    "form : tick!\ndoes : tick\ncount : tick = "
    multiplicity
-   "\nend!\n"))
+   "\neffect : tick = external\nend!\n"))
 
 (define (metadata-model)
   (define body (hash-ref (read-declarations ordinary-source) "Lexicon"))
@@ -142,7 +146,7 @@
     (("cell" (("law" "shadow") ("name" "content")))
      ("writes" (("name" "output") ("value" "content = put 1")))
      ("reads" (("name" "output") ("value" "exists = reject")))
-     ("ensure" (("constructor" "wrap") ("name" "stable") ("value" "(bound <c>)")))
+     ("ensure" (("constructor" "wrap") ("name" "stable") ("value" "(bound content <1>)")))
      ("join" (("name" "modes") ("value" "\"ro\" \"ro\" = \"ro\"")))
      ("join" (("name" "modes") ("value" "\"ro\" \"rw\" = \"rw\"")))
      ("join" (("name" "modes") ("value" "\"rw\" \"ro\" = \"rw\"")))
@@ -181,6 +185,8 @@
        "does : choose-order <ordering>"
        "form : width : <width>"
        "does : choose-width <width>"
+       "effect : choose-order = external"
+       "effect : choose-width = external"
        "end!")
      "\n"))
   (define declarations (read-declarations source))
@@ -209,7 +215,7 @@
       (rejects?
        (lambda ()
          (read-declarations
-          "#lang typify\ndeclare : Mixed\nprimitive : output\nterm : unclassified\nend!"))))
+          "#lang typify\ndeclare : Mixed\nprimitive : output\nterm : unclassified\neffect : output = external\nend!"))))
     #t)
    (oracle
     "restricting-form-needs-required-count-or-default"

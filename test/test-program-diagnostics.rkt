@@ -4,10 +4,20 @@
 
 (provide run-tests)
 
+(define (external-primitive-fixture lines)
+  (append
+   lines
+   (for/list
+    ((line (in-list lines)) #:when (string-prefix? line "primitive : "))
+    (string-append "effect : " (cadr (string-split line " : ")) " = external"))))
+
 (define (source lines)
   (string-append
    (string-join
-    (append '("#lang typify" "declare : Diagnostics" "cap : length = 32") lines '("end!"))
+    (append
+     '("#lang typify" "declare : Diagnostics" "cap : length = 32")
+     (external-primitive-fixture lines)
+     '("end!"))
     "\n")
    "\n"))
 

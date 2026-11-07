@@ -11,7 +11,14 @@
 (define (source lines)
   (string-append
    (string-join
-    (append '("#lang typify" "declare : Defaults" "cap : length = 32") lines '("end!"))
+    (append
+     '("#lang typify" "declare : Defaults" "cap : length = 32")
+     (append
+      lines
+      (for/list
+       ((row (in-list (remove-duplicates lines))) #:when (string-prefix? row "primitive : "))
+       (string-append "effect : " (cadr (string-split row " : ")) " = external")))
+     '("end!"))
     "\n")
    "\n"))
 

@@ -279,6 +279,25 @@
     (check-true (class-accepts? broad counterexample))
     (check-false (class-accepts? path counterexample)))
    (test-case
+    "relative paths have clean components and remain distinct from absolute paths"
+    (define path (one "relative-path"))
+    (for
+     ((text (in-list '("a" "a/b" ".hidden" "a..b" "a b/c" "α/β"))))
+     (check-true (class-accepts? path text) text))
+    (for
+     ((text (in-list '("" "/" "/a" "a/" "a//b" "." ".." "a/./b" "a/../b"))))
+     (check-false (class-accepts? path text) text))
+    (check-false (class-accepts? path (string-append "a/" (string (integer->char 8205)))))
+    (check-exn
+     (error-code "class-reserved")
+     (lambda () (compile-classes (hash "relative-path" "\"other\"") #:caps small-caps)))
+    (check-false (class-overlap-witness path (one "canonical-path")))
+    (define alias
+      (hash-ref (compile-classes (hash "alias" "relative-path") #:caps small-caps) "alias"))
+    (check-equal? (class->references alias) '("relative-path"))
+    (check-false (class-difference-witness alias path))
+    (check-false (class-difference-witness path alias)))
+   (test-case
     "the class alphabet excludes unsafe categories, ordinary space remains"
     (define any (one "/.*/"))
     (check-true (class-accepts? any "Market Research"))
