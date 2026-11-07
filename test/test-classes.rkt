@@ -30,11 +30,21 @@
    "classes"
    (test-case
     "exact literals, whole-token matching and literal exclusions"
-    (checks "safe" '("safe") '("other" "safely" ""))
-    (checks "rw | ro" '("rw" "ro") '("r" "rwx" "RO" " rw"))
+    (checks "\"safe\"" '("safe") '("other" "safely" ""))
+    (checks "\"rw\" | \"ro\"" '("rw" "ro") '("r" "rwx" "RO" " rw"))
     (checks "\"a|b\" | \"c\"" '("a|b" "c") '("a" "b"))
     (checks "/[a-z]+/ except \"bad\" | \"evil\"" '("good" "baddy" "evils") '("bad" "evil" ""))
     (checks "/.*/ except \"\"" '("a" " ") '("")))
+   (test-case
+    "class syntax uses quoted literals and bare references"
+    (check-exn (error-code "class-reference") (lambda () (one "safe")))
+    (check-exn (error-code "class-reference") (lambda () (one "rw | ro")))
+    (check-exn (error-code "class-syntax") (lambda () (one "<letter>")))
+    (check-exn (error-code "class-syntax") (lambda () (one "/<letter>+/")))
+    (check-exn (error-code "class-except") (lambda () (one "\"safe\" except unsafe")))
+    (checks "(\"a\" | \"b\") (\"c\" | \"d\") except \"ac\" | \"bd\"" '("ad" "bc") '("ac" "bd"))
+    (checks "(\"a\" except \"a\") | \"b\"" '("b") '("a"))
+    (checks "/ab*/" '("a" "ab" "abbb") '("" "abab")))
    (test-case
     "regular operators and code-point escapes"
     (checks "/[a-c]{2,3}/" '("aa" "abc" "ccc") '("a" "abcd" "dd"))
@@ -51,7 +61,7 @@
     "reference semantics include referenced literal exclusions"
     (define classes
       (compile-classes
-       (hash "plain" "/[a-z]+/ except \"bad\"" "alias" "<plain>" "suffix" "<alias> \"!\"")
+       (hash "plain" "/[a-z]+/ except \"bad\"" "alias" "plain" "suffix" "alias \"!\"")
        #:caps
        small-caps))
     (check-true (class-accepts? (hash-ref classes "alias") "good"))
@@ -60,16 +70,16 @@
     (check-false (class-accepts? (hash-ref classes "suffix") "bad!"))
     (check-exn
      (error-code "class-reference-cycle")
-     (lambda () (compile-classes (hash "a" "<b>" "b" "<a>") #:caps small-caps)))
+     (lambda () (compile-classes (hash "a" "b" "b" "a") #:caps small-caps)))
     (check-exn
      (error-code "class-reference")
-     (lambda () (compile-classes (hash "a" "<missing>") #:caps small-caps)))
+     (lambda () (compile-classes (hash "a" "missing") #:caps small-caps)))
     (check-exn
      (error-code "class-reserved")
-     (lambda () (compile-classes (hash "letter" "a") #:caps small-caps))))
+     (lambda () (compile-classes (hash "letter" "\"a\"") #:caps small-caps))))
    (test-case
     "Unicode letters are pinned, multiple scripts and non-BMP included"
-    (define letters (one "<letter>+"))
+    (define letters (one "letter+"))
     (for
      ((text (in-list (list "Arbor" "İstanbul" "Ελλάδα" "東京" "अकर" (string (integer->char 66560))))))
      (check-true (class-accepts? letters text) text))
@@ -92,18 +102,36 @@
       (number->string point 16)))
     (check-false (class-accepts? (one "/.*/" (hash-set small-caps 'allow-ascii-space #f)) "a b")))
    (test-case
+    "compact state caps and independent length counters"
+    (define class (hash-ref (compile-classes (hash "subject" "/.*/")) "subject"))
+    (check-equal? (vector-length (automaton-transitions (compiled-class-machine class))) 1)
+    (check-equal? (hash-ref (compiled-class-caps class) 'states) 4096)
+    (check-equal? (hash-ref (compiled-class-caps class) 'reference-depth) 8)
+    (check-equal? (hash-ref (compiled-class-caps class) 'token-length) 4096)
+    (check-true (class-accepts? class (make-string 4096 #\a)))
+    (check-false (class-accepts? class (make-string 4097 #\a)))
+    (check-equal? (class-work-bound class) 4097)
+    (define longer (one "/a*/" (hash 'length 3)))
+    (define shorter (one "/a*/" (hash 'length 1)))
+    (define difference (class-difference-witness longer shorter))
+    (check-true (string? difference))
+    (check-equal? (string-length difference) 2)
+    (check-true (class-accepts? longer difference))
+    (check-false (class-accepts? shorter difference))
+    (check-false (class-difference-witness shorter longer)))
+   (test-case
     "resource caps reject rather than truncate their proofs"
     (check-exn (error-code "class-repetition-cap") (lambda () (one "/a{33}/")))
     (check-exn
      (error-code "class-reference-cap")
      (lambda ()
        (compile-classes
-        (hash "a" "<b>" "b" "<c>" "c" "x")
+        (hash "a" "b" "b" "c" "c" "\"x\"")
         #:caps
         (hash-set small-caps 'reference-depth 2))))
     (check-exn
      (error-code "class-state-cap")
-     (lambda () (one "/[ab]+/" (hash-set small-caps 'states 2)))))
+     (lambda () (one "/ab/" (hash-set small-caps 'states 2)))))
    (test-case
     "overlap and difference are exact products with concrete witnesses"
     (define left (one "/[a-c]+/"))
@@ -116,7 +144,7 @@
     (check-true (string? difference))
     (check-true (class-accepts? left difference))
     (check-false (class-accepts? right difference))
-    (check-false (class-overlap-witness (one "a") (one "b")))
+    (check-false (class-overlap-witness (one "\"a\"") (one "\"b\"")))
     (check-false (class-difference-witness left (one "/[a-z]+/"))))
    (test-case
     "literal containment and unsafe first-delimiter placement differ"
@@ -168,6 +196,29 @@
     (define same (class-sequence (list "do : " (one "/[a-z]+/"))))
     (define overlap (class-overlap-witness form same))
     (check-false overlap))
+   (test-case
+    "long variable captures compose without a redundant total-length product"
+    (define variable
+      (one "/a+/" (hash 'states 4096 'repetition 256 'reference-depth 16 'token-length 256)))
+    (define form (class-sequence (list variable "=" variable)))
+    (define longest (string-append (make-string 256 #\a) "=" (make-string 256 #\a)))
+    (check-true (class-accepts? form longest))
+    (check-false (class-accepts? form (string-append (make-string 257 #\a) "=a")))
+    (check-false (class-accepts? form (string-append "a=" (make-string 257 #\a))))
+    (check-equal? (hash-ref (compiled-class-caps form) 'token-length) 513)
+    (check-true (<= (vector-length (automaton-transitions (compiled-class-machine form))) 1024))
+    (define tighter (class-sequence (list variable "=" variable) #:caps (hash 'token-length 20)))
+    (check-true
+     (class-accepts? tighter (string-append (make-string 9 #\a) "=" (make-string 10 #\a))))
+    (check-false
+     (class-accepts? tighter (string-append (make-string 10 #\a) "=" (make-string 10 #\a))))
+    (define string-cap
+      (class-sequence (list variable "=" variable) #:caps (hash "max-token-length" 20)))
+    (check-equal? (hash-ref (compiled-class-caps string-cap) 'token-length) 20)
+    (check-false (class-accepts? string-cap longest))
+    (define looser (class-sequence (list variable "=" variable) #:caps (hash 'token-length 600)))
+    (check-true (class-accepts? looser longest))
+    (check-true (<= (vector-length (automaton-transitions (compiled-class-machine looser))) 1024)))
    (test-case
     "witnesses replay and GBNF uses escaped scalar ranges"
     (define class (one "/[a-c]{2,4}/"))
@@ -299,3 +350,11 @@
    failures
    'gates
    (make-immutable-hash (hash->list gates))))
+
+(module+
+ test
+ (define result (run-tests))
+ (unless (or
+          (equal? (hash-ref result 'status #f) "passed")
+          (and (hash-has-key? result 'fail) (equal? (hash-ref result 'fail) 0)))
+   (error 'test "Checks failed" result)))

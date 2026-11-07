@@ -22,6 +22,8 @@
 
 (define (language->grammar body)
   (hash
+   'source
+   (emit-declarations (hash (language-name body) body))
    'language
    (declaration->jsexpr body)
    'classes

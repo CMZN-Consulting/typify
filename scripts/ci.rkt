@@ -7,6 +7,8 @@
          racket/path
          racket/port
          racket/string
+         "../src/classes.rkt"
+         "../src/diagnostics.rkt"
          "format.rkt"
          "leak-check.rkt")
 
@@ -14,9 +16,11 @@
 
 (define test-modules
   '("test/smoke.rkt"
+    "test/test-automata-minimize.rkt"
     "test/test-classes.rkt"
     "test/test-syntax.rkt"
     "test/test-language.rkt"
+    "test/test-language-edge.rkt"
     "test/test-decoder.rkt"
     "test/test-meta-mutation.rkt"))
 
@@ -30,6 +34,7 @@
     hostile-corpus
     class-witnesses
     worked-example-classes
+    emission-contract
     meta-selfcheck))
 
 (define (field data key (default #f))
@@ -55,6 +60,7 @@
    (else (format "~a" value))))
 
 (define (run-test root name)
+  (fprintf (current-error-port) "Running ~a\n" name)
   (define output (open-output-string))
   (define errors (open-output-string))
   (with-handlers
@@ -73,6 +79,12 @@
         1
         'error
         (exn-message error)
+        'detail
+        (cond
+         ((class-error? error)
+          (hasheq 'code (class-error-code error) 'data (class-error-data error)))
+         ((exn:fail:typify? error) (diagnostic->jsexpr (exn:fail:typify-diagnostic error)))
+         (else 'null))
         'stdout
         (get-output-string output)
         'stderr

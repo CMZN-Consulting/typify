@@ -18,11 +18,11 @@
 (define catalog
   (string-append
    "#lang typify\ndeclare : Catalog\nversion : 1\n"
-   "is : category = book | journal\nis : title = /[^=]+/\n"
+   "is : category = \"book\" | \"journal\"\nis : title = /[^=]+/\n"
    "primitive : output : category title\nterm : item : category title\n"
    "rule : item <kind> <heading> -> output <kind> <heading>\n"
    "form : item : <category> = <title>\ndoes : item <category> <title>\n"
-   "example : item : book = Algebra\ncount : item = at-least-one\nend!\n"))
+   "example : item : book = Algebra\ncount : item = 1..*\nend!\n"))
 
 (define (run-blind-corpus)
   (if (and (file-exists? blind-path) (file-exists? import-path))
@@ -79,8 +79,8 @@
      (read-declarations
       (string-replace
        catalog
-       "category = book | journal"
-       "category = book | journal\nis : category = book")))
+       "category = \"book\" | \"journal\""
+       "category = \"book\" | \"journal\"\nis : category = \"book\"")))
    "E_CLASS_DUPLICATE")
   (reject
    (lambda ()
@@ -122,7 +122,7 @@
   (reject
    (lambda ()
      (read-declarations
-      (string-replace catalog "is : category = book | journal" "is : category = /.+/")))
+      (string-replace catalog "is : category = \"book\" | \"journal\"" "is : category = /.+/")))
    "E_DELIMITER_AMBIGUOUS")
   (reject
    (lambda ()
@@ -135,14 +135,14 @@
   (define overlap
     (string-replace
      catalog
-     "count : item = at-least-one"
-     "form : item : book = <title>\ndoes : item book <title>\ncount : item = at-least-one"))
+     "count : item = 1..*"
+     "form : item : book = <title>\ndoes : item book <title>\ncount : item = 1..*"))
   (reject (lambda () (read-declarations overlap)) "E_FORM_OVERLAP")
   (define swallowed
-    "#lang typify\ndeclare : Demo\ncomment : go\nis : value = yes | no\nprimitive : output : value\nform : go : <value>\ndoes : output <value>\nexample : go : yes\nend!\n")
+    "#lang typify\ndeclare : Demo\ncomment : go\nis : value = \"yes\" | \"no\"\nprimitive : output : value\nform : go : <value>\ndoes : output <value>\nexample : go : yes\nend!\n")
   (reject (lambda () (read-declarations swallowed)) "E_EXAMPLE_EMPTY")
   (define nullary
-    "#lang typify\ndeclare : Flags\nprimitive : ready\nform : ready!\ndoes : ready\nexample : ready!\ncount : ready = one\nend!\n")
+    "#lang typify\ndeclare : Flags\nprimitive : ready\nform : ready!\ndoes : ready\nexample : ready!\ncount : ready = 1\nend!\n")
   (define flags (hash-ref (read-declarations nullary) "Flags"))
   (check (hash-ref (check-program "ready!" flags) 'terms) '(("ready")))
   (reject (lambda () (check-program "ready!\nready!" flags)) "E_PROGRAM_COUNT")
@@ -195,3 +195,11 @@
      (hash-count (language-constructors meta))))))
 
 (module+ main (displayln (canonical-json (run-tests))))
+
+(module+
+ test
+ (define result (run-tests))
+ (unless (or
+          (equal? (hash-ref result 'status #f) "passed")
+          (and (hash-has-key? result 'fail) (equal? (hash-ref result 'fail) 0)))
+   (error 'test "Checks failed" result)))

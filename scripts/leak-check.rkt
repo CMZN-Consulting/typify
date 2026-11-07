@@ -86,7 +86,8 @@
    ((path files))
    (define name (relative root path))
    (when (link-exists? path) (issue! name 'symlink))
-   (when (regexp-match? #rx"[.]typify$" name) (issue! name 'generated-source))
+   (when (and (regexp-match? #rx"[.]typify$" name) (not (string-prefix? name "test/corpus/")))
+     (issue! name 'generated-source))
    (when (and (regexp-match? #rx"[.]md$" name) (not (member name '("README.md" "LICENSE.md"))))
      (issue! name 'markdown)))
   (for

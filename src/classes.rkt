@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require racket/list racket/match racket/set racket/string)
+(require racket/list racket/match racket/set racket/string "automata-minimize.rkt")
 
 (provide compile-classes
          class-accepts?
@@ -15,6 +15,8 @@
          class-delimiter-witness
          class->gbnf
          class->gbnf-rules
+         class-work-bound
+         class-check-bound
          class-error-message
          default-class-caps
          unicode-version
@@ -36,7 +38,126 @@
 (define class-error-message exn-message)
 
 (define default-class-caps
-  (hash 'states 4096 'repetition 256 'reference-depth 32 'token-length 256 'allow-ascii-space #t))
+  (hash 'states 4096 'repetition 256 'reference-depth 8 'token-length 4096 'allow-ascii-space #t))
+
+(define automaton-work-limit 1048576)
+
+(define bounded-machines (make-weak-hasheq))
+
+(define bounded-class-cache (make-weak-hasheq))
+
+(define (bounded? machine) (hash-ref bounded-machines machine #f))
+
+(define (mark-bounded! machine) (hash-set! bounded-machines machine #t) machine)
+
+(define (work-fail phase (bounds #f))
+  (fail
+   "class-work-cap"
+   "temporary automaton state count exceeds the construction or search budget"
+   (if bounds
+     (hash 'limit automaton-work-limit 'phase phase 'resource "temporary-states" 'bounds bounds)
+     (hash 'limit automaton-work-limit 'phase phase 'resource "temporary-states"))))
+
+(define (class-work-bound class)
+  (define machine (compiled-class-machine class))
+  (define controls (vector-length (automaton-transitions machine)))
+  (if (bounded? machine)
+    controls
+    (* controls (add1 (caps-ref (compiled-class-caps class) 'token-length)))))
+
+(define (class-check-bound left (right #f) #:literal (literal #f))
+  (cond
+   (literal (* (class-work-bound left) (add1 (string-length literal))))
+   (right (* (class-work-bound left) (add1 (class-work-bound right))))
+   (else (class-work-bound left))))
+
+(define (class-count-bounds class)
+  (define machine (compiled-class-machine class))
+  (define rows (automaton-transitions machine))
+  (define embedded? (bounded? machine))
+  (define length-limit (caps-ref (compiled-class-caps class) 'token-length))
+  (define edge-groups (for/sum ((row (in-vector rows))) (length row)))
+  (define interval-pieces
+    (for*/sum
+     ((row (in-vector rows)) (transition (in-list row)))
+     (length (edge-ranges transition))))
+  (hash
+   'representation
+   (if embedded? "length-bounded" "compact-pattern")
+   'stored-states
+   (vector-length rows)
+   'pattern-control-states
+   (if embedded? 'null (vector-length rows))
+   'length-limit
+   length-limit
+   'length-counter-positions
+   (add1 length-limit)
+   'bounded-states-upper-bound
+   (class-work-bound class)
+   'bounded-edge-groups-upper-bound
+   (if embedded? edge-groups (* length-limit edge-groups))
+   'bounded-interval-pieces-upper-bound
+   (if embedded? interval-pieces (* length-limit interval-pieces))
+   'temporary-states-limit
+   automaton-work-limit))
+
+(define (class-check-count-bounds left (right #f) #:literal (literal #f))
+  (define base
+    (hash
+     'kind
+     (cond (literal "literal-prefix-product") (right "class-product") (else "bounded-view"))
+     'states-upper-bound
+     (class-check-bound left right #:literal literal)
+     'left
+     (class-count-bounds left)))
+  (cond
+   (literal (hash-set base 'literal-code-points (string-length literal)))
+   (right (hash-set base 'right (class-count-bounds right)))
+   (else base)))
+
+(define (with-count-bounds bounds thunk)
+  (with-handlers
+   ((class-error?
+     (lambda (failure)
+       (if (equal? (class-error-code failure) "class-work-cap")
+         (raise
+          (struct-copy
+           class-error
+           failure
+           (data (hash-set (class-error-data failure) 'bounds bounds))))
+         (raise failure)))))
+   (thunk)))
+
+(define (bounded-class-machine class)
+  (define machine (compiled-class-machine class))
+  (if (bounded? machine)
+    machine
+    (hash-ref!
+     bounded-class-cache
+     class
+     (lambda ()
+       (with-count-bounds
+        (class-count-bounds class)
+        (lambda () (bound-machine machine (compiled-class-caps class))))))))
+
+(define (minimize-machine machine)
+  (define-values
+   (start accepting transitions)
+   (minimize-dfa
+    (automaton-start machine)
+    (automaton-accepting machine)
+    (for/vector
+     ((row (in-vector (automaton-transitions machine))))
+     (for/list
+      ((transition (in-list row)))
+      (cons (edge-ranges transition) (edge-target transition))))))
+  (automaton
+   start
+   accepting
+   (vector->immutable-vector
+    (for/vector
+     ((row (in-vector transitions)))
+     (for/list ((transition (in-list row))) (edge (car transition) (cdr transition)))))))
 
 (define scalar-intervals '((0 . 55295) (57344 . 1114111)))
 
@@ -93,8 +214,12 @@
      'states
      'max-repetition
      'repetition
+     'depth
+     'reference-depth
      'max-reference-depth
      'reference-depth
+     'length
+     'token-length
      'max-token-length
      'token-length))
   (define caps
@@ -129,39 +254,22 @@
 (define (rx-alternation parts)
   (cond ((null? parts) 'empty) ((null? (cdr parts)) (car parts)) (else (list 'alternation parts))))
 
-(define (split-except source)
-  (define size (string-length source))
-  (let loop ((at 0) (quote? #f) (range? #f) (slash? #f) (escaped? #f))
-    (cond
-     ((= at size) (values source #f))
-     (else
-      (define character (string-ref source at))
-      (cond
-       (escaped? (loop (add1 at) quote? range? slash? #f))
-       ((char=? character #\\) (loop (add1 at) quote? range? slash? #t))
-       ((and (not quote?)
-             (not range?)
-             (not slash?)
-             (<= (+ at 8) size)
-             (string=? (substring source at (+ at 8)) " except "))
-        (values (string-trim (substring source 0 at)) (string-trim (substring source (+ at 8)))))
-       ((char=? character #\") (loop (add1 at) (not quote?) range? slash? #f))
-       ((and (not quote?) (char=? character #\[)) (loop (add1 at) quote? #t slash? #f))
-       ((and (not quote?) (char=? character #\])) (loop (add1 at) quote? #f slash? #f))
-       ((and (not quote?) (not range?) (char=? character #\/) (or (= at 0) slash?))
-        (loop (add1 at) quote? range? (not slash?) #f))
-       (else (loop (add1 at) quote? range? slash? #f)))))))
-
-(define (parse-pattern source known caps)
+(define (parse-pattern source known caps #:pattern? (pattern? #f))
   (define at 0)
   (define size (string-length source))
   (define (syntax-error message)
     (fail "class-syntax" message (hash 'source source 'column (add1 at))))
   (define (peek) (and (< at size) (string-ref source at)))
   (define (take!) (define value (peek)) (set! at (add1 at)) value)
-  (define (skip!)
-    (let loop ()
-      (when (and (peek) (memv (peek) '(#\space #\tab #\newline #\return))) (take!) (loop))))
+  (define (blank? value) (and value (memv value '(#\space #\tab #\newline #\return))))
+  (define (skip!) (let loop () (when (blank? (peek)) (take!) (loop))))
+  (define (except?)
+    (and (not pattern?)
+         (<= (+ at 6) size)
+         (string=? (substring source at (+ at 6)) "except")
+         (or (= (+ at 6) size)
+             (blank? (string-ref source (+ at 6)))
+             (char=? (string-ref source (+ at 6)) #\"))))
   (define (hex! width)
     (unless (<= (+ at width) size) (syntax-error "incomplete code-point escape"))
     (define value (string->number (substring source at (+ at width)) 16))
@@ -222,16 +330,21 @@
     (when (null? ranges) (syntax-error "empty range"))
     (define normalized (intersect-intervals (normalize-intervals ranges) scalar-intervals))
     (list 'characters (if negate? (subtract-intervals scalar-intervals normalized) normalized)))
-  (define (reference!)
+  (define (slash!)
     (take!)
     (define begin at)
-    (let loop ()
-      (unless (peek) (syntax-error "unclosed class reference"))
-      (unless (char=? (peek) #\>) (take!) (loop)))
-    (define name (substring source begin at))
-    (take!)
-    (when (string=? name "") (syntax-error "empty class reference"))
-    (list 'reference name))
+    (let loop ((range? #f) (quoted? #f) (escaped? #f))
+      (unless (peek) (syntax-error "unclosed slash pattern"))
+      (define value (take!))
+      (cond
+       (escaped? (loop range? quoted? #f))
+       ((char=? value #\\) (loop range? quoted? #t))
+       ((and (not range?) (char=? value #\")) (loop range? (not quoted?) #f))
+       ((and (not quoted?) (char=? value #\[)) (loop #t quoted? #f))
+       ((and (not quoted?) (char=? value #\])) (loop #f quoted? #f))
+       ((and (not range?) (not quoted?) (char=? value #\/))
+        (parse-pattern (substring source begin (sub1 at)) known caps #:pattern? #t))
+       (else (loop range? quoted? #f)))))
   (define (number!)
     (define begin at)
     (let loop () (when (and (peek) (char<=? #\0 (peek) #\9)) (take!) (loop)))
@@ -248,49 +361,65 @@
     (unless (peek) (syntax-error "expected a class expression"))
     (case (peek)
       ((#\") (quoted!))
-      ((#\[) (range!))
-      ((#\<) (reference!))
-      ((#\.) (take!) (list 'characters scalar-intervals))
-      ((#\\) (take!) (list 'text (string (integer->char (escaped!)))))
+      ((#\< #\>) (syntax-error "class references are bare names, not angle placeholders"))
+      ((#\[) (unless pattern? (syntax-error "ranges must appear inside slash patterns")) (range!))
+      ((#\.)
+       (unless pattern? (syntax-error "wildcards must appear inside slash patterns"))
+       (take!)
+       (list 'characters scalar-intervals))
+      ((#\\)
+       (unless pattern? (syntax-error "escape a literal inside quotes or a slash pattern"))
+       (take!)
+       (list 'text (string (integer->char (escaped!)))))
+      ((#\/) (if pattern? (syntax-error "escape a literal slash") (slash!)))
       ((#\()
        (take!)
-       (define result (alternation!))
+       (define result (expression!))
        (skip!)
        (unless (and (peek) (char=? (take!) #\))) (syntax-error "unclosed group"))
        result)
       ((#\? #\* #\+ #\{ #\} #\) #\| #\@ #\^) (syntax-error "unexpected class operator"))
       (else
-       (define begin at)
-       (let loop ()
-         (when (and
-                (peek)
-                (not
-                 (memv
+       (cond
+        (pattern? (list 'text (string (take!))))
+        (else
+         (define begin at)
+         (let loop ()
+           (when (and
                   (peek)
-                  '(#\space
-                    #\tab
-                    #\newline
-                    #\return
-                    #\"
-                    #\[
-                    #\]
-                    #\<
-                    #\>
-                    #\.
-                    #\\
-                    #\(
-                    #\)
-                    #\?
-                    #\*
-                    #\+
-                    #\{
-                    #\}
-                    #\|))))
-           (take!)
-           (loop)))
-       (when (= begin at) (syntax-error "unexpected class token"))
-       (define word (substring source begin at))
-       (if (set-member? known word) (list 'reference word) (list 'text word)))))
+                  (not
+                   (memv
+                    (peek)
+                    '(#\space
+                      #\tab
+                      #\newline
+                      #\return
+                      #\"
+                      #\[
+                      #\]
+                      #\<
+                      #\>
+                      #\.
+                      #\\
+                      #\/
+                      #\(
+                      #\)
+                      #\?
+                      #\*
+                      #\+
+                      #\{
+                      #\}
+                      #\|))))
+             (take!)
+             (loop)))
+         (when (= begin at) (syntax-error "unexpected class token"))
+         (define name (substring source begin at))
+         (unless (set-member? known name)
+           (fail
+            "class-reference"
+            "undeclared class reference"
+            (hash 'class name 'column (add1 begin))))
+         (list 'reference name))))))
   (define (repeated!)
     (define result (atom!))
     (skip!)
@@ -311,8 +440,10 @@
   (define (sequence!)
     (let loop ((result '()))
       (skip!)
-      (if (or (not (peek)) (memv (peek) '(#\) #\|)))
-        (rx-sequence (reverse result))
+      (if (or (not (peek)) (memv (peek) '(#\) #\|)) (except?))
+        (begin
+          (when (and (not pattern?) (null? result)) (syntax-error "expected a class expression"))
+          (rx-sequence (reverse result)))
         (loop (cons (repeated!) result)))))
   (define (alternation!)
     (let loop ((result (list (sequence!))))
@@ -320,82 +451,46 @@
       (if (and (peek) (char=? (peek) #\|))
         (begin (take!) (loop (cons (sequence!) result)))
         (rx-alternation (reverse result)))))
-  (define result (alternation!))
+  (define (expression!)
+    (define body (alternation!))
+    (skip!)
+    (cond
+     ((except?)
+      (set! at (+ at 6))
+      (define literals
+        (let loop ((result '()))
+          (skip!)
+          (unless (and (peek) (char=? (peek) #\"))
+            (fail
+             "class-except"
+             "except accepts quoted literal values only"
+             (hash 'column (add1 at))))
+          (define value (cadr (quoted!)))
+          (skip!)
+          (if (and (peek) (char=? (peek) #\|))
+            (begin (take!) (loop (cons value result)))
+            (reverse (cons value result)))))
+      (list 'except body literals))
+     (else body)))
+  (define result (expression!))
   (skip!)
   (unless (= at size) (syntax-error "unexpected closing operator"))
   result)
 
-(define (literal-alternatives source)
-  (define parts
-    (let loop ((at 0) (begin 0) (quoted? #f) (escaped? #f) (result '()))
-      (cond
-       ((= at (string-length source))
-        (when quoted? (fail "class-syntax" "unclosed quoted literal"))
-        (reverse (cons (string-trim (substring source begin at)) result)))
-       (else
-        (define character (string-ref source at))
-        (cond
-         (escaped? (loop (add1 at) begin quoted? #f result))
-         ((char=? character #\\) (loop (add1 at) begin quoted? #t result))
-         ((char=? character #\") (loop (add1 at) begin (not quoted?) #f result))
-         ((and (char=? character #\|) (not quoted?))
-          (loop
-           (add1 at)
-           (add1 at)
-           quoted?
-           #f
-           (cons (string-trim (substring source begin at)) result)))
-         (else (loop (add1 at) begin quoted? #f result)))))))
-  (for
-   ((part (in-list parts)))
-   (when (string=? part "") (fail "class-syntax" "empty literal alternative")))
-  parts)
-
 (define (read-class-source source known caps)
   (unless (and (string? source) (positive? (string-length (string-trim source))))
     (fail "class-syntax" "class source must be nonempty text"))
-  (define-values (expression except) (split-except (string-trim source)))
-  (when (string-prefix? expression "@")
+  (define trimmed (string-trim source))
+  (when (string-prefix? trimmed "@")
     (fail "class-host-predicate" "host predicates are not part of the class language"))
-  (define expression-size (string-length expression))
-  (define wrapped?
-    (and (>= expression-size 2)
-         (char=? (string-ref expression 0) #\/)
-         (char=? (string-ref expression (sub1 expression-size)) #\/)))
-  (define special?
-    (for/or
-     ((character (in-string expression)))
-     (memv character '(#\" #\[ #\] #\( #\) #\< #\> #\? #\* #\+ #\{ #\} #\\))))
-  (define tree
-    (cond
-     (wrapped? (parse-pattern (substring expression 1 (sub1 expression-size)) known caps))
-     ((or special? (set-member? known expression)) (parse-pattern expression known caps))
-     (else
-      (rx-alternation (map (lambda (text) (list 'text text)) (literal-alternatives expression))))))
-  (define exclusions
-    (cond
-     ((not except) '())
-     (else
-      (for/list
-       ((part (in-list (literal-alternatives except))))
-       (if (string-prefix? part "\"")
-         (match
-          (parse-pattern part (set) caps)
-          ((list 'text text) text)
-          (_ (fail "class-except" "except accepts literal values only")))
-         part)))))
-  (values tree exclusions))
+  (values (parse-pattern trimmed known caps) '()))
 
 (define (make-nfa tree resolve caps alphabet)
   (define next 0)
   (define epsilon (make-hash))
   (define transitions (make-hash))
   (define (state!)
-    (when (>= next (caps-ref caps 'states))
-      (fail
-       "class-state-cap"
-       "NFA exceeds the declared state cap"
-       (hash 'cap (caps-ref caps 'states) 'phase "nfa")))
+    (when (>= next automaton-work-limit) (work-fail "nfa"))
     (begin0 next (set! next (add1 next))))
   (define (epsilon! from to) (hash-update! epsilon from (lambda (values) (cons to values)) '()))
   (define (edge! from to ranges)
@@ -525,13 +620,30 @@
    (hash-update!
     grouped
     (edge-target transition)
-    (lambda (ranges) (append (edge-ranges transition) ranges))
+    (lambda (labels) (cons (edge-ranges transition) labels))
     '()))
   (sort
-   (for/list (((target ranges) (in-hash grouped))) (edge (normalize-intervals ranges) target))
+   (for/list
+    (((target labels) (in-hash grouped)))
+    (edge
+     (if (null? (cdr labels)) (car labels) (normalize-intervals (append-map values labels)))
+     target))
    <
    #:key
    (lambda (transition) (caar (edge-ranges transition)))))
+
+(define (disjoint-outgoing options close)
+  (define disjoint?
+    (let loop ((remaining options))
+      (or (null? remaining)
+          (and (for/and
+                ((other (in-list (cdr remaining))))
+                (null? (intersect-intervals (edge-ranges (car remaining)) (edge-ranges other))))
+               (loop (cdr remaining))))))
+  (and disjoint?
+       (for/list
+        ((transition (in-list options)))
+        (edge (edge-ranges transition) (close (list (edge-target transition)))))))
 
 (define (build-machine start-key accepting? outgoing caps)
   (define identities (make-hash))
@@ -544,11 +656,7 @@
      identities
      key
      (lambda ()
-       (when (>= next (caps-ref caps 'states))
-         (fail
-          "class-state-cap"
-          "automaton exceeds the declared state cap"
-          (hash 'cap (caps-ref caps 'states) 'phase "dfa")))
+       (when (>= next automaton-work-limit) (work-fail "dfa"))
        (define identity next)
        (set! next (add1 next))
        (hash-set! identities key identity)
@@ -583,37 +691,41 @@
     (hash-ref! closures key (lambda () (epsilon-closure key epsilon))))
   (define (outgoing states)
     (define options (append-map (lambda (state) (hash-ref transitions state '())) states))
-    (define events (make-hash))
-    (for
-     ((transition (in-list options)))
-     (for
-      ((range (in-list (edge-ranges transition))))
-      (hash-update!
-       events
-       (car range)
-       (lambda (changes) (cons (cons (edge-target transition) 1) changes))
-       '())
-      (hash-update!
-       events
-       (add1 (cdr range))
-       (lambda (changes) (cons (cons (edge-target transition) -1) changes))
-       '())))
-    (define boundaries (sort (hash-keys events) <))
-    (define active (make-hash))
-    (if (null? boundaries)
-      '()
-      (filter-map
-       (lambda (lower upper)
+    (define direct (disjoint-outgoing options close))
+    (if direct
+      direct
+      (let ()
+        (define events (make-hash))
+        (for
+         ((transition (in-list options)))
          (for
-          ((change (in-list (hash-ref events lower))))
-          (define count (+ (hash-ref active (car change) 0) (cdr change)))
-          (if (zero? count)
-            (hash-remove! active (car change))
-            (hash-set! active (car change) count)))
-         (define targets (hash-keys active))
-         (and (pair? targets) (edge (list (cons lower (sub1 upper))) (close targets))))
-       (drop-right boundaries 1)
-       (cdr boundaries))))
+          ((range (in-list (edge-ranges transition))))
+          (hash-update!
+           events
+           (car range)
+           (lambda (changes) (cons (cons (edge-target transition) 1) changes))
+           '())
+          (hash-update!
+           events
+           (add1 (cdr range))
+           (lambda (changes) (cons (cons (edge-target transition) -1) changes))
+           '())))
+        (define boundaries (sort (hash-keys events) <))
+        (define active (make-hash))
+        (if (null? boundaries)
+          '()
+          (filter-map
+           (lambda (lower upper)
+             (for
+              ((change (in-list (hash-ref events lower))))
+              (define count (+ (hash-ref active (car change) 0) (cdr change)))
+              (if (zero? count)
+                (hash-remove! active (car change))
+                (hash-set! active (car change) count)))
+             (define targets (hash-keys active))
+             (and (pair? targets) (edge (list (cons lower (sub1 upper))) (close targets))))
+           (drop-right boundaries 1)
+           (cdr boundaries))))))
   (build-machine (close (list start)) (lambda (states) (and (member end states) #t)) outgoing caps))
 
 (define (machine-step machine state point)
@@ -642,8 +754,7 @@
            (hash-ref nodes state)
            point
            (lambda ()
-             (when (>= next (caps-ref caps 'states))
-               (fail "class-state-cap" "literal exclusion trie exceeds the state cap"))
+             (when (>= next automaton-work-limit) (work-fail "exclusion-trie"))
              (define identity next)
              (set! next (add1 next))
              (hash-set! nodes identity (make-hash))
@@ -685,16 +796,17 @@
 
 (define (bound-machine machine caps)
   (define limit (caps-ref caps 'token-length))
-  (build-machine
-   (cons (automaton-start machine) 0)
-   (lambda (key) (vector-ref (automaton-accepting machine) (car key)))
-   (lambda (key)
-     (if (= (cdr key) limit)
-       '()
-       (for/list
-        ((transition (in-list (vector-ref (automaton-transitions machine) (car key)))))
-        (edge (edge-ranges transition) (cons (edge-target transition) (add1 (cdr key)))))))
-   caps))
+  (mark-bounded!
+   (build-machine
+    (cons (automaton-start machine) 0)
+    (lambda (key) (vector-ref (automaton-accepting machine) (car key)))
+    (lambda (key)
+      (if (= (cdr key) limit)
+        '()
+        (for/list
+         ((transition (in-list (vector-ref (automaton-transitions machine) (car key)))))
+         (edge (edge-ranges transition) (cons (edge-target transition) (add1 (cdr key)))))))
+    caps)))
 
 (define (compile-classes sources #:caps (raw-caps (hash)))
   (unless (hash? sources) (fail "class-source" "classes must be a map"))
@@ -724,11 +836,7 @@
   (define expanded-nodes 0)
   (define (expand node stack)
     (set! expanded-nodes (add1 expanded-nodes))
-    (when (> expanded-nodes (caps-ref caps 'states))
-      (fail
-       "class-state-cap"
-       "class expansion exceeds the declared state cap"
-       (hash 'cap (caps-ref caps 'states) 'phase "references")))
+    (when (> expanded-nodes automaton-work-limit) (work-fail "references"))
     (match
      node
      ((list 'reference name)
@@ -749,6 +857,7 @@
      ((list 'alternation children)
       (rx-alternation (map (lambda (child) (expand child stack)) children)))
      ((list 'repeat child minimum maximum) (list 'repeat (expand child stack) minimum maximum))
+     ((list 'except child literals) (list 'except (expand child stack) literals))
      (_ node)))
   (for/hash
    ((name (in-list (sort (hash-keys trees) string<?))))
@@ -756,8 +865,14 @@
    (define-values
     (start end epsilon transitions)
     (make-nfa (expand (list 'reference name) '()) resolve caps alphabet))
-   (define machine (bound-machine (determinize start end epsilon transitions caps) caps))
-   (values name (compiled-class name (hash-ref raw name "<letter>") machine caps alphabet))))
+   (define machine (minimize-machine (determinize start end epsilon transitions caps)))
+   (define controls (vector-length (automaton-transitions machine)))
+   (when (> controls (caps-ref caps 'states))
+     (fail
+      "class-state-cap"
+      "minimal pattern automaton exceeds the declared state cap"
+      (hash 'cap (caps-ref caps 'states) 'states controls 'phase "minimal-pattern")))
+   (values name (compiled-class name (hash-ref raw name "letter") machine caps alphabet))))
 
 (define (class-accepts? class text)
   (and (string? text)
@@ -770,7 +885,7 @@
             (machine-step machine state (char->integer character))))
          (and final (vector-ref (automaton-accepting machine) final)))))
 
-(define (search-witness initial accepting? outgoing cap)
+(define (search-witness initial accepting? outgoing cap (bounds #f))
   (define seen (make-hash))
   (hash-set! seen initial #t)
   (let loop ((front (list (cons initial '()))) (back '()))
@@ -788,18 +903,14 @@
            ((transition (in-list (outgoing state))))
            (define target (edge-target transition))
            (unless (hash-has-key? seen target)
-             (when (>= (hash-count seen) cap)
-               (fail
-                "class-state-cap"
-                "product search exceeds the declared state cap"
-                (hash 'cap cap 'phase "product")))
+             (when (>= (hash-count seen) cap) (work-fail "product" bounds))
              (hash-set! seen target #t)
              (set! next (cons (cons target (cons (caar (edge-ranges transition)) reversed)) next))))
           (loop (cdr front) next)))))))
 
 (define (class-overlap-witness left right)
-  (define a (compiled-class-machine left))
-  (define b (compiled-class-machine right))
+  (define a (bounded-class-machine left))
+  (define b (bounded-class-machine right))
   (search-witness
    (cons (automaton-start a) (automaton-start b))
    (lambda (state)
@@ -818,9 +929,8 @@
       <
       #:key
       (lambda (transition) (caar (edge-ranges transition)))))
-   (min
-    (caps-ref (compiled-class-caps left) 'states)
-    (caps-ref (compiled-class-caps right) 'states))))
+   automaton-work-limit
+   (class-check-count-bounds left right)))
 
 (define (complete-outgoing machine state alphabet)
   (define transitions (if state (vector-ref (automaton-transitions machine) state) '()))
@@ -829,8 +939,8 @@
   (append transitions (if (null? missing) '() (list (edge missing #f)))))
 
 (define (class-difference-witness left right)
-  (define a (compiled-class-machine left))
-  (define b (compiled-class-machine right))
+  (define a (bounded-class-machine left))
+  (define b (bounded-class-machine right))
   (search-witness
    (cons (automaton-start a) (automaton-start b))
    (lambda (state)
@@ -849,9 +959,8 @@
       <
       #:key
       (lambda (transition) (caar (edge-ranges transition)))))
-   (min
-    (caps-ref (compiled-class-caps left) 'states)
-    (caps-ref (compiled-class-caps right) 'states))))
+   automaton-work-limit
+   (class-check-count-bounds left right)))
 
 (define (intersection-caps left right)
   (for/hash
@@ -884,6 +993,16 @@
             (vector-ref (automaton-accepting b) (cdr state))))
      (lambda (state) (product-outgoing (automaton-transitions a) (automaton-transitions b) state))
      caps))
+  (when (or
+         (and (bounded? a)
+              (<=
+               (caps-ref (compiled-class-caps left) 'token-length)
+               (caps-ref (compiled-class-caps right) 'token-length)))
+         (and (bounded? b)
+              (<=
+               (caps-ref (compiled-class-caps right) 'token-length)
+               (caps-ref (compiled-class-caps left) 'token-length))))
+    (mark-bounded! machine))
   (compiled-class
    name
    ""
@@ -903,7 +1022,7 @@
      (else
       (define-values
        (_advance prefix-edges)
-       (literal-prefix-machine literal alphabet (caps-ref caps 'states)))
+       (literal-prefix-machine literal alphabet automaton-work-limit))
       (build-machine
        (cons (automaton-start original) 0)
        (lambda (state) (vector-ref (automaton-accepting original) (car state)))
@@ -912,6 +1031,7 @@
           (lambda (transition) (< (cdr (edge-target transition)) size))
           (product-outgoing (automaton-transitions original) prefix-edges state)))
        caps))))
+  (when (or (zero? size) (bounded? original)) (mark-bounded! machine))
   (compiled-class name "" machine caps alphabet))
 
 (define (class-trimmed class #:name (name "trimmed"))
@@ -944,11 +1064,24 @@
      (if (string? part) (string-length part) (caps-ref (compiled-class-caps part) 'token-length))))
   (define base-caps (or inherited default-class-caps))
   (define selected
-    (for/fold ((result base-caps)) (((key value) (in-hash raw-caps))) (hash-set result key value)))
+    (for/fold
+     ((result base-caps))
+     (((key value) (in-hash raw-caps)))
+     (define name (if (string? key) (string->symbol key) key))
+     (define canonical
+       (case name
+         ((max-states) 'states)
+         ((max-repetition) 'repetition)
+         ((depth max-reference-depth) 'reference-depth)
+         ((length max-token-length) 'token-length)
+         (else name)))
+     (hash-set result canonical value)))
   (define explicit-length?
     (for/or
      ((key (in-list (hash-keys raw-caps))))
-     (member key '(token-length max-token-length "token-length" "max-token-length"))))
+     (member
+      key
+      '(length token-length max-token-length "length" "token-length" "max-token-length"))))
   (define caps
     (normalize-caps
      (if explicit-length? selected (hash-set selected 'token-length (max 1 combined-length)))))
@@ -957,8 +1090,7 @@
   (define epsilon (make-hash))
   (define transitions (make-hash))
   (define (state!)
-    (when (>= next (caps-ref caps 'states))
-      (fail "class-state-cap" "class sequence exceeds the declared state cap"))
+    (when (>= next automaton-work-limit) (work-fail "sequence"))
     (begin0 next (set! next (add1 next))))
   (define (link! from to) (hash-update! epsilon from (lambda (targets) (cons to targets)) '()))
   (define initial (state!))
@@ -981,7 +1113,7 @@
            '()))
         target))
       (else
-       (define machine (compiled-class-machine part))
+       (define machine (bounded-class-machine part))
        (define copies
          (build-vector (vector-length (automaton-transitions machine)) (lambda (_) (state!))))
        (define end (state!))
@@ -1003,8 +1135,12 @@
              options))
           '())))
        end))))
-  (define machine (bound-machine (determinize initial final epsilon transitions caps) caps))
-  (compiled-class name "" machine caps alphabet))
+  (define concatenated (determinize initial final epsilon transitions caps))
+  (define machine
+    (if (< (caps-ref caps 'token-length) combined-length)
+      (bound-machine concatenated caps)
+      concatenated))
+  (compiled-class name "" (mark-bounded! machine) caps alphabet))
 
 (define (class-contains-literal-witness class literal)
   (unless (string? literal) (fail "class-literal" "delimiter must be text"))
@@ -1023,16 +1159,12 @@
     (lambda (name) (fail "class-reference" "unexpected internal reference"))
     caps
     alphabet))
-  (define machine (bound-machine (determinize start end epsilon transitions caps) caps))
+  (define machine (determinize start end epsilon transitions caps))
   (class-overlap-witness class (compiled-class "delimiter" literal machine caps alphabet)))
 
 (define (literal-prefix-machine literal alphabet cap)
   (define size (string-length literal))
-  (when (or (zero? size) (> size cap))
-    (fail
-     "class-state-cap"
-     "delimiter prefix machine exceeds the declared state cap"
-     (hash 'cap cap 'phase "delimiter")))
+  (when (or (zero? size) (> size cap)) (work-fail "delimiter"))
   (define points (list->vector (map char->integer (string->list literal))))
   (define failures (make-vector size 0))
   (for
@@ -1075,9 +1207,9 @@
 (define (class-delimiter-witness class literal)
   (unless (string? literal) (fail "class-literal" "delimiter must be text"))
   (define size (string-length literal))
-  (define machine (compiled-class-machine class))
+  (define machine (bounded-class-machine class))
   (define alphabet (compiled-class-alphabet class))
-  (define cap (caps-ref (compiled-class-caps class) 'states))
+  (define cap automaton-work-limit)
   (cond
    ((zero? size) #f)
    (else
@@ -1111,19 +1243,21 @@
         <
         #:key
         (lambda (transition) (caar (edge-ranges transition)))))
-     cap))))
+     cap
+     (class-check-count-bounds class #:literal literal)))))
 
 (define (class-witnesses class)
-  (define machine (compiled-class-machine class))
+  (define machine (bounded-class-machine class))
   (define accepting (automaton-accepting machine))
   (define transitions (automaton-transitions machine))
-  (define cap (caps-ref (compiled-class-caps class) 'states))
+  (define cap automaton-work-limit)
   (define shortest
     (search-witness
      (automaton-start machine)
      (lambda (state) (vector-ref accepting state))
      (lambda (state) (vector-ref transitions state))
-     cap))
+     cap
+     (class-check-count-bounds class)))
   (define memo (make-hash))
   (define (longest state)
     (hash-ref!
@@ -1147,7 +1281,15 @@
           candidate
           best)))))
   (define near (if (not (vector-ref accepting (automaton-start machine))) "" (string #\nul)))
-  (hash 'shortest shortest 'boundary (longest (automaton-start machine)) 'near-miss near))
+  (hash
+   'shortest
+   shortest
+   'boundary
+   (longest (automaton-start machine))
+   'near-miss
+   near
+   'bounds
+   (class-count-bounds class)))
 
 (define (gbnf-point point)
   (define width (if (<= point 65535) 4 8))
@@ -1180,7 +1322,7 @@
                 (char<=? #\0 character #\9)
                 (char=? character #\-))))
     (fail "class-gbnf-name" "GBNF rule names contain letters, digits and hyphens only"))
-  (define machine (compiled-class-machine class))
+  (define machine (bounded-class-machine class))
   (define rows (automaton-transitions machine))
   (define accepts (automaton-accepting machine))
   (define productive (make-hash))

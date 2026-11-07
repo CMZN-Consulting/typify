@@ -306,7 +306,7 @@
       "#lang typify"
       (string-append "declare : " (hash-ref family 'language))
       "version : 1"
-      "cap : token-length = 32")
+      "cap : length = 32")
      (for/list
       ((entry (in-list (hash-ref family 'classes))))
       (string-append "is : " (car entry) " = " (cadr entry)))
@@ -480,3 +480,11 @@
    (reverse disagreements)))
 
 (module+ main (displayln (canonical-json (run-tests))))
+
+(module+
+ test
+ (define result (run-tests))
+ (unless (or
+          (equal? (hash-ref result 'status #f) "passed")
+          (and (hash-has-key? result 'fail) (equal? (hash-ref result 'fail) 0)))
+   (error 'test "Checks failed" result)))

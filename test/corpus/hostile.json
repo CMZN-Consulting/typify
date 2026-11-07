@@ -4,14 +4,15 @@
     "sourceArtifactLabel": "regular-core-falsifier",
     "sourceSha256": "f7ee1ef3fabcdbdd54ebfdb9971164ae44684e13a972374cef940023cbc7fa52",
     "extraction": "literal ALL and FOR assignments; source code never executed",
-    "translation": "seven ASCII consumer classes translated into the regular core; segment and quoted are helpers",
-    "blind": false
+    "translation": "seven ASCII consumer classes translated into quoted literals, slash patterns and bare references; segment and quoted are helpers",
+    "blind": false,
+    "classNotation": "quoted literals, slash patterns, bare references and weakest except"
   },
   "caps": {
     "states": 32768,
     "repetition": 256,
-    "reference-depth": 32,
-    "token-length": 128
+    "depth": 32,
+    "length": 128
   },
   "consumerClasses": [
     "path",
@@ -25,13 +26,13 @@
   "classes": {
     "segment": "/([A-Za-z0-9_+@-][A-Za-z0-9._+@-]* | \".\" [A-Za-z0-9_+@-][A-Za-z0-9._+@-]* | \"..\" [A-Za-z0-9._+@-]+)/",
     "quoted": "/\"\\\"\" ([\\u0020-\\u0021\\u0023-\\u005B\\u005D-\\u007E] | \"\\\\\" [\\\"\\\\/] | \"\\\\u00\" ([2-6][0-9a-fA-F] | \"7\" [0-9a-eA-E]))* \"\\\"\"/",
-    "path": "/(\"/\" <segment>)+/",
-    "vault": "/<segment> (\"/\" <segment>)*/",
+    "path": "(\"/\" segment)+",
+    "vault": "segment (\"/\" segment)*",
     "days": "/[1-9][0-9]*/",
     "label": "/[\\u0021-\\u007E] ([\\u0020-\\u007E]* [\\u0021-\\u007E])?/",
     "identity": "/[A-Z][A-Z0-9]*/",
-    "argv": "/\"[\" \" \"? <quoted> (\",\" \" \"? <quoted>)* \" \"? \"]\"/",
-    "layout": "tiled | even-horizontal | even-vertical"
+    "argv": "\"[\" \" \"? quoted (\",\" \" \"? quoted)* \" \"? \"]\"",
+    "layout": "\"tiled\" | \"even-horizontal\" | \"even-vertical\""
   },
   "cases": [
     {

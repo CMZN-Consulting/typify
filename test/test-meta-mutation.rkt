@@ -31,34 +31,51 @@
      "declare : Lexicon"
      "version : 7"
      "comment : //"
-     "is : color = blue | red"
+     "is : color = \"blue\" | \"red\""
      "is : text = /[A-Za-z ]+/"
      "primitive : output : color text"
      "primitive : stop"
      "term : wrap : color text"
      "term : halt"
+     "term : annotation : text"
+     "fact : annotation"
      "rule : wrap <c> <t> -> output <c> <t>"
      "rule : halt -> stop"
      "form : item : <color> = <text>"
      "does : wrap <color> <text>"
+     "restricts!"
      "example : item : blue = Warm sky"
      "default : item : red = Calm sky"
-     "count : wrap = at-least-one"
+     "count : wrap = 1..*"
      "form : halt!"
      "does : halt"
      "example : halt!"
      "file : entries.data"
      "required!"
      "order : strict"
-     "sees : Auxiliary"
+     "sees : Auxiliary_2-N"
      "note : quoting"
      "cap : states = 4096"
+     "cap : repetition = 256"
+     "cap : depth = 8"
+     "cap : length = 4096"
      "cell : content = shadow"
      "writes : output : content = put 1"
      "reads : output : exists = reject"
-     "ensure : stable : (bound data)"
+     "ensure : wrap : stable = (bound <c>)"
+     "join : modes : \"ro\" \"ro\" = \"ro\""
+     "join : modes : \"ro\" \"rw\" = \"rw\""
+     "join : modes : \"rw\" \"ro\" = \"rw\""
+     "join : modes : \"rw\" \"rw\" = \"rw\""
+     "effect : stop = external"
+     "stage : output = 0"
+     "guard : wrap = exists"
+     "scope : wrap = program"
+     "scope : halt = parent"
+     "scope : annotation = root"
+     "fuel : wrap = 32"
      "end!"
-     "declare : Auxiliary"
+     "declare : Auxiliary_2-N"
      "optional!"
      "end!")
    "\n"))
@@ -66,7 +83,7 @@
 (define (ordinary-model)
   (define declarations (read-declarations ordinary-source))
   (define body (hash-ref declarations "Lexicon"))
-  (define auxiliary (hash-ref declarations "Auxiliary"))
+  (define auxiliary (hash-ref declarations "Auxiliary_2-N"))
   (define checked (check-program "// annotation\nitem : blue = Warm sky\nhalt!" body))
   (list
    (language-name body)
@@ -91,7 +108,7 @@
     "entries.data"
     #t
     #f
-    ("Auxiliary")
+    ("Auxiliary_2-N")
     ("quoting")
     4096
     ("item : red = Calm sky")
@@ -105,30 +122,104 @@
    multiplicity
    "\nend!\n"))
 
+(define (metadata-model)
+  (define body (hash-ref (read-declarations ordinary-source) "Lexicon"))
+  (list
+   (constructor-fact? (hash-ref (language-constructors body) "annotation"))
+   (form-restricting? (car (language-forms body)))
+   (for/list
+    ((row (language-rows body))
+     #:when
+     (memq (hash-ref row 'kind) '(cell writes reads ensure join effect stage guard scope fuel)))
+    (define captures (hash-ref row 'captures))
+    (list
+     (symbol->string (hash-ref row 'kind))
+     (for/list
+      ((name (sort (hash-keys captures) string<?)))
+      (list name (hash-ref captures name)))))))
+
+(define metadata-expected
+  '(#t
+    #t
+    (("cell" (("name" "content") ("value" "shadow")))
+     ("writes" (("name" "output") ("value" "content = put 1")))
+     ("reads" (("name" "output") ("value" "exists = reject")))
+     ("ensure" (("constructor" "wrap") ("name" "stable") ("value" "(bound <c>)")))
+     ("join" (("name" "modes") ("value" "\"ro\" \"ro\" = \"ro\"")))
+     ("join" (("name" "modes") ("value" "\"ro\" \"rw\" = \"rw\"")))
+     ("join" (("name" "modes") ("value" "\"rw\" \"ro\" = \"rw\"")))
+     ("join" (("name" "modes") ("value" "\"rw\" \"rw\" = \"rw\"")))
+     ("effect" (("name" "stop")))
+     ("stage" (("name" "output") ("number" "0")))
+     ("guard" (("name" "wrap") ("value" "exists")))
+     ("scope" (("name" "wrap") ("scope-mode" "program")))
+     ("scope" (("name" "halt") ("scope-mode" "parent")))
+     ("scope" (("name" "annotation") ("scope-mode" "root")))
+     ("fuel" (("name" "wrap") ("number" "32"))))))
+
 (define (counter-model multiplicity program)
   (define body (hash-ref (read-declarations (counter-source multiplicity)) "Counter"))
   (hash-ref (check-program program body) 'terms))
 
 (define (rejects? procedure) (with-handlers ((exn:fail? (lambda (_) #t))) (procedure) #f))
 
+(define (fact-model)
+  (define source
+    (string-join
+     '("#lang typify"
+       "declare : Catalog"
+       "is : category = \"book\" | \"journal\""
+       "is : category-alias = category"
+       "is : title = /[A-Za-z ]+/"
+       "term : item : category-alias title"
+       "form : item : <category-alias> = <title>"
+       "does : item <category-alias> <title>"
+       "count : item = 1..*"
+       "end!")
+     "\n"))
+  (define body (hash-ref (read-declarations source) "Catalog"))
+  (hash-ref (check-program "item : journal = Market Research" body) 'terms))
+
 (define internal-oracles
   (list
    (oracle "ordinary-declaration-and-meaning" ordinary-model ordinary-expected)
-   (oracle "count-one" (lambda () (counter-model "one" "tick!")) '(("tick")))
-   (oracle "count-affine-empty" (lambda () (counter-model "at-most-one" "")) '())
+   (oracle "metadata-retention-and-term-classification" metadata-model metadata-expected)
+   (oracle "facts-and-bare-class-reference" fact-model '(("item" "journal" "Market Research")))
    (oracle
-    "count-affine-two"
-    (lambda () (rejects? (lambda () (counter-model "at-most-one" "tick!\ntick!"))))
+    "mixed-constructor-needs-fact-marker"
+    (lambda ()
+      (rejects?
+       (lambda ()
+         (read-declarations
+          "#lang typify\ndeclare : Mixed\nprimitive : output\nterm : unclassified\nend!"))))
     #t)
-   (oracle "count-relevant" (lambda () (counter-model "at-least-one" "tick!")) '(("tick")))
    (oracle
-    "count-relevant-empty"
-    (lambda () (rejects? (lambda () (counter-model "at-least-one" ""))))
+    "restricting-form-needs-required-count-or-default"
+    (lambda ()
+      (rejects?
+       (lambda ()
+         (read-declarations
+          "#lang typify\ndeclare : Restricted\nterm : denial\nform : deny!\ndoes : denial\nrestricts!\nend!"))))
     #t)
-   (oracle "count-unrestricted-empty" (lambda () (counter-model "any" "")) '())
+   (oracle
+    "withdrawn-count-words"
+    (lambda ()
+      (for/list
+       ((word '("one" "at-most-one" "at-least-one" "any")))
+       (rejects? (lambda () (counter-model word "tick!")))))
+    '(#t #t #t #t))
+   (oracle "count-one" (lambda () (counter-model "1" "tick!")) '(("tick")))
+   (oracle "count-optional-empty" (lambda () (counter-model "0..1" "")) '())
+   (oracle
+    "count-optional-two"
+    (lambda () (rejects? (lambda () (counter-model "0..1" "tick!\ntick!"))))
+    #t)
+   (oracle "count-required" (lambda () (counter-model "1..*" "tick!")) '(("tick")))
+   (oracle "count-required-empty" (lambda () (rejects? (lambda () (counter-model "1..*" "")))) #t)
+   (oracle "count-unrestricted-empty" (lambda () (counter-model "*" "")) '())
    (oracle
     "count-unrestricted-many"
-    (lambda () (counter-model "any" "tick!\ntick!\ntick!"))
+    (lambda () (counter-model "*" "tick!\ntick!\ntick!"))
     '(("tick") ("tick") ("tick")))
    (oracle
     "unknown-meta-line"
@@ -145,6 +236,35 @@
 
 (define (replace-at values index replacement)
   (for/list ((value values) (position (in-naturals))) (if (= position index) replacement value)))
+
+(define (pattern-spans source)
+  (define size (string-length source))
+  (define (quoted-end index)
+    (let loop ((position (add1 index)))
+      (cond
+       ((>= position size) (error 'mutation "unterminated class literal"))
+       ((char=? (string-ref source position) #\\) (loop (+ position 2)))
+       ((char=? (string-ref source position) #\") (add1 position))
+       (else (loop (add1 position))))))
+  (define (pattern-end index)
+    (let loop ((position (add1 index)) (range? #f))
+      (cond
+       ((>= position size) (error 'mutation "unterminated class pattern"))
+       ((char=? (string-ref source position) #\\) (loop (+ position 2) range?))
+       ((char=? (string-ref source position) #\[) (loop (add1 position) #t))
+       ((char=? (string-ref source position) #\]) (loop (add1 position) #f))
+       ((and (not range?) (char=? (string-ref source position) #\/)) (add1 position))
+       (else (loop (add1 position) range?)))))
+  (let loop ((position 0) (spans '()))
+    (cond
+     ((>= position size) (reverse spans))
+     ((char=? (string-ref source position) #\") (loop (quoted-end position) spans))
+     ((char=? (string-ref source position) #\/)
+      (define end (pattern-end position))
+      (loop end (cons (cons position end) spans)))
+     (else (loop (add1 position) spans)))))
+
+(define (quoted-literal? source) (regexp-match? #px"^\"(?:[^\"\\\\]|\\\\.)*\"$" source))
 
 (define (make-mutations forms classes)
   (define seeds '())
@@ -196,20 +316,26 @@
   (for
    ((name (sort (hash-keys classes) string<?)))
    (define source (hash-ref classes name))
-   (cond
-    ((and (string-prefix? source "/") (string-suffix? source "/"))
-     (define replacement (if (equal? name "number") "/0/" "/A/"))
-     (unless (equal? source replacement)
-       (add!
-        (string-append "replace-class-pattern/" name)
-        'replace-class-pattern
-        (hasheq 'class name 'before source 'after replacement)
-        forms
-        (hash-set classes name replacement))))
-    (else
-     (define alternatives (string-split source " | "))
+   (for
+    ((span (pattern-spans source)) (index (in-naturals)))
+    (define before (substring source (car span) (cdr span)))
+    (define replacement
+      (cond
+       ((equal? name "number") (if (equal? before "/0/") "/1/" "/0/"))
+       ((equal? before "/A/") "/B/")
+       (else "/A/")))
+    (define after
+      (string-append (substring source 0 (car span)) replacement (substring source (cdr span))))
+    (add!
+     (format "replace-class-pattern/~a/~a" name index)
+     'replace-class-pattern
+     (hasheq 'class name 'position index 'before before 'after replacement)
+     forms
+     (hash-set classes name after)))
+   (define alternatives (string-split source " | "))
+   (when (and (> (length alternatives) 1) (andmap quoted-literal? alternatives))
      (for
-      ((alternative alternatives) (index (in-naturals)) #:when (> (length alternatives) 1))
+      ((alternative alternatives) (index (in-naturals)))
       (define replacement
         (string-join (append (take alternatives index) (drop alternatives (add1 index))) " | "))
       (add!
@@ -217,7 +343,7 @@
        'remove-literal-alternative
        (hasheq 'class name 'position index 'before alternative 'after "removed")
        forms
-       (hash-set classes name replacement))))))
+       (hash-set classes name replacement)))))
   (reverse seeds))
 
 (define (evaluate-oracle item)
@@ -343,3 +469,11 @@
    measurements))
 
 (module+ main (write-json (run-tests)) (newline))
+
+(module+
+ test
+ (define result (run-tests))
+ (unless (or
+          (equal? (hash-ref result 'status #f) "passed")
+          (and (hash-has-key? result 'fail) (equal? (hash-ref result 'fail) 0)))
+   (error 'test "Checks failed" result)))

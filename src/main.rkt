@@ -38,27 +38,21 @@
   (define json? (and (member "--json" arguments) #t))
   (define gbnf? (and (member "--gbnf" arguments) #t))
   (define positional (filter (lambda (value) (not (member value '("--json" "--gbnf")))) arguments))
+  (define (checked-response checked (body #f))
+    (define response (hash 'ok #t 'terms (hash-ref checked 'terms '()) 'diagnostics '()))
+    (if (and body (ormap constructor-rule (hash-values (language-constructors body))))
+      (hash-set response 'bound (declaration-bound body))
+      response))
   (define result
     (match
      positional
      ((list "--version") (hash 'version typify-version))
-     ((list "check" path)
-      (define declarations (load-declarations path))
-      (hash
-       'valid
-       #t
-       'languages
-       (for/list
-        ((name (in-list (sort (hash-keys declarations) string<?))))
-        (declaration->jsexpr (hash-ref declarations name)))))
+     ((list "check" path) (load-declarations path) (checked-response (hash)))
      ((list "check" path name program)
       (define body (select-language (load-declarations path) name))
-      (check-program (file->string program) body #:file program))
+      (checked-response (check-program (file->string program) body #:file program) body))
      ((list "emit" "Typify")
-      (cond
-       (gbnf? (hash 'text (language->gbnf (meta-language))))
-       (json? (hash 'grammar (language->grammar (meta-language))))
-       (else (hash 'text (meta-source)))))
+      (if gbnf? (hash 'text (language->gbnf (meta-language))) (language->grammar (meta-language))))
      ((list "emit" path name)
       (define body (select-language (load-declarations path) name))
       (if gbnf? (hash 'text (language->gbnf body)) (language->grammar body)))
@@ -77,7 +71,8 @@
     (lambda (error)
       (define item (exn:fail:typify-diagnostic error))
       (if json?
-        (displayln (canonical-json (hash 'valid #f 'diagnostics (list (diagnostic->jsexpr item)))))
+        (displayln
+         (canonical-json (hash 'ok #f 'terms '() 'diagnostics (list (diagnostic->jsexpr item)))))
         (fprintf
          (current-error-port)
          "~a:~a:~a: ~a: ~a [~a]\n"
@@ -97,11 +92,13 @@
          #:data
          (hash 'reason (exn-message error))))
       (if json?
-        (displayln (canonical-json (hash 'valid #f 'diagnostics (list (diagnostic->jsexpr item)))))
+        (displayln
+         (canonical-json (hash 'ok #f 'terms '() 'diagnostics (list (diagnostic->jsexpr item)))))
         (displayln (exn-message error) (current-error-port)))
       (exit 2))))
   (define-values (result json-output? grammar?) (run-command arguments))
   (cond
    ((equal? arguments '("--version")) (displayln typify-version))
+   ((and (pair? arguments) (equal? (car arguments) "check") (not json-output?)) (void))
    ((and (hash-has-key? result 'text) (not json-output?)) (display (hash-ref result 'text)))
    (else (displayln (canonical-json result))))))

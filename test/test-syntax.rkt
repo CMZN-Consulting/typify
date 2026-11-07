@@ -129,3 +129,11 @@
   (hasheq 'suite "syntax" 'checks checks 'status "passed"))
 
 (module+ main (displayln (canonical-json (run-tests))))
+
+(module+
+ test
+ (define result (run-tests))
+ (unless (or
+          (equal? (hash-ref result 'status #f) "passed")
+          (and (hash-has-key? result 'fail) (equal? (hash-ref result 'fail) 0)))
+   (error 'test "Checks failed" result)))

@@ -8,13 +8,13 @@
   (string-append
    "#lang typify\n"
    "declare : Catalog\n"
-   "is : category = book | journal\n"
+   "is : category = \"book\" | \"journal\"\n"
    "is : title = /[^=]+/\n"
-   "primitive : item : category title\n"
+   "term : item : category title\n"
    "form : item : <category> = <title>\n"
    "does : item <category> <title>\n"
    "example : item : book = Algebra\n"
-   "count : item = at-least-one\n"
+   "count : item = 1..*\n"
    "end!\n"))
 
 (define (run-tests)
@@ -35,3 +35,11 @@
   (hash 'suite "smoke" 'checks 3 'status "passed"))
 
 (module+ main (displayln (canonical-json (run-tests))))
+
+(module+
+ test
+ (define result (run-tests))
+ (unless (or
+          (equal? (hash-ref result 'status #f) "passed")
+          (and (hash-has-key? result 'fail) (equal? (hash-ref result 'fail) 0)))
+   (error 'test "Checks failed" result)))
