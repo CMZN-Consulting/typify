@@ -219,17 +219,7 @@
       (read-declarations
        (string-replace source "count : item = 0..1 by 1" "count : item = 0..1 by 3"))))
    (model-state? (language-model state-body) "remember")
-   (with-handlers
-    ((exn:fail:typify?
-      (lambda (error)
-        (for/first
-         ((item (in-list (exn:fail:typify-diagnostics error)))
-          #:when
-          (equal? (diagnostic-code item) "E_CLASS"))
-         (hash-ref (diagnostic-data item) 'class)))))
-    (read-declarations
-     (string-replace source "count : item = 0..1 by 1" "count : item = 0..1 by A"))
-    "accepted")
+   (constructor-signature (hash-ref (language-constructors (meta-language)) "declare-keyed-count"))
    (hash-ref (check-program "effect : remember = state" (meta-language)) 'terms)))
 
 (define internal-oracles
@@ -248,7 +238,7 @@
       #t
       #t
       #t
-      "width"
+      ("name" "multiplicity" "width")
       (("declare-state" "remember"))))
    (oracle
     "mixed-constructor-needs-fact-marker"
@@ -416,7 +406,10 @@
    ((exn:fail?
      (lambda (failure) (hasheq 'id (oracle-id item) 'pass #f 'exception (exn-message failure)))))
    (define actual ((oracle-run item)))
-   (hasheq 'id (oracle-id item) 'pass (equal? actual (oracle-expected item)))))
+   (define passed? (equal? actual (oracle-expected item)))
+   (if passed?
+     (hasheq 'id (oracle-id item) 'pass #t)
+     (hasheq 'id (oracle-id item) 'pass #f 'actual actual 'expected (oracle-expected item)))))
 
 (define (blind-oracle #:ids (ids #f) #:stop-on-failure? (stop? #f))
   (with-handlers

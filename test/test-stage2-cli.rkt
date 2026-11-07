@@ -240,6 +240,44 @@
        (hash-ref (diagnostic-data mismatch) 'actual)
        program
        "a template mismatch names the path as given"))
+     (write-declaration
+      (string-join
+       '("#lang typify"
+         "declare : First"
+         "term : entry : canonical-path"
+         "end!"
+         "declare : Second"
+         "term : entry : canonical-path"
+         "end!"
+         "declare : Consumer"
+         "primitive : use : canonical-path"
+         "effect : use = external"
+         "form : use!"
+         "does : use (context entry)"
+         "end!")
+       "\n"))
+     (for
+      ((arguments
+        (in-list
+         (list
+          (list "check" declarations)
+          (list "check" declarations "Consumer" absent)
+          (list "tree" declarations absent)
+          (list "plan" declarations absent)
+          (list "plan" declarations "Consumer" absent)
+          (list "emit" declarations "Consumer")))))
+      (define item (refusal arguments))
+      (check
+       (diagnostic-data item)
+       (hash 'kind "reference" 'actual "entry")
+       "every implemented command refuses ambiguous lookups before opening its input"))
+     (define refused-root (execute (list "plan" declarations absent "--json")))
+     (define refused-root-json (string->jsexpr (hash-ref refused-root 'stdout)))
+     (check (hash-has-key? refused-root-json 'skips) #f "a failed root plan has no top-level skips")
+     (check
+      (hash-has-key? refused-root-json 'recorded)
+      #f
+      "a failed root plan has no top-level recorded terms")
      (for
       ((arguments
         (in-list

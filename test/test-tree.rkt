@@ -420,6 +420,22 @@
          (map (lambda (skip) (hash-ref skip 'program)) (lookup-observation-skips observed))))
       '(() ("nested/settings.data")))
      (check
+      "guard-crossing-skips-use-evaluated-arguments-in-the-reading-program-only"
+      (lambda ()
+        (define programs (inherited-programs "guard : deny = (exists (join / missing))"))
+        (define report (plan-programs programs))
+        (define reading
+          (for/first
+           ((entry (in-list (hash-ref report 'programs)))
+            #:when
+            (equal? (hash-ref entry 'path) "nested/deep/use.data"))
+           entry))
+        (list (hash-has-key? report 'skips) (hash-ref reading 'skips)))
+      (list
+       #f
+       (list
+        (hash 'reason "guard" 'fact "exists" 'args '("/missing") 'program "nested/settings.data"))))
+     (check
       "inherited-fuel-overflow-relates-the-first-excess-term-origin"
       (lambda ()
         (define item (diagnostic-of (lambda () (plan-programs (inherited-programs "" 1)))))

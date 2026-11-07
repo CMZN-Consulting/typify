@@ -1651,6 +1651,8 @@
      (constructor-descriptors constructors)
      classes
      opening
+     #:template-names
+     (current-template-names)
      #:on-error
      (lambda (item) (record-diagnostics! (list item)))))
   (current-partition-model model)
@@ -2200,7 +2202,7 @@
     (unless (if
              (eq? (model-write-operation write) 'put)
              (= (model-write-width write) (add1 partitions))
-             (<= partitions (model-write-width write) (add1 partitions)))
+             (<= (model-write-width write) (add1 partitions)))
       (declaration-fail
        "partition"
        (term-source expression)

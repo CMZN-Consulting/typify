@@ -483,12 +483,10 @@
        '()
        'ensure
        '()
-       'skips
-       '()
        'diagnostics
        diagnostics))
     (if (= (length positional) 4)
-      (hash-set* empty 'plan '() 'recorded '())
+      (hash-set* empty 'plan '() 'recorded '() 'skips '())
       (hash-set empty 'programs '())))
    ((equal? command "facts")
     (hash

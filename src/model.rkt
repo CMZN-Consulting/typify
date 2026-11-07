@@ -334,7 +334,15 @@
    (compiled-model-classes model)
    (compiled-model-constructors model)))
 
-(define (compile-model rows constructors classes span #:on-error (on-error #f))
+(define (compile-model
+         rows
+         constructors
+         classes
+         span
+         #:on-error
+         (on-error #f)
+         #:template-names
+         (template-names '()))
   (unless (or (not on-error) (and (procedure? on-error) (procedure-arity-includes? on-error 1)))
     (raise-argument-error 'compile-model "one-argument diagnostic handler or #f" on-error))
   (define failed (make-hash))
@@ -353,6 +361,7 @@
   (define (failed? kind name) (hash-ref failed (cons kind name) #f))
   (define cells (hash))
   (define writes (hash))
+  (define write-rows (hash))
   (define reads (hash))
   (define ensures (hash))
   (define joins (hash))
@@ -454,7 +463,8 @@
              (string->symbol (list-ref match 2))
              width
              (row-span row)
-             literals))))
+             literals)))
+         (set! write-rows (hash-set write-rows name row)))
         ((reads)
          (define name (capture-value row "name"))
          (constructor! name row #:primitive? #t)
@@ -662,6 +672,15 @@
             (hash-ref external-spans name)
             (model-write-span write))))
        (define cell (hash-ref cells (model-write-cell write)))
+       (when (and
+              (model-cell-stacking? cell)
+              (eq? (model-write-operation write) 'delete)
+              (< (model-write-width write) (length template-names)))
+         (decl-fail
+          "partition"
+          (row-text (hash-ref write-rows name))
+          "A delete prefix must include every holding file-template partition"
+          (model-write-span write)))
        (when (and
               (eq? (model-write-operation write) 'delete)
               (hash-has-key? key-classes (model-write-cell write))

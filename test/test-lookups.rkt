@@ -73,6 +73,23 @@
         (consumer "Second.entry" "example : use!")))
      (lookup-reference (hash-ref model "Consumer") "Second.entry"))
    "Second.entry")
+  (check
+   "bare-ambiguity-is-a-declaration-diagnostic-before-any-program-operation"
+   (lambda ()
+     (define-values
+      (model items)
+      (read-declarations/diagnostics
+       (string-append
+        "#lang typify\n"
+        (target "First" "word")
+        (target "Second" "word")
+        (consumer "entry"))
+       #:file
+       "composition.typify"))
+     (map
+      (lambda (item) (list (diagnostic-code item) (diagnostic-file item) (diagnostic-data item)))
+      items))
+   (list (list "E_DECLARATION" "composition.typify" (hash 'kind "reference" 'actual "entry"))))
   (for
    ((signature '("word word" "")) (index (in-naturals)))
    (check
@@ -152,7 +169,7 @@
          "primitive : clear\nwrites : clear : mounts = delete 0\n"
          "form : clear!\ndoes : clear\nfile : Seat<seat>/data")))
      (map diagnostic-data (refusal (lambda () (read-model text)))))
-   (list (hash 'kind "partition" 'actual "clear")))
+   (list (hash 'kind "partition" 'actual "writes : clear : mounts = delete 0")))
   (hash
    'suite
    "lookups"

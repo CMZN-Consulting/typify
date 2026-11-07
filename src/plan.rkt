@@ -783,8 +783,6 @@
      (if (= modelled (length final-events)) "ok" "unchecked")
      'ensure
      (map (lambda (item) (hash-remove item 'program-index)) final-ensures)
-     'skips
-     (map skip->jsexpr final-skips)
      'facts
      (if (plan-needs-facts? programs) facts-hash "none")
      'origins
@@ -797,6 +795,8 @@
        (map event->jsexpr final-events)
        'recorded
        (map recorded->jsexpr recorded-events)
+       'skips
+       (map skip->jsexpr final-skips)
        'ensure
        (map (lambda (item) (hash-remove item 'program-index)) final-ensures))
       (hash-set

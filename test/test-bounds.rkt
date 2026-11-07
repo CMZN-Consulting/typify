@@ -113,7 +113,7 @@
       8
       "the selected body lowers its effective length cap")
      (check
-      (hash-ref (hash-ref expected-bounds "Alpha.length") 'limit)
+      (hash-ref (hash-ref expected-bounds "Alpha.states") 'limit)
       4096
       "defaulted effective caps are printed by language name")
      (for

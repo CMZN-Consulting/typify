@@ -342,7 +342,7 @@
    (map (lambda (word) (hash 'term (list "emit" word) 'unchecked #t)) '("sudo" "su" "root-only"))
    "inherited iterates all first arguments nearest-first and excludes guarded programs")
   (check
-   (hash-ref inherited-plan 'skips)
+   (hash-ref (car (hash-ref inherited-plan 'programs)) 'skips)
    (list
     (hash
      'reason
@@ -353,7 +353,11 @@
      '("/hidden")
      'program
      "root/near/hidden-policy.typify"))
-   "lookup guard skips use the distinct union wire")
+   "lookup guard skips use the distinct union wire in the reading program")
+  (check
+   (hash-has-key? inherited-plan 'skips)
+   #f
+   "root plans contain skips only in their program entries")
   (define templated
     (body
      "Templated"
@@ -745,6 +749,73 @@
    (and absent-conflict (src-span-start-line (diagnostic-range absent-conflict)))
    12
    "an absent language still participates in declaration-ordered metadata")
+  (define (delete-width-source width)
+    (source
+     "DeletePartition"
+     (list
+      "is : office = \"a\""
+      "is : seat = \"b\""
+      "file : <office>/<seat>/policy.typify"
+      "cell : entries = shadow stacking"
+      "primitive : bind : office seat canonical-path value"
+      "writes : bind : entries = put 3"
+      (if (= width 1) "primitive : remove : office" "primitive : remove : office seat")
+      (format "writes : remove : entries = delete ~a" width))))
+  (define-values
+   (_short-delete short-delete-errors)
+   (read-declarations/diagnostics (delete-width-source 1) #:file "short-delete.typify"))
+  (define short-write-line "writes : remove : entries = delete 1")
+  (check
+   (map diagnostic-code short-delete-errors)
+   '("E_DECLARATION")
+   "an unused short delete is refused once before any supplying term")
+  (check
+   (diagnostic-data (car short-delete-errors))
+   (hash 'kind "partition" 'actual short-write-line)
+   "a short delete reports the entire authored writes line")
+  (check
+   (let ((range (diagnostic-range (car short-delete-errors))))
+     (list
+      (src-span-start-line range)
+      (src-span-start-column range)
+      (src-span-end-line range)
+      (src-span-end-column range)))
+   (list 10 1 10 (add1 (string-length short-write-line)))
+   "a short delete covers its complete writes declaration")
+  (define-values
+   (_partition-delete partition-delete-errors)
+   (read-declarations/diagnostics (delete-width-source 2)))
+  (check
+   partition-delete-errors
+   '()
+   "deleting a complete partition prefix remains legal without a terminal path")
+  (define-values
+   (_appearance appearance-errors)
+   (read-declarations/diagnostics
+    (source
+     "JoinAppearance"
+     '("join : modes : \"z\" \"a\" = \"z\""
+       "join : modes : \"z\" \"m\" = \"m\""
+       "join : modes : \"a\" \"m\" = \"a\""))
+    #:file
+    "join-appearance.typify"))
+  (check
+   (map diagnostic-code appearance-errors)
+   '("E_JOIN_LAW")
+   "an unused table still checks its defined associativity compositions")
+  (check
+   (diagnostic-data (car appearance-errors))
+   (hash 'cell "modes" 'expected "associative" 'actual "z a m")
+   "an unauthored triple follows first appearance rather than alphabetic order")
+  (check
+   (src-span-start-line (diagnostic-range (car appearance-errors)))
+   3
+   "an unused table's derived witness covers its first join declaration")
+  (check (hash-ref state-report 'skips) '() "standalone plans retain their skips field")
+  (check
+   (hash-ref (car (hash-ref state-root 'programs)) 'skips)
+   '()
+   "root entries retain empty skips fields")
   (hash 'suite "model-rulings" 'checks checks 'status "passed"))
 
 (module+ test (run-tests))
