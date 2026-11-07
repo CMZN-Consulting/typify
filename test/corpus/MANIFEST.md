@@ -1,8 +1,13 @@
-# Typify v1 Blind Verdict Corpus (v6) — MANIFEST
+# Typify v1 Blind Verdict Corpus (v7) — MANIFEST
 
-**Corpus Revision**: `v6` (updated for the `13:04:34Z` through `13:58:40Z` corrections to `typify-v1-definition-2026-11-07.md`).
+**Corpus Revision**: `v7` (updated for the `14:17:06Z` and `14:28:59Z` corrections to `typify-v1-definition-2026-11-07.md`).
 
-This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `13:58:40Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `14:28:59Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+
+## Cases Changed in `v7` (`14:17:06Z` & `14:28:59Z` Corrections)
+
+- **`069-ask-declared-form-and-rule`**, **`070-ask-declared-with-default`**, and **`078-ask-meta-self-representation`** (`expected.json`): Updated `ask_lines`, `stdout_json.lines`, and `ask_json.lines` (`? : <word>`) to the literal order ruled in `14:17:06Z` items 2 & 4 and `14:28:59Z` item 1 (first `form`, `file` when present, first `does`, further `(form, does)` pairs, `term`/`primitive` once, the `is` lines of the placeholders the `does` lines name each once in first-naming order, constructor's lines, `rule` lines, `ensure` lines, `example` lines, `count` lines, the `missing` line `? : missing : refused | default | empty`, `default` lines, and `note` lines).
+- **`094-rule-context-lookup-and-program-guard`** (`expected.json`): Removed top-level `"skips"` from root-form `plan --json` (`stdout_json` at top level and in subcase `root-plan-context-and-guard-ok`), keeping `"skips"` inside each entry of `"programs"` only (as `"recorded"` is) per `14:17:06Z` item 5.
 
 ## Cases Changed in `v6` (`13:04:34Z`–`13:58:40Z` Corrections)
 

@@ -44,22 +44,24 @@
   ],
   "ask_lines": [
     "? : form : ? : <verb>",
-    "? : term : ask-word : verb",
     "? : does : ask-word <verb>",
+    "? : term : ask-word : verb",
     "? : is : verb = letter /[A-Za-z0-9_-]*/",
     "? : example : ? : form",
-    "? : count : ask-word = *"
+    "? : count : ask-word = *",
+    "? : missing : empty"
   ],
   "stdout_json": {
     "word": "?",
     "status": "declared",
     "lines": [
       "? : form : ? : <verb>",
-      "? : term : ask-word : verb",
       "? : does : ask-word <verb>",
+      "? : term : ask-word : verb",
       "? : is : verb = letter /[A-Za-z0-9_-]*/",
       "? : example : ? : form",
-      "? : count : ask-word = *"
+      "? : count : ask-word = *",
+      "? : missing : empty"
     ],
     "near": [],
     "accepts": [],
@@ -70,11 +72,12 @@
     "status": "declared",
     "lines": [
       "? : form : ? : <verb>",
-      "? : term : ask-word : verb",
       "? : does : ask-word <verb>",
+      "? : term : ask-word : verb",
       "? : is : verb = letter /[A-Za-z0-9_-]*/",
       "? : example : ? : form",
-      "? : count : ask-word = *"
+      "? : count : ask-word = *",
+      "? : missing : empty"
     ],
     "near": [],
     "accepts": [],

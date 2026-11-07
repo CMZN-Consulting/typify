@@ -46,11 +46,12 @@
   ],
   "ask_lines": [
     "? : form : access : <mode>",
-    "? : term : access : mode",
     "? : does : access <mode>",
+    "? : term : access : mode",
     "? : is : mode = \"ro\" | \"rw\"",
     "? : example : access : rw",
     "? : count : access = 0..1",
+    "? : missing : default",
     "? : default : access : ro"
   ],
   "stdout_json": {
@@ -58,11 +59,12 @@
     "status": "declared",
     "lines": [
       "? : form : access : <mode>",
-      "? : term : access : mode",
       "? : does : access <mode>",
+      "? : term : access : mode",
       "? : is : mode = \"ro\" | \"rw\"",
       "? : example : access : rw",
       "? : count : access = 0..1",
+      "? : missing : default",
       "? : default : access : ro"
     ],
     "near": [],
@@ -74,11 +76,12 @@
     "status": "declared",
     "lines": [
       "? : form : access : <mode>",
-      "? : term : access : mode",
       "? : does : access <mode>",
+      "? : term : access : mode",
       "? : is : mode = \"ro\" | \"rw\"",
       "? : example : access : rw",
       "? : count : access = 0..1",
+      "? : missing : default",
       "? : default : access : ro"
     ],
     "near": [],

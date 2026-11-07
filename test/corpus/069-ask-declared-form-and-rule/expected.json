@@ -43,26 +43,26 @@
   ],
   "ask_lines": [
     "? : form : item : <category> = <title>",
-    "? : term : item : category title",
     "? : does : item <category> <title>",
+    "? : term : item : category title",
     "? : is : category = \"book\" | \"journal\" | \"note\"",
-    "? : is : word = /[A-Za-z0-9-]+/",
     "? : is : title = word (\" \" word)*",
     "? : example : item : book = Types and Programming Languages",
-    "? : count : item = 1..*"
+    "? : count : item = 1..*",
+    "? : missing : refused"
   ],
   "stdout_json": {
     "word": "item",
     "status": "declared",
     "lines": [
       "? : form : item : <category> = <title>",
-      "? : term : item : category title",
       "? : does : item <category> <title>",
+      "? : term : item : category title",
       "? : is : category = \"book\" | \"journal\" | \"note\"",
-      "? : is : word = /[A-Za-z0-9-]+/",
       "? : is : title = word (\" \" word)*",
       "? : example : item : book = Types and Programming Languages",
-      "? : count : item = 1..*"
+      "? : count : item = 1..*",
+      "? : missing : refused"
     ],
     "near": [],
     "accepts": [],
@@ -73,13 +73,13 @@
     "status": "declared",
     "lines": [
       "? : form : item : <category> = <title>",
-      "? : term : item : category title",
       "? : does : item <category> <title>",
+      "? : term : item : category title",
       "? : is : category = \"book\" | \"journal\" | \"note\"",
-      "? : is : word = /[A-Za-z0-9-]+/",
       "? : is : title = word (\" \" word)*",
       "? : example : item : book = Types and Programming Languages",
-      "? : count : item = 1..*"
+      "? : count : item = 1..*",
+      "? : missing : refused"
     ],
     "near": [],
     "accepts": [],
