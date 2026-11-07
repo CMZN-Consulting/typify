@@ -1,0 +1,39 @@
+typify : 2
+
+declare : Contents
+version : 1
+file : Contents.typify
+required!
+comment : //
+order : strict
+sees : Structure
+is : genre = novel | essay | poetry
+is : title = the title of a book, as printed on its spine
+form : shelf : <label>
+does : the shelf this file lists, by the label the Structure program gives it
+once : shelf
+example : shelf : top
+form : full!
+does : the shelf has no room for another book
+form : <title> -> <genre>
+does : one book on the shelf and the genre it is filed under
+example : Middlemarch -> novel
+form : loan : <title> to <reader>
+does : the book <title> is out on loan to <reader>
+example : loan : Middlemarch to Ada
+end!
+
+declare : Structure
+version : 1
+file : Structure.typify
+required!
+is : material = oak | pine | steel
+is : label = a short name for a shelf, unique in the bookcase
+form : made-of : <material>
+does : what the bookcase is built from
+once : made-of
+example : made-of : oak
+form : shelf : <label>
+does : one shelf, named <label>; the shelves are listed from the top down
+example : shelf : top
+end!

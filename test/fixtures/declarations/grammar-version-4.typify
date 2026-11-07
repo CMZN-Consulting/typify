@@ -1,0 +1,5 @@
+typify : 4
+
+declare : Structure
+colour : red
+end!

@@ -1,0 +1,12 @@
+typify : 3
+
+declare : Catalog
+version : 1
+file : catalog.typify
+required!
+is : category = book | journal
+is : title = a nonempty title
+form : item : <category> = <title>
+does : describe an item by its category and title
+example : item : book = Algebra
+end!

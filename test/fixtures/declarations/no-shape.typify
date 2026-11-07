@@ -1,0 +1,12 @@
+typify : 2
+
+declare : Structure
+version : 1
+file : Structure.typify
+required!
+this line has no shape
+is : material = oak | pine | steel
+form : made-of : <material>
+does : what the bookcase is built from
+example : made-of : oak
+end!

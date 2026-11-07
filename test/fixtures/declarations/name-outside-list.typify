@@ -1,0 +1,11 @@
+typify : 2
+
+declare : Recipes
+version : 1
+file : Recipes.typify
+required!
+is : unit = g | ml | piece
+form : serves : <number>
+does : how many people the dish feeds
+example : serves : 4
+end!

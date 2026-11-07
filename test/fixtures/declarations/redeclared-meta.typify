@@ -1,0 +1,4 @@
+typify : 3
+
+declare : LanguageDeclarations
+end!

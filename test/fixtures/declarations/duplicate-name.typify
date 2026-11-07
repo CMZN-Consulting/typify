@@ -1,0 +1,18 @@
+typify : 2
+
+declare : Structure
+version : 1
+file : Structure.typify
+required!
+is : material = oak | pine | steel
+form : made-of : <material>
+does : what the bookcase is built from
+end!
+
+declare : Structure
+version : 2
+file : Structure.typify
+required!
+form : shelf : <label>
+does : one shelf, named <label>
+end!

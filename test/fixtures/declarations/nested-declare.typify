@@ -1,0 +1,16 @@
+typify : 2
+
+declare : Structure
+version : 1
+file : Structure.typify
+required!
+form : shelf : <label>
+does : one shelf, named <label>
+
+declare : Contents
+version : 1
+file : Contents.typify
+required!
+form : book : <title>
+does : one book on the shelf
+end!
