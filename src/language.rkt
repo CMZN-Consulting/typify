@@ -66,6 +66,8 @@
 
 (define value-origin-cache (make-weak-hasheq))
 
+(define form-restriction-spans (make-weak-hasheq))
+
 (define current-program-span (make-parameter #f))
 
 (define current-source-lines (make-parameter (hash)))
@@ -849,6 +851,7 @@
            (declaration-fail "orphan" (row-source row) "restricts! must belong to a form" span))
          (when (hash-ref current-form 'restricting? #f)
            (declaration-fail "duplicate" (row-source row) "The restriction is declared twice" span))
+         (hash-set! form-restriction-spans (hash-ref current-form 'span) span)
          (set! current-form (hash-set current-form 'restricting? #t)))
         ((example default)
          (unless current-form
@@ -1075,7 +1078,7 @@
        (when (check-duplicates (map slot-name slots))
          (declaration-fail
           "duplicate"
-          (check-duplicates (map slot-name slots))
+          (string-append "<" (check-duplicates (map slot-name slots)) ">")
           "A placeholder occurs on both sides of the line"
           span))
        (define missing-placeholder? #f)
@@ -1193,7 +1196,7 @@
         (fail
          "E_RESTRICTS"
          "A restricting form needs a required multiplicity or a default"
-         (form-span candidate)
+         (hash-ref form-restriction-spans (form-span candidate) (form-span candidate))
          (hash
           'form
           (form-source candidate)

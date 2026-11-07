@@ -13,7 +13,8 @@
     (unless (equal? actual expected)
       (error 'test-diagnostics "~a: expected ~s; received ~s" context expected actual)))
   (define registry
-    '(("N_CLASS_EMPTY" class)
+    '(("N_CELL_WIDTH" cell)
+      ("N_CLASS_EMPTY" class)
       ("E_LINE_SHAPE" actual)
       ("E_FORM_NONE" actual)
       ("E_FORM_SHADOW" form actual)

@@ -46,44 +46,71 @@
       (hash-set* identity 'witnesses (class-witnesses class) 'caps (compiled-class-caps class))))
    (define written (string->jsexpr serialized))
    (define witnesses (hash-ref written 'witnesses))
-   (define shortest (hash-ref witnesses 'shortest))
-   (define boundary (hash-ref witnesses 'boundary))
-   (define near (hash-ref witnesses 'near-miss))
-   (define empty? (and (eq? shortest #f) (eq? boundary #f)))
-   (define overlap (and empty? (class-overlap-witness class class)))
-   (define shortest-ok?
-     (if empty? (eq? shortest #f) (and (string? shortest) (class-accepts? class shortest))))
-   (define boundary-ok?
-     (if empty? (eq? boundary #f) (and (string? boundary) (class-accepts? class boundary))))
-   (define near-ok? (and (string? near) (not (class-accepts? class near))))
+   (define empty? (eq? (hash-ref witnesses 'empty #f) #t))
    (define identity-ok? (equal? name (language-name body)))
-   (define empty-ok? (or (not empty?) (eq? overlap #f)))
-   (hash-set*
-    written
-    'written
-    #t
-    'checks
-    (if empty? 5 4)
-    'empty-language
-    empty?
-    'replay
-    (hash
-     'shortest
-     shortest-ok?
-     'boundary
-     boundary-ok?
-     'near-miss
-     near-ok?
-     'identity
-     identity-ok?
-     'self-overlap-checked
-     empty?
-     'self-overlap
-     overlap
-     'empty-language
-     empty-ok?)
-    'passed
-    (and shortest-ok? boundary-ok? near-ok? identity-ok? empty-ok?))))
+   (cond
+    (empty?
+     (define fields-absent?
+       (for/and ((field '(shortest boundary near-miss))) (not (hash-has-key? witnesses field))))
+     (define overlap (class-overlap-witness class class))
+     (define empty-ok? (and (class-empty? class) (eq? overlap #f)))
+     (hash-set*
+      written
+      'written
+      #t
+      'checks
+      3
+      'status
+      "empty"
+      'empty-language
+      #t
+      'replay
+      (hash
+       'identity
+       identity-ok?
+       'witness-fields-absent
+       fields-absent?
+       'self-overlap-checked
+       #t
+       'self-overlap
+       overlap
+       'empty-language
+       empty-ok?)
+      'passed
+      (and identity-ok? fields-absent? empty-ok?)))
+    (else
+     (define shortest (hash-ref witnesses 'shortest))
+     (define boundary (hash-ref witnesses 'boundary))
+     (define near (hash-ref witnesses 'near-miss))
+     (define shortest-ok? (and (string? shortest) (class-accepts? class shortest)))
+     (define boundary-ok? (and (string? boundary) (class-accepts? class boundary)))
+     (define near-ok? (and (string? near) (not (class-accepts? class near))))
+     (hash-set*
+      written
+      'written
+      #t
+      'checks
+      4
+      'empty-language
+      #f
+      'replay
+      (hash
+       'shortest
+       shortest-ok?
+       'boundary
+       boundary-ok?
+       'near-miss
+       near-ok?
+       'identity
+       identity-ok?
+       'self-overlap-checked
+       #f
+       'self-overlap
+       #f
+       'empty-language
+       #t)
+      'passed
+      (and shortest-ok? boundary-ok? near-ok? identity-ok?))))))
 
 (define (measure-witnesses models)
   (unless (and

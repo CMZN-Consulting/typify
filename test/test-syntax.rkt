@@ -135,6 +135,9 @@
     (cdr (hash-ref empty-offsets "empty")))
    (src-span "empty.txt" 1 9 1 9 8 8))
   (reject (lambda () (parse-template "<x> and <x>")) "E_DECLARATION")
+  (define duplicate-placeholder
+    (with-handlers ((exn:fail:typify? exn:fail:typify-diagnostic)) (parse-template "<x> and <x>")))
+  (check (diagnostic-data duplicate-placeholder) (hash 'kind "duplicate" 'actual "<x>"))
   (reject (lambda () (parse-template "<a><b>")) "E_CLASS_OVERLAP")
   (reject (lambda () (parse-template "<a")) "E_DECLARATION")
   (reject (lambda () (parse-template "< spaced >")) "E_DECLARATION")

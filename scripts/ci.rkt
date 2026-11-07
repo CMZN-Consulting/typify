@@ -23,6 +23,7 @@
     "test/test-declaration-diagnostics.rkt"
     "test/test-program-diagnostics.rkt"
     "test/test-reader-routed.rkt"
+    "test/test-witness-report.rkt"
     "test/blind-corpus.rkt"
     "test/test-language.rkt"
     "test/test-language-edge.rkt"

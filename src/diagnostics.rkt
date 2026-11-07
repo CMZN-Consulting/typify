@@ -69,6 +69,8 @@
 
 (define diagnostic-data-fields
   (hash
+   "N_CELL_WIDTH"
+   '(cell)
    "N_CLASS_EMPTY"
    '(class)
    "E_LINE_SHAPE"

@@ -1528,6 +1528,11 @@
      (class-check-count-bounds class #:literal literal)))))
 
 (define (class-witnesses class)
+  (if (class-empty? class)
+    (hash 'empty #t 'bounds (class-count-bounds class))
+    (nonempty-class-witnesses class)))
+
+(define (nonempty-class-witnesses class)
   (define machine (bounded-class-machine class))
   (define accepting (automaton-accepting machine))
   (define transitions (automaton-transitions machine))

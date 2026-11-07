@@ -213,7 +213,7 @@
          "A placeholder name occurs more than once"
          index
          (add1 close)
-         (hash 'kind "duplicate" 'actual name)))
+         (hash 'kind "duplicate" 'actual (string-append "<" name ">"))))
       (when (and (= literal-start index) (pair? parts) (slot? (car parts)))
         (failure
          "E_CLASS_OVERLAP"

@@ -84,6 +84,22 @@
     (check-false (class-empty? (one "/a*/")))
     (check-true (class-empty? (one "/a{4}/" (hash 'length 3)))))
    (test-case
+    "empty witness records have no invented members or near misses"
+    (for
+     ((class (in-list
+              (list
+               (one "/[\\x00-\\x1f]/")
+               (one "/a{4}/" (hash 'length 3))
+               (one "\"a\" except \"a\"")))))
+     (define witnesses (class-witnesses class))
+     (check-equal? (sort (hash-keys witnesses) symbol<?) '(bounds empty))
+     (check-true (hash-ref witnesses 'empty))
+     (check-equal? (hash-ref witnesses 'bounds) (class-count-bounds class)))
+    (define nonempty (class-witnesses (one "\"\"")))
+    (check-equal? (sort (hash-keys nonempty) symbol<?) '(boundary bounds near-miss shortest))
+    (check-equal? (hash-ref nonempty 'shortest) "")
+    (check-equal? (hash-ref nonempty 'boundary) ""))
+   (test-case
     "batch class errors preserve declaring definitions and independent successes"
     (define errors '())
     (define classes
@@ -414,7 +430,7 @@
     (check-equal? (boundary "/[a-z]/ \"a\" | \"a\" \"zz\"") "azz")
     (check-equal? (boundary "/[a-z]{2}/ except \"zz\"") "zy")
     (check-equal? (boundary "\"\"") "")
-    (check-false (boundary "\"a\" except \"a\"")))
+    (check-true (hash-ref (class-witnesses (one "\"a\" except \"a\"")) 'empty)))
    (test-case
     "unsupported host escapes and invalid ranges are rejected"
     (for

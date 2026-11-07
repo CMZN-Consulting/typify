@@ -5,7 +5,8 @@
          "../src/classes.rkt"
          "../src/diagnostics.rkt"
          "../src/language.rkt"
-         "../src/meta.rkt")
+         "../src/meta.rkt"
+         "../src/syntax.rkt")
 
 (provide run-tests)
 
@@ -211,7 +212,63 @@
      "form : pair : <word> = <word>"
      "does : pair <word> <word>")
    "E_DECLARATION"
-   (hash 'kind "duplicate" 'actual "word"))
+   (hash 'kind "duplicate" 'actual "<word>"))
+  (one-error
+   '("is : word = /[a-z]+/"
+     "term : pair : word word"
+     "form : <word> : <word>"
+     "does : pair <word> <word>")
+   "E_DECLARATION"
+   (hash 'kind "duplicate" 'actual "<word>"))
+  (define restriction-line " \trestricts! \t")
+  (define restriction-source (source (append basic-rows (list restriction-line))))
+  (define-values
+   (restricted restriction-diagnostics)
+   (read-declarations/diagnostics restriction-source #:file "restricted.typify"))
+  (check
+   (map diagnostic-code restriction-diagnostics)
+   '("E_RESTRICTS")
+   "an ungraded restriction is refused")
+  (check
+   (diagnostic-range (car restriction-diagnostics))
+   (line-record-span
+    (for/first
+     ((record (in-list (read-lines restriction-source #:file "restricted.typify")))
+      #:when
+      (equal? (line-record-raw record) restriction-line))
+     record))
+   "the restriction diagnostic covers its restricts line")
+  (define (check-body-actual text expected-actual source-line)
+    (define-values (model diagnostics) (read-declarations/diagnostics text #:file "bodies.typify"))
+    (define body-errors
+      (filter
+       (lambda (item)
+         (and (equal? (diagnostic-code item) "E_DECLARATION")
+              (equal? (hash-ref (diagnostic-data item) 'kind #f) "body")))
+       diagnostics))
+    (check (length body-errors) 1 "one body structure refusal")
+    (check
+     (diagnostic-data-projection "E_DECLARATION" (diagnostic-data (car body-errors)))
+     (hash 'kind "body" 'actual expected-actual)
+     "body actual follows its source kind")
+    (check
+     (diagnostic-range (car body-errors))
+     (line-record-span
+      (for/first
+       ((record (in-list (read-lines text #:file "bodies.typify")))
+        #:when
+        (equal? (line-record-raw record) source-line))
+       record))
+     "body refusal covers the ruled declaring or offending line"))
+  (define unclosed-line "  declare : Open  ")
+  (check-body-actual (string-append "#lang typify\n" unclosed-line "\n") "EOF" unclosed-line)
+  (define inner-line " \tdeclare : Inner \t")
+  (check-body-actual
+   (string-append "#lang typify\ndeclare : Outer\n" inner-line "\nend!\n")
+   inner-line
+   inner-line)
+  (define outside-line "  version : 1 \t")
+  (check-body-actual (string-append "#lang typify\n" outside-line "\n") outside-line outside-line)
   (define absent-class
     (one-error
      '("primitive : output" "form : item : <unknown>" "does : output")
