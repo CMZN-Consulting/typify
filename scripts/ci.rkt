@@ -24,6 +24,7 @@
     "test/test-library.rkt"
     "test/test-defaults.rkt"
     "test/test-emission.rkt"
+    "test/test-bounds.rkt"
     "test/test-decoder.rkt"
     "test/test-import-corpus.rkt"
     "test/test-meta-mutation.rkt"))

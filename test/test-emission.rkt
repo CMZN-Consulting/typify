@@ -46,6 +46,8 @@
     "Catalog"
     'version
     1
+    'comment
+    "#"
     'caps
     (hash 'states 4096 'repetition 256 'depth 8 'length 32)
     'classes
@@ -186,6 +188,48 @@
     (gbnf-accepts? grammar (car case))
     (cdr case)
     "the GBNF keeps exact spacing, global refusals and finite captures"))
+  (define comment-models
+    (for/list
+     ((prefix '("#" "//" "")))
+     (define item
+       (body
+        "Comments"
+        (list
+         (string-append "comment : " prefix)
+         "term : record : value"
+         "form : go!"
+         "does : record go")))
+     (list prefix item (language->grammar item) (parse-gbnf (language->gbnf item)))))
+  (for
+   ((entry (in-list comment-models)))
+   (define prefix (car entry))
+   (define model (cadr entry))
+   (define wire (caddr entry))
+   (define oracle (cadddr entry))
+   (check (hash-ref wire 'comment) prefix "the comment field is present even when disabled")
+   (check (hash-has-key? wire 'checks) #f "derived check bounds do not enter grammar JSON")
+   (for
+    ((text '("# note" "// note" " \t# note\t " " \t// note\t " "go!" "")))
+    (define stripped (string-trim text))
+    (define expected
+      (or (member stripped '("go!" ""))
+          (and (positive? (string-length prefix)) (string-prefix? stripped prefix))))
+    (define accepted? (and expected #t))
+    (check (line-accepts? text model) accepted? "the reader uses this body's comment prefix")
+    (check (gbnf-accepts? oracle text) accepted? "GBNF uses the same enabled or disabled prefix")))
+  (for*
+   ((left (in-list comment-models))
+    (right (in-list comment-models))
+    #:when
+    (string<? (car left) (car right)))
+   (check
+    (equal? (caddr left) (caddr right))
+    #f
+    "different comment meanings cannot collapse to identical grammar objects")
+   (check
+    (hash-remove (caddr left) 'comment)
+    (hash-remove (caddr right) 'comment)
+    "the regression varies only the comment meaning"))
   (hash 'suite "emission" 'count checks 'pass checks 'fail 0))
 
 (module+

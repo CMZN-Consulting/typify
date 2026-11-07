@@ -43,6 +43,8 @@ The runtime depends on the base package. Class matching uses interval automata a
 
 The emitted grammar recognizes line formation under the declared forms and classes. The reader separately checks program counts, ordering, library results and declaration references.
 
+To inspect the host's derived state bounds for declaration checks, run `racket src/main.rkt check catalog-language.typify --bounds --json`.
+
 For the full tests, build the pinned grammar validator and set its executable path and revision using the preparation steps in [the CI workflow](.github/workflows/ci.yml), then run `raco test test`. Those preparation steps need Git, CMake and a C++ compiler. Run `racket test/smoke.rkt` for a small integration check that needs only Racket. Format source with `racket scripts/format.rkt --write`. GitHub Actions also measures grammar agreement and mutation strength. Kernel checks and complete conformance acceptance are separate; missing external evidence fails acceptance.
 
 The language reference and installation guide will be published in the [wiki](https://github.com/CMZN-Consulting/typify/wiki) with the versioned release.

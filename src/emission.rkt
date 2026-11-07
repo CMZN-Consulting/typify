@@ -54,6 +54,8 @@
    (language-name body)
    'version
    (string->number (language-version body))
+   'comment
+   (language-comment body)
    'caps
    (hash
     'states
