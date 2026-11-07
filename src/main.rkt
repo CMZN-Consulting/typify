@@ -264,7 +264,14 @@
   (define-values (result json? grammar? text) (run-command/details arguments))
   (values result json? grammar?))
 
-(define (run-command/details arguments #:on-bound (on-bound void))
+(define (run-command/details
+         arguments
+         #:on-bound
+         (on-bound void)
+         #:on-facts
+         (on-facts void)
+         #:on-failure-report
+         (on-failure-report void))
   (define-values (positional options) (parse-options arguments))
   (define json? (hash-ref options "--json" #f))
   (define gbnf? (hash-ref options "--gbnf" #f))
@@ -380,6 +387,7 @@
         (for/or ((body (in-hash-values declarations))) (language-needs-facts? body))
         facts-path
         root))
+      (on-facts facts-hash)
       (define checked
         (read-tree/diagnostics
          declarations
@@ -400,6 +408,8 @@
         programs
         #:on-bound
         on-bound
+        #:on-failure-report
+        on-failure-report
         #:facts
         facts
         #:facts-hash
@@ -420,6 +430,7 @@
       (define-values
        (facts facts-hash)
        (facts-input (language-needs-facts? body) facts-path (current-directory)))
+      (on-facts facts-hash)
       (define ensure-diagnostics '())
       (define-values
        (report events)
@@ -428,6 +439,8 @@
         (read-source program)
         #:on-bound
         on-bound
+        #:on-failure-report
+        on-failure-report
         #:captures
         captures
         #:path
@@ -462,7 +475,15 @@
    gbnf?
    text-output))
 
-(define (command-error-result arguments items #:bound (bound 'null))
+(define (command-error-result
+         arguments
+         items
+         #:bound
+         (bound 'null)
+         #:facts
+         (facts "none")
+         #:failure-report
+         (failure-report #f))
   (define diagnostics (map diagnostic->jsexpr items))
   (define positional
     (with-handlers
@@ -491,16 +512,18 @@
        'modelled
        "0 of 0"
        'facts
-       "none"
+       facts
        'origins
        '()
        'ensure
        '()
        'diagnostics
        diagnostics))
-    (if (= (length positional) 4)
-      (hash-set* empty 'plan '() 'recorded '() 'skips '())
-      (hash-set empty 'programs '())))
+    (if failure-report
+      (hash-set* (public-data failure-report) 'status "failed" 'diagnostics diagnostics)
+      (if (= (length positional) 4)
+        (hash-set* empty 'plan '() 'recorded '() 'skips '())
+        (hash-set empty 'programs '()))))
    ((equal? command "facts")
     (hash
      'collector
@@ -517,13 +540,25 @@
 (define (execute-command arguments)
   (define json? (and (member "--json" arguments) #t))
   (define failure-bound 'null)
+  (define failure-facts "none")
+  (define failure-report #f)
   (with-handlers
    ((exn:fail:typify?
      (lambda (error)
        (define items (exn:fail:typify-diagnostics error))
        (define native (map diagnostic->jsexpr items))
        (if json?
-         (displayln (canonical-json (command-error-result arguments items #:bound failure-bound)))
+         (displayln
+          (canonical-json
+           (command-error-result
+            arguments
+            items
+            #:bound
+            failure-bound
+            #:facts
+            failure-facts
+            #:failure-report
+            failure-report)))
          (display-diagnostics native))
        (values
         (if (and (not (ormap (lambda (item) (equal? (diagnostic-code item) "E_USAGE")) items))
@@ -536,7 +571,14 @@
         native))))
    (define-values
     (result json-output? grammar? text-output)
-    (run-command/details arguments #:on-bound (lambda (bound) (set! failure-bound bound))))
+    (run-command/details
+     arguments
+     #:on-bound
+     (lambda (bound) (set! failure-bound bound))
+     #:on-facts
+     (lambda (facts) (set! failure-facts facts))
+     #:on-failure-report
+     (lambda (report) (set! failure-report report))))
    (define diagnostics (hash-ref result 'diagnostics '()))
    (unless json-output? (display-diagnostics diagnostics))
    (cond

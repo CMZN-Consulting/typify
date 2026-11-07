@@ -294,6 +294,108 @@
       (map (lambda (item) (hash-ref item 'code)) (hash-ref failed-fuel-json 'diagnostics))
       '("E_RULE_FUEL")
       "bound retention preserves fuel refusal")
+     (define reading-declaration
+       (string-replace declaration "end!" "reads : store : exists = reject\nend!"))
+     (define accepted-facts #"{ \"collector\":\"typify 1.0\", \"root\":\"/\", \"facts\":[] }\n")
+     (define accepted-facts-hash
+       (string-append "sha256:" (bytes->hex-string (sha256-bytes accepted-facts))))
+     (write-declaration reading-declaration)
+     (write-program "store : blue = /sample")
+     (call-with-output-file
+      facts
+      (lambda (out) (write-bytes accepted-facts out))
+      #:exists
+      'truncate/replace)
+     (define rejected-read
+       (execute (list "plan" declarations "Records" program "--facts" facts "--json")))
+     (define rejected-read-json (string->jsexpr (hash-ref rejected-read 'stdout)))
+     (check (hash-ref rejected-read 'exit) 1 "a rejected read remains a failed command")
+     (check
+      (hash-ref rejected-read-json 'facts)
+      accepted-facts-hash
+      "a failed execution retains the accepted facts bytes digest")
+     (check
+      (hash-ref rejected-read-json 'plan)
+      '(("store" "/sample" "blue"))
+      "a failed execution prints the expanded rejected term")
+     (check
+      (length (hash-ref rejected-read-json 'origins))
+      1
+      "retained origins align with the rejected term")
+     (check
+      (hash-ref rejected-read-json 'modelled)
+      "1 of 1"
+      "modelled counts describe the retained schedule")
+     (check
+      (list (hash-count (hash-ref rejected-read-json 'state)) (hash-ref rejected-read-json 'ensure))
+      '(0 ())
+      "a rejected read claims no final state or evaluated ensures")
+     (check
+      (map (lambda (item) (hash-ref item 'code)) (hash-ref rejected-read-json 'diagnostics))
+      '("E_FACT_REJECT")
+      "the failure snapshot preserves the native rejection")
+     (write-declaration
+      (string-replace
+       reading-declaration
+       "declare : Records"
+       "declare : Records\nfile : data.typify"))
+     (define collected-wire (execute (list "facts" (path->string root))))
+     (check (hash-ref collected-wire 'exit) 0 "the controlled collector output is readable")
+     (define collected-hash
+       (string-append
+        "sha256:"
+        (bytes->hex-string (sha256-bytes (string->bytes/utf-8 (hash-ref collected-wire 'stdout))))))
+     (define rejected-root (execute (list "plan" declarations (path->string root) "--json")))
+     (define rejected-root-json (string->jsexpr (hash-ref rejected-root 'stdout)))
+     (check
+      (hash-ref rejected-root-json 'facts)
+      collected-hash
+      "an implicit facts digest matches the collector's own output including its LF")
+     (check
+      (map
+       (lambda (item) (list (hash-ref item 'path) (hash-ref item 'language)))
+       (hash-ref rejected-root-json 'programs))
+      '(("data.typify" "Records"))
+      "a rejected root plan retains program path and language")
+     (check
+      (hash-ref (car (hash-ref rejected-root-json 'programs)) 'plan)
+      '(("store" "/sample" "blue"))
+      "the root failure snapshot groups its expanded terms")
+     (write-declaration
+      (string-replace library-failure "end!" "reads : output : exists = reject\nend!"))
+     (write-program "parent : /")
+     (define failed-normalization
+       (execute (list "plan" declarations "Failure" program "--facts" facts "--json")))
+     (define failed-normalization-json (string->jsexpr (hash-ref failed-normalization 'stdout)))
+     (check
+      (hash-ref failed-normalization-json 'facts)
+      accepted-facts-hash
+      "an expansion failure retains a facts document already accepted")
+     (check
+      (map (lambda (name) (hash-ref failed-normalization-json name)) '(plan origins recorded skips))
+      '(() () () ())
+      "an expansion failure exposes no partial rewrite")
+     (check
+      (hash-ref failed-normalization-json 'modelled)
+      "0 of 0"
+      "no expansion snapshot is invented after a normalization failure")
+     (check
+      (map (lambda (item) (hash-ref item 'code)) (hash-ref failed-normalization-json 'diagnostics))
+      '("E_LIBRARY_PARENT")
+      "normalization failure keeps its own diagnostic")
+     (display-to-file "{}" facts #:exists 'truncate/replace)
+     (define invalid-facts
+       (execute (list "plan" declarations "Failure" program "--facts" facts "--json")))
+     (define invalid-facts-json (string->jsexpr (hash-ref invalid-facts 'stdout)))
+     (check (hash-ref invalid-facts 'exit) 2 "a refused facts document is a file error")
+     (check
+      (hash-ref invalid-facts-json 'facts)
+      "none"
+      "read bytes have no accepted-facts digest when the wire check fails")
+     (check
+      (map (lambda (item) (hash-ref item 'code)) (hash-ref invalid-facts-json 'diagnostics))
+      '("E_FILE")
+      "a malformed facts wire fails before program normalization")
      (write-declaration
       (string-join
        '("#lang typify"

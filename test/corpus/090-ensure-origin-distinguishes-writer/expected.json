@@ -94,7 +94,7 @@
           "value": [
             "rw"
           ],
-          "masked": true,
+          "masked": false,
           "origin": {
             "kind": "program",
             "path": "program.typify",
@@ -184,7 +184,9 @@
         },
         "data": {
           "ensure": "child-visible",
-          "key": "/mounts/alpha"
+          "key": [
+            "/mounts/alpha"
+          ]
         },
         "provenance": [
           "H",
@@ -241,7 +243,7 @@
         "value": [
           "rw"
         ],
-        "masked": true,
+        "masked": false,
         "origin": {
           "kind": "program",
           "path": "program.typify",
@@ -289,7 +291,9 @@
       },
       "data": {
         "ensure": "child-visible",
-        "key": "/mounts/alpha"
+        "key": [
+          "/mounts/alpha"
+        ]
       },
       "provenance": [
         "H",

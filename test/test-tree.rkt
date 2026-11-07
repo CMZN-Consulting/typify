@@ -164,8 +164,12 @@
           (diagnostic-of
            (lambda ()
              (read-tree (declarations (body "Required" "missing.data" #:required? #t)) root))))
-        (list (diagnostic-code item) (diagnostic-data item) (diagnostic-range item)))
-      (list "E_REQUIRED" (hash 'path "missing.data") #f))
+        (list
+         (diagnostic-code item)
+         (diagnostic-file item)
+         (diagnostic-range item)
+         (diagnostic-data item)))
+      (list "E_REQUIRED" "layout.typify" #f (hash 'path "missing.data")))
      (define invalid-root (build-path temporary "invalid-programs"))
      (make-directory invalid-root)
      (write-file invalid-root "a.data" "unshaped\n")
@@ -187,9 +191,35 @@
           (hash-ref report 'diagnostics))
          (map (lambda (program) (hash-ref program 'status)) (hash-ref report 'programs))))
       '(#f
-        (("a.data" "E_LINE_SHAPE") ("b.data" "E_CLASS") ("c.data" "E_REQUIRED"))
+        (("a.data" "E_LINE_SHAPE") ("b.data" "E_CLASS") ("layout.typify" "E_REQUIRED"))
         ("present" "present" "missing")))
      (make-directory* (build-path root "D1"))
+     (make-directory* (build-path root "D2"))
+     (write-file root "D1/required.data" "mark : Present\n")
+     (check
+      "2026-11-07T17:28-required-file-belongs-to-its-declaring-source"
+      (lambda ()
+        (define model
+          (read-declarations
+           (string-append
+            "#lang typify\n"
+            (body "CapturedRequired" "D<area>/required.data" #:required? #t))
+           #:file
+           "decls/owned.typify"))
+        (define report (read-tree/diagnostics model root))
+        (define item (car (hash-ref report 'diagnostics)))
+        (list
+         (diagnostic-code item)
+         (diagnostic-file item)
+         (diagnostic-range item)
+         (diagnostic-data item)
+         (map (lambda (program) (hash-ref program 'status)) (hash-ref report 'programs))))
+      (list
+       "E_REQUIRED"
+       "decls/owned.typify"
+       #f
+       (hash 'path "D2/required.data")
+       '("present" "missing")))
      (write-file root "D1/item-Alpha.data" "mark : Alpha\n")
      (write-file root "D1/item-123.data" "mark : Ignored\n")
      (make-directory* (build-path root "D1" "item-Directory.data"))
@@ -209,8 +239,12 @@
              (discover-tree
               (declarations (body "None" "D<area>/absent-<document>.data" #:required? #t))
               root))))
-        (list (diagnostic-code item) (diagnostic-data item)))
-      (list "E_REQUIRED" (hash 'path "D<area>/absent-<document>.data")))
+        (list
+         (diagnostic-code item)
+         (diagnostic-file item)
+         (diagnostic-range item)
+         (diagnostic-data item)))
+      (list "E_REQUIRED" "layout.typify" #f (hash 'path "D<area>/absent-<document>.data")))
      (write-file root "R1/S1/value.data" "mark : Match\n")
      (write-file root "R1/S2/value.data" "mark : Ignored\n")
      (check
@@ -258,11 +292,12 @@
      (check
       "same-directory-programs-do-not-supply-context"
       (lambda ()
-        (diagnostic-code
-         (diagnostic-of
-          (lambda ()
-            (read-tree (declarations parent-body (context-body "same.data")) context-root)))))
-      "E_CONTEXT")
+        (define item
+          (diagnostic-of
+           (lambda ()
+             (read-tree (declarations parent-body (context-body "same.data")) context-root))))
+        (list (diagnostic-code item) (hash-ref (diagnostic-data item) 'key)))
+      '("E_CONTEXT" ()))
      (write-file context-root "same.data" "  # résumé\r\n\tuse!  \r\n")
      (check
       "context-error-retains-the-producing-line-and-utf8-offsets"

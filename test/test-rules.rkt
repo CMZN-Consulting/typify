@@ -204,7 +204,7 @@
   (define context-error (reject (lambda () (expand contextual "run : item")) "E_CONTEXT"))
   (check
    (diagnostic-data-projection "E_CONTEXT" (diagnostic-data context-error))
-   (hash 'constructor "base" 'key "")
+   (hash 'constructor "base" 'key '())
    "missing context has the canonical data")
   (define guarded
     (body

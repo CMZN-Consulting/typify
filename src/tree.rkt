@@ -291,7 +291,7 @@
         #:span
         span
         #:data
-        (hash 'constructor constructor 'key "")))
+        (hash 'constructor constructor 'key '())))
      found)
    (define missing? (equal? (hash-ref record 'status) "missing"))
    (when missing?
@@ -301,7 +301,7 @@
          "E_REQUIRED"
          "A required program is missing"
          #:span
-         (src-span path 1 1 1 1 0 0)
+         (language-span body)
          #:data
          (hash 'path path))
         diagnostics)))

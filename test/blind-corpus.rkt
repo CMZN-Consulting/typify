@@ -23,11 +23,11 @@
 
 (define-runtime-path default-blind-root "corpus")
 
-(define archive-sha256 "6b9be575abb9d50a8a096ce47bafc235b69844ee818981a7e9285bcbe3971737")
+(define archive-sha256 "dd866fb466780c6bf4b03d52db9318bb13ac55b0d6042c076b77666bff537407")
 
-(define tree-sha256 "b6c3f117234802db2fbae529af912ebc41961f4269f09c86899ec19afc0606b9")
+(define tree-sha256 "e47159fb28472216a43b402f9f800b534f01714c7dfa35bb12567422cb906877")
 
-(define receipt-sha256 "66e0609c664ca193cadab143e3bb9a36c3b6c9009ec3a79e5d05fd3e9238d943")
+(define receipt-sha256 "dc0eae0fc6ae92924eae7389b94d97ee3c15273108d37a404f71b6a5bc3996a4")
 
 (define missing (gensym 'missing))
 

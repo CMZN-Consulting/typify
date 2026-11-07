@@ -90,7 +90,7 @@
           "value": [
             "rw"
           ],
-          "masked": true,
+          "masked": false,
           "origin": {
             "kind": "program",
             "path": "program.typify",
@@ -147,7 +147,9 @@
         },
         "data": {
           "ensure": "child-visible",
-          "key": "/mounts/research"
+          "key": [
+            "/mounts/research"
+          ]
         },
         "provenance": [
           "B",
@@ -195,7 +197,7 @@
         "value": [
           "rw"
         ],
-        "masked": true,
+        "masked": false,
         "origin": {
           "kind": "program",
           "path": "program.typify",
@@ -240,7 +242,9 @@
       },
       "data": {
         "ensure": "child-visible",
-        "key": "/mounts/research"
+        "key": [
+          "/mounts/research"
+        ]
       },
       "provenance": [
         "B",

@@ -35,6 +35,7 @@
          lookup-reference
          program-lookup
          current-lookup-observer
+         current-resolution-arguments
          (struct-out lookup-observation)
          form-automata)
 
@@ -43,6 +44,8 @@
 (struct lookup-observation (values origins skips) #:transparent)
 
 (define current-lookup-observer (make-parameter void))
+
+(define current-resolution-arguments (make-parameter #f))
 
 (define language-lookup-cache (make-weak-hasheq))
 
@@ -153,6 +156,8 @@
 (define value-origin-cache (make-weak-hasheq))
 
 (define value-meaning-spans (make-weak-hasheq))
+
+(define value-meaning-expressions (make-weak-hasheq))
 
 (define form-restriction-spans (make-weak-hasheq))
 
@@ -2200,9 +2205,11 @@
   (define model (current-partition-model))
   (define write (and model (hash-ref (compiled-model-writes model) name #f)))
   (when write
+    (define cell (hash-ref (compiled-model-cells model) (model-write-cell write) #f))
     (define partitions (length (current-template-names)))
     (when (and
-           (model-cell-stacking? (hash-ref (compiled-model-cells model) (model-write-cell write)))
+           cell
+           (model-cell-stacking? cell)
            (not
             (if (eq? (model-write-operation write) 'put)
               (= (model-write-width write) (add1 partitions))
@@ -2489,7 +2496,7 @@
    "E_CONTEXT"
    "No enclosing program supplies the requested constructor"
    span
-   (hash 'constructor constructor 'key "")))
+   (hash 'constructor constructor 'key '())))
 
 (define (inherited-values inherited context constructor origin)
   (define result
@@ -2548,6 +2555,29 @@
    ((and (list? value) (pair? value) (string? (car value)))
     (term (car value) (map (lambda (item) (json-expression item span)) (cdr value)) span))
    (else (literal value span))))
+
+(define (remember-value-expression! value expression)
+  (when (and (pair? value) (term? expression))
+    (hash-set! value-meaning-expressions value expression)
+    (for
+     ((argument (in-list (cdr value))) (source (in-list (term-arguments expression))))
+     (when (and (pair? argument) (term? source)) (remember-value-expression! argument source))))
+  value)
+
+(define (instantiate-source-term expression captures)
+  (remember-value-expression! (instantiate-term expression captures) expression))
+
+(define (resolution-argument-view value span)
+  (for/list
+   ((argument (in-list (cdr value))))
+   (cond
+    ((string? argument) argument)
+    ((pair? argument)
+     (define source (hash-ref value-meaning-expressions argument #f))
+     (if source
+       (term-source source)
+       (string-append "(" (term-source (json-expression argument span)) ")")))
+    (else (raise-argument-error 'resolution-argument-view "string or constructor term" argument)))))
 
 (define (evaluate-rule-expression
          body
@@ -2640,6 +2670,7 @@
                 (item (hash-ref (language-constructors body) name))
                 (scope (model-scope model name))
                 (fact-name (if (string? guard) guard (term-constructor guard))))
+           (define argument-view (list->vector (resolution-argument-view value span)))
            (define (receive index argument)
              (define evaluated
                (evaluate-rule-expression
@@ -2656,10 +2687,13 @@
                 fact
                 #:origin
                 origin))
+             (vector-set! argument-view index evaluated)
              (define class-name (list-ref (constructor-signature item) index))
              (define-values
               (received receiving-class)
-              (resolve body name index class-name evaluated origin scope name))
+              (parameterize
+               ((current-resolution-arguments (vector->list argument-view)))
+               (resolve body name index class-name evaluated origin scope name)))
              (unless (and
                       (string? received)
                       (class-accepts? (hash-ref (language-classes body) receiving-class) received))
@@ -2938,6 +2972,8 @@
     (define explicit-scope? (hash-has-key? (compiled-model-scopes model) name))
     (define scope (if explicit-scope? (model-scope model name) inherited-scope))
     (define scope-constructor (if explicit-scope? name inherited-constructor))
+    (define argument-view
+      (list->vector (resolution-argument-view value (or use-span (constructor-span item)))))
     (define args
       (for/list
        ((argument (in-list supplied-args))
@@ -2950,9 +2986,12 @@
             captures
             origin)
            argument))
+       (vector-set! argument-view index evaluated)
        (define-values
         (received receiving-class)
-        (resolve body name index class-name evaluated origin scope scope-constructor))
+        (parameterize
+         ((current-resolution-arguments (vector->list argument-view)))
+         (resolve body name index class-name evaluated origin scope scope-constructor)))
        (unless (and
                 (string? received)
                 (class-accepts? (hash-ref (language-classes body) receiving-class) received))
@@ -3071,7 +3110,7 @@
         (library-call (car item) (map evaluate (cdr item)) (term-span expression)))
        (else (cons (car item) (map evaluate (cdr item)))))
       item))
-  (define value (evaluate (instantiate-term expression captures)))
+  (define value (evaluate (instantiate-source-term expression captures)))
   (define (check item)
     (when (pair? item)
       (define signature (hash-ref (language-constructors body) (car item) #f))
@@ -3088,6 +3127,7 @@
             (hash 'kind "result" 'constructor (car item) 'class class-name 'actual argument)))))))
   (check value)
   (hash-set! value-meaning-spans value (term-span expression))
+  (remember-value-expression! value expression)
   value)
 
 (define (identity-resolver body name index class value origin scope scope-constructor)
@@ -3172,7 +3212,8 @@
      ((record (in-list records)))
      (values (src-span-start-line (line-record-span record)) (line-record-span record))))
   (define (add-term! hit span kind)
-    (define value (instantiate-term (form-meaning (car hit)) (merge-captures captures (cdr hit))))
+    (define value
+      (instantiate-source-term (form-meaning (car hit)) (merge-captures captures (cdr hit))))
     (define origin (hash 'kind kind 'path (src-span-file span) 'line (src-span-start-line span)))
     (hash-set! value-origin-cache value span)
     (hash-set! value-meaning-spans value (term-span (form-meaning (car hit))))

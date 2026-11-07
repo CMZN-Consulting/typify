@@ -69,7 +69,7 @@
        #:span
        (origin-span origin program (hash-ref program 'body))
        #:data
-       (hash 'constructor constructor 'key "")))
+       (hash 'constructor constructor 'key '())))
     (car found)))
 
 (define (directory-depth program)
@@ -81,7 +81,14 @@
       (lambda (part) (not (equal? part "")))
       (string-split (hash-ref program 'path) "/" #:trim? #f))))))
 
-(define (scope-programs program scope constructor key origin)
+(define (scope-programs
+         program
+         scope
+         constructor
+         key
+         origin
+         #:diagnostic-key
+         (diagnostic-key (lambda () (list key))))
   (define enclosing (hash-ref program 'enclosing '()))
   (case (string->symbol scope)
     ((program) (cons program enclosing))
@@ -93,7 +100,7 @@
         #:span
         (origin-span origin program (hash-ref program 'body))
         #:data
-        (hash 'constructor constructor 'key key)))
+        (hash 'constructor constructor 'key (diagnostic-key))))
      enclosing)
     ((root)
      (define candidates (cons program enclosing))
@@ -101,12 +108,21 @@
      (filter (lambda (record) (= (directory-depth record) minimum)) candidates))
     (else (raise-argument-error 'scope-programs "program, parent or root scope" scope))))
 
-(define (resolve-key body program arguments scope constructor origin)
+(define (resolve-key
+         body
+         program
+         arguments
+         scope
+         constructor
+         origin
+         #:diagnostic-key
+         (diagnostic-key (lambda () arguments)))
   (for/list
    ((key (in-list arguments)))
    (if (string-prefix? key "/")
      key
-     (let* ((records (scope-programs program scope constructor key origin))
+     (let* ((records
+             (scope-programs program scope constructor key origin #:diagnostic-key diagnostic-key))
             (workdir
              (for*/first
               ((record (in-list records))
@@ -121,7 +137,7 @@
           #:span
           (origin-span origin program (hash-ref program 'body))
           #:data
-          (hash 'constructor constructor 'key key)))
+          (hash 'constructor constructor 'key (diagnostic-key))))
        (evaluate-rule-expression
         body
         (term
@@ -142,6 +158,28 @@
         #:origin
         origin)))))
 
+(define (resolution-diagnostic-key body constructor index value)
+  (define write (hash-ref (compiled-model-writes (language-model body)) constructor #f))
+  (if (and write (< index (model-write-width write)))
+    (let ((arguments (current-resolution-arguments)) (width (model-write-width write)))
+      (unless (and (list? arguments) (>= (length arguments) width))
+        (raise-arguments-error
+         'program-resolver
+         "write key argument context is unavailable"
+         "constructor"
+         constructor))
+      (define key (take arguments width))
+      (define received-key
+        (if (< index width) (append (take key index) (list value) (drop key (add1 index))) key))
+      (unless (andmap string? received-key)
+        (raise-arguments-error
+         'program-resolver
+         "write key source context must contain strings"
+         "constructor"
+         constructor))
+      received-key)
+    (list value)))
+
 (define (program-resolver program)
   (lambda (body constructor index class-name value origin scope scope-constructor)
     (if (relative-path-role? (language-classes body) class-name)
@@ -155,7 +193,16 @@
            #:data
            (hash 'kind "result" 'constructor constructor 'class class-name 'actual value)))
         (values
-         (car (resolve-key body program (list value) scope scope-constructor origin))
+         (car
+          (resolve-key
+           body
+           program
+           (list value)
+           scope
+           scope-constructor
+           origin
+           #:diagnostic-key
+           (lambda () (resolution-diagnostic-key body constructor index value))))
          "canonical-path"))
       (values value class-name))))
 
@@ -174,15 +221,20 @@
        (if (and (hash-has-key? bindings key)
                 (relative-path-role? (language-classes body) class-name))
          (let-values (((value receiving)
-                       ((program-resolver (hash-ref clause 'program))
-                        body
-                        name
-                        (sub1 index)
-                        class-name
-                        (hash-ref bindings key)
-                        (hash-ref clause 'origin)
-                        (hash-ref clause 'scope "program")
-                        (hash-ref clause 'scope-constructor name))))
+                       (parameterize
+                        ((current-resolution-arguments
+                          (for/list
+                           ((position (in-range 1 (add1 (length signature)))))
+                           (hash-ref initial (number->string position) #f))))
+                        ((program-resolver (hash-ref clause 'program))
+                         body
+                         name
+                         (sub1 index)
+                         class-name
+                         (hash-ref bindings key)
+                         (hash-ref clause 'origin)
+                         (hash-ref clause 'scope "program")
+                         (hash-ref clause 'scope-constructor name)))))
            (hash-set bindings key value))
          bindings)))))
 
@@ -387,8 +439,10 @@
          #:on-error
          (on-error #f)
          #:on-bound
-         (on-bound void))
-  (plan-records programs facts facts-hash #f on-error on-bound))
+         (on-bound void)
+         #:on-failure-report
+         (on-failure-report void))
+  (plan-records programs facts facts-hash #f on-error on-bound on-failure-report))
 
 (define (plan-programs
          programs
@@ -399,7 +453,9 @@
          #:on-error
          (on-error #f)
          #:on-bound
-         (on-bound void))
+         (on-bound void)
+         #:on-failure-report
+         (on-failure-report void))
   (define-values
    (report events)
    (plan-programs/details
@@ -411,7 +467,9 @@
     #:on-error
     on-error
     #:on-bound
-    on-bound))
+    on-bound
+    #:on-failure-report
+    on-failure-report))
   report)
 
 (define (plan-program/details
@@ -428,7 +486,9 @@
          #:on-error
          (on-error #f)
          #:on-bound
-         (on-bound void))
+         (on-bound void)
+         #:on-failure-report
+         (on-failure-report void))
   (define initial
     (hash
      'body
@@ -478,7 +538,7 @@
      (hash-ref checked '_term-spans)))
   (on-bound (programs-bound (list program)))
   (raise-diagnostics (hash-ref checked 'diagnostics))
-  (plan-records (list program) facts facts-hash #t on-error void))
+  (plan-records (list program) facts facts-hash #t on-error void on-failure-report))
 
 (define (plan-program
          body
@@ -494,7 +554,9 @@
          #:on-error
          (on-error #f)
          #:on-bound
-         (on-bound void))
+         (on-bound void)
+         #:on-failure-report
+         (on-failure-report void))
   (define-values
    (report events)
    (plan-program/details
@@ -511,12 +573,101 @@
     #:on-error
     on-error
     #:on-bound
-    on-bound))
+    on-bound
+    #:on-failure-report
+    on-failure-report))
   report)
 
-(define (plan-records programs facts facts-hash single? on-error on-bound)
+(define (decorate-event event ordinal)
+  (define body (hash-ref event 'body))
+  (define model (language-model body))
+  (define name (car (hash-ref event 'term)))
+  (hash-set*
+   event
+   'schedule-id
+   ordinal
+   'origin
+   (origin-only (hash-ref event 'origin))
+   'modelled?
+   (and (hash-ref (compiled-model-writes model) name #f) #t)
+   'state-only?
+   (model-state? model name)))
+
+(define (project-plan
+         programs
+         events
+         skips
+         ensures
+         state
+         bound
+         facts-hash
+         single?
+         #:status
+         (status #f))
+  (define host-events (filter (lambda (event) (not (hash-ref event 'state-only?))) events))
+  (define recorded-events (filter (lambda (event) (hash-ref event 'state-only?)) events))
+  (define modelled (count (lambda (event) (hash-ref event 'modelled?)) host-events))
+  (define report
+    (hash
+     'state
+     state
+     'bound
+     bound
+     'modelled
+     (format "~a of ~a" modelled (length host-events))
+     'status
+     (or status
+         (and (ormap (lambda (item) (not (hash-ref item 'ok))) ensures) "failed")
+         (if (= modelled (length host-events)) "ok" "unchecked"))
+     'ensure
+     (map (lambda (item) (hash-remove item 'program-index)) ensures)
+     'facts
+     (if (plan-needs-facts? programs) facts-hash "none")
+     'origins
+     (map (lambda (event) (hash-ref event 'origin)) host-events)))
+  (if single?
+    (hash-set*
+     report
+     'plan
+     (map event->jsexpr host-events)
+     'recorded
+     (map recorded->jsexpr recorded-events)
+     'skips
+     (map skip->jsexpr skips))
+    (hash-set
+     report
+     'programs
+     (for/list
+      ((program (in-list programs)) (index (in-naturals)))
+      (hash
+       'path
+       (hash-ref program 'path)
+       'language
+       (language-name (hash-ref program 'body))
+       'status
+       (hash-ref program 'status "present")
+       'plan
+       (for/list
+        ((event (in-list host-events)) #:when (= (hash-ref event 'program-index) index))
+        (event->jsexpr event))
+       'ensure
+       (for/list
+        ((item (in-list ensures)) #:when (= (hash-ref item 'program-index) index))
+        (hash-remove item 'program-index))
+       'recorded
+       (for/list
+        ((event (in-list recorded-events)) #:when (= (hash-ref event 'program-index) index))
+        (recorded->jsexpr event))
+       'skips
+       (for/list
+        ((item (in-list skips)) #:when (= (hash-ref item 'program-index) index))
+        (skip->jsexpr item)))))))
+
+(define (plan-records programs facts facts-hash single? on-error on-bound on-failure-report)
   (unless (or (not on-error) (and (procedure? on-error) (procedure-arity-includes? on-error 1)))
     (raise-argument-error 'plan "one-argument diagnostic handler or #f" on-error))
+  (unless (and (procedure? on-failure-report) (procedure-arity-includes? on-failure-report 1))
+    (raise-argument-error 'plan "one-argument failure report handler" on-failure-report))
   (define bound (programs-bound programs))
   (on-bound bound)
   (define-values (cells widths) (collect-cells programs))
@@ -574,10 +725,18 @@
       ((clause (in-list (hash-ref expanded 'ensures))))
       (set! ensures
         (cons (hash-set* clause 'program program 'program-index program-index) ensures)))))
-  (define ordered (sort (reverse events) < #:key (lambda (event) (hash-ref event 'stage))))
+  (define ordered
+    (for/list
+     ((event (in-list (sort (reverse events) < #:key (lambda (event) (hash-ref event 'stage)))))
+      (ordinal (in-naturals)))
+     (decorate-event event ordinal)))
+  (define skipped-ids (hash))
+  (define (retained-events)
+    (filter
+     (lambda (event) (not (hash-has-key? skipped-ids (hash-ref event 'schedule-id))))
+     ordered))
   (define state (for/hash ((name (in-hash-keys cells))) (values name (hash))))
   (define applied '())
-  (define modelled 0)
   (for
    ((event (in-list ordered)) (sequence (in-naturals)))
    (define body (hash-ref event 'body))
@@ -627,6 +786,7 @@
       (if (eq? (model-read-behavior read) 'skip)
         (begin
           (set! skip? #t)
+          (set! skipped-ids (hash-set skipped-ids (hash-ref event 'schedule-id) #t))
           (set! skips
             (cons
              (hash
@@ -643,40 +803,39 @@
               'program-index
               (hash-ref event 'program-index))
              skips)))
-        (raise-typify
-         "E_FACT_REJECT"
-         "A required primitive fact is absent"
-         #:span
-         (origin-span origin program (hash-ref program 'body))
-         #:data
-         (hash
-          'fact
-          (if (string? expression) expression (term-constructor expression))
-          'key
-          tested-key
-          'origins
-          (list origin))))))
+        (begin
+          (on-failure-report
+           (project-plan
+            programs
+            (retained-events)
+            (reverse skips)
+            '()
+            (hash)
+            bound
+            facts-hash
+            single?
+            #:status
+            "failed"))
+          (raise-typify
+           "E_FACT_REJECT"
+           "A required primitive fact is absent"
+           #:span
+           (origin-span origin program (hash-ref program 'body))
+           #:data
+           (hash
+            'fact
+            (if (string? expression) expression (term-constructor expression))
+            'key
+            tested-key
+            'origins
+            (list origin)))))))
    (unless skip?
      (define value
        (if write
          (append (drop (cdr original) (model-write-width write)) (model-write-literals write))
          '()))
-     (define state-only? (model-state? model name))
-     (set! applied
-       (cons
-        (hash-set*
-         event
-         'term
-         original
-         'origin
-         origin
-         'modelled?
-         (and write #t)
-         'state-only?
-         state-only?)
-        applied))
+     (set! applied (cons event applied))
      (when write
-       (unless state-only? (set! modelled (add1 modelled)))
        (define cell-name (model-write-cell write))
        (define cell (hash-ref (compiled-model-cells model) cell-name))
        (define entries (hash-ref state cell-name))
@@ -705,6 +864,7 @@
                cell-name
                (hash-set entries key (hash 'value joined 'origin origin 'sequence sequence))))))))))
   (define ensure-results '())
+  (define ensure-diagnostics '())
   (for
    ((clause (in-list (reverse ensures))))
    (define invariant (hash-ref clause 'ensure))
@@ -777,13 +937,24 @@
         (origin-span origin program (hash-ref program 'body))
         #:data
         (hash 'ensure (model-ensure-name invariant) 'key last-key 'origins (list origin))))
-     (if on-error (on-error diagnostic) (raise-diagnostics (list diagnostic)))))
+     (if on-error
+       (on-error diagnostic)
+       (set! ensure-diagnostics (cons diagnostic ensure-diagnostics)))))
+  (when (pair? ensure-diagnostics)
+    (on-failure-report
+     (project-plan
+      programs
+      (retained-events)
+      (reverse skips)
+      (reverse ensure-results)
+      (state->jsexpr state)
+      bound
+      facts-hash
+      single?
+      #:status
+      "failed"))
+    (raise-diagnostics (diagnostics-sort (reverse ensure-diagnostics))))
   (define folded-events (reverse applied))
-  (define final-events
-    (filter (lambda (event) (not (hash-ref event 'state-only? #f))) folded-events))
-  (define recorded-events (filter (lambda (event) (hash-ref event 'state-only? #f)) folded-events))
-  (define final-ensures (reverse ensure-results))
-  (define final-skips (reverse skips))
   (when (> (length ordered) (hash-ref bound 'limit))
     (raise-arguments-error
      'plan
@@ -792,60 +963,16 @@
      (length ordered)
      "limit"
      (hash-ref bound 'limit)))
-  (define report
-    (hash
-     'state
-     (state->jsexpr state)
-     'bound
-     bound
-     'modelled
-     (format "~a of ~a" modelled (length final-events))
-     'status
-     (if (= modelled (length final-events)) "ok" "unchecked")
-     'ensure
-     (map (lambda (item) (hash-remove item 'program-index)) final-ensures)
-     'facts
-     (if (plan-needs-facts? programs) facts-hash "none")
-     'origins
-     (map (lambda (event) (hash-ref event 'origin)) final-events)))
   (define result
-    (if single?
-      (hash-set*
-       report
-       'plan
-       (map event->jsexpr final-events)
-       'recorded
-       (map recorded->jsexpr recorded-events)
-       'skips
-       (map skip->jsexpr final-skips)
-       'ensure
-       (map (lambda (item) (hash-remove item 'program-index)) final-ensures))
-      (hash-set
-       report
-       'programs
-       (for/list
-        ((program (in-list programs)) (index (in-naturals)))
-        (hash
-         'path
-         (hash-ref program 'path)
-         'status
-         (hash-ref program 'status "present")
-         'plan
-         (for/list
-          ((event (in-list final-events)) #:when (= (hash-ref event 'program-index) index))
-          (event->jsexpr event))
-         'ensure
-         (for/list
-          ((item (in-list final-ensures)) #:when (= (hash-ref item 'program-index) index))
-          (hash-remove item 'program-index))
-         'recorded
-         (for/list
-          ((event (in-list recorded-events)) #:when (= (hash-ref event 'program-index) index))
-          (recorded->jsexpr event))
-         'skips
-         (for/list
-          ((item (in-list final-skips)) #:when (= (hash-ref item 'program-index) index))
-          (skip->jsexpr item)))))))
+    (project-plan
+     programs
+     (retained-events)
+     (reverse skips)
+     (reverse ensure-results)
+     (state->jsexpr state)
+     bound
+     facts-hash
+     single?))
   (values result folded-events))
 
 (define (recorded->jsexpr event)

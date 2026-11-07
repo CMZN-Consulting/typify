@@ -100,7 +100,9 @@
         },
         "data": {
           "fact": "exists",
-          "key": "/mounts/research"
+          "key": [
+            "/mounts/research"
+          ]
         },
         "provenance": [
           "H",
@@ -133,7 +135,9 @@
       },
       "data": {
         "fact": "exists",
-        "key": "/mounts/research"
+        "key": [
+          "/mounts/research"
+        ]
       },
       "provenance": [
         "H",
