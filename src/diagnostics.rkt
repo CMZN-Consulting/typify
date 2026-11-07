@@ -11,7 +11,10 @@
          src-span->jsexpr
          canonical-json
          content-hash
-         diagnostic-codes)
+         diagnostic-codes
+         diagnostic-data-fields
+         diagnostic-kinds
+         diagnostic-data-projection)
 
 (struct
  src-span
@@ -22,11 +25,133 @@
 
 (struct exn:fail:typify exn:fail (diagnostic) #:transparent)
 
-(define diagnostic-codes
-  '("E_TEMPLATE" "E_TEMPLATE_DUPLICATE" "E_TEMPLATE_ADJACENT" "E_TERM" "E_CAPTURE"))
+(define diagnostic-data-fields
+  (hash
+   "E_LINE_SHAPE"
+   '(actual)
+   "E_FORM_NONE"
+   '(actual)
+   "E_FORM_SHADOW"
+   '(form actual)
+   "E_CLASS"
+   '(class token)
+   "E_CLASS_UNDECLARED"
+   '(class)
+   "E_CLASS_OVERLAP"
+   '(form class token)
+   "E_CAP"
+   '(cap limit actual)
+   "E_EXAMPLE"
+   '(form actual)
+   "E_PROGRAM_COUNT"
+   '(constructor expected actual)
+   "E_ORDER"
+   '(form expected actual)
+   "E_REQUIRED"
+   '(path)
+   "E_TERM_CLASS"
+   '(kind constructor class actual)
+   "E_TERM_NESTED"
+   '(constructor actual)
+   "E_CONSTRUCTOR_UNBOUND"
+   '(constructor)
+   "E_RULE_DUPLICATE"
+   '(constructor rule)
+   "E_RULE_CYCLE"
+   '(constructor)
+   "E_RULE_FUEL"
+   '(constructor limit actual)
+   "E_LIBRARY_DOMAIN"
+   '(constructor expected actual)
+   "E_LIBRARY_PARENT"
+   '(path)
+   "E_JOIN_LAW"
+   '(cell expected actual)
+   "E_KEY_CANONICAL"
+   '(cell class)
+   "E_ENSURE"
+   '(ensure key)
+   "E_FACT_REJECT"
+   '(fact key)
+   "E_RESTRICTS"
+   '(form constructor)
+   "E_QUESTION"
+   '(actual)
+   "E_FILE"
+   '(path)
+   "E_USAGE"
+   '(actual)
+   "E_DECLARATION"
+   '(kind actual)))
+
+(define diagnostic-codes (sort (hash-keys diagnostic-data-fields) string<?))
+
+(define diagnostic-kinds
+  (hash
+   "E_DECLARATION"
+   '("header"
+     "body"
+     "duplicate"
+     "orphan"
+     "arity"
+     "capture"
+     "syntax"
+     "class-cycle"
+     "stratification"
+     "reference"
+     "conflict")
+   "E_TERM_CLASS"
+   '("literal" "capture" "result" "arity" "sort")))
 
 (define (text value)
   (cond ((symbol? value) (symbol->string value)) ((path? value) (path->string value)) (else value)))
+
+(define (diagnostic-data-projection code data)
+  (define name (text code))
+  (define fields
+    (hash-ref
+     diagnostic-data-fields
+     name
+     (lambda ()
+       (raise-arguments-error
+        'diagnostic-data-projection
+        "unregistered diagnostic code"
+        "code"
+        name))))
+  (unless (hash? data) (raise-argument-error 'diagnostic-data-projection "hash?" data))
+  (define projected
+    (for/hash
+     ((field (in-list fields)))
+     (define spelling (symbol->string field))
+     (define symbol-key? (hash-has-key? data field))
+     (define string-key? (hash-has-key? data spelling))
+     (unless (or symbol-key? string-key?)
+       (raise-arguments-error
+        'diagnostic-data-projection
+        "missing required diagnostic data field"
+        "code"
+        name
+        "field"
+        field))
+     (when (and symbol-key? string-key?)
+       (raise-arguments-error
+        'diagnostic-data-projection
+        "duplicate diagnostic data field spellings"
+        "code"
+        name
+        "field"
+        field))
+     (values field (hash-ref data (if symbol-key? field spelling)))))
+  (define kinds (hash-ref diagnostic-kinds name #f))
+  (when (and kinds (not (member (hash-ref projected 'kind) kinds)))
+    (raise-arguments-error
+     'diagnostic-data-projection
+     "unregistered diagnostic kind"
+     "code"
+     name
+     "kind"
+     (hash-ref projected 'kind)))
+  projected)
 
 (define (portable-file file) (string-replace (text file) "\\" "/"))
 
@@ -53,6 +178,7 @@
          (ordinal 0)
          #:content
          (content ""))
+  (diagnostic-data-projection code data)
   (diagnostic
    (text code)
    (text severity)
@@ -139,6 +265,7 @@
     (src-span-end-byte span))))
 
 (define (diagnostic->jsexpr item)
+  (diagnostic-data-projection (diagnostic-code item) (diagnostic-data item))
   (hasheq
    'code
    (diagnostic-code item)

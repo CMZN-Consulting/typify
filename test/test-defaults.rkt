@@ -157,7 +157,7 @@
    "strict order applies to own lines before earlier-form defaults are appended")
   (reject
    (lambda () (check-program "middle : own\nfirst : explicit" strict))
-   "E_PROGRAM_ORDER"
+   "E_ORDER"
    "strict own-line ordering is still enforced")
   (define rewritten
     (body

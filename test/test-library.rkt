@@ -167,7 +167,7 @@
       (lambda ()
         (body
          (list "primitive : output : value" "form : go!" (string-append "does : " (car case)))))
-      "E_MEANING_CONSTRUCTOR"
+      "E_TERM_CLASS"
       "a top-level does builds a constructor rather than returning a library value"))
    (check
     (hash-ref (diagnostic-data diagnostic) 'actual)

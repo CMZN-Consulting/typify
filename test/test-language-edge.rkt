@@ -224,7 +224,7 @@
     'recorded)
    #f
    "a manually constructed body does not inherit a checked declaration receipt")
-  (reject-declaration '("is : word = /[a-z]+/" "primitive : output : <word>") "E_CLASS_REFERENCE")
+  (reject-declaration '("is : word = /[a-z]+/" "primitive : output : <word>") "E_CLASS_UNDECLARED")
   (reject-declaration
    '("is : a = \"x\" | \"y\""
      "is : b = \"y\" | \"z\""
@@ -234,13 +234,13 @@
      "does : first <a>"
      "form : item : <b>"
      "does : second <b>")
-   "E_FORM_OVERLAP")
+   "E_FORM_SHADOW")
   (reject-declaration
    '("is : token = \"a\" | \"b\""
      "primitive : pair : token token"
      "form : <token> : <token>"
      "does : pair <token> <token>")
-   "E_TEMPLATE_DUPLICATE")
+   "E_DECLARATION")
   (reject-declaration
    '("is : digits = /[0-9]+/" "primitive : output : digits" "form : go!" "does : output nope")
    "E_TERM_CLASS")
@@ -306,14 +306,14 @@
     (declaration-verdict "#lang typify\nbegin!\nfinish!\n" #:meta invalid-meta)
     'code
     "accepted")
-   "E_META_SIGNATURE"
+   "E_TERM_CLASS"
    "alternate meta action must satisfy original kernel arity")
   (define ordering
     (declaration-verdict
      (source '("primitive : earlier : missing-a" "primitive : later : missing-b"))))
   (check
    (hash-ref ordering 'code "accepted")
-   "E_CLASS_REFERENCE"
+   "E_CLASS_UNDECLARED"
    "stable constructor validation code")
   (check
    (hash-ref (hash-ref ordering 'data (hash)) 'class #f)

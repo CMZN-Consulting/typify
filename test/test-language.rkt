@@ -55,15 +55,13 @@
   (check
    (hash-ref (car (hash-ref (declaration->jsexpr body) 'forms)) 'examples)
    '("item : book = Algebra"))
-  (reject (lambda () (check-program "item : pamphlet = Algebra" body)) "E_PROGRAM_FORM")
-  (reject (lambda () (check-program "item : book = a=b" body)) "E_PROGRAM_FORM")
+  (reject (lambda () (check-program "item : pamphlet = Algebra" body)) "E_CLASS")
+  (reject (lambda () (check-program "item : book = a=b" body)) "E_CLASS")
   (reject (lambda () (check-program "" body)) "E_PROGRAM_COUNT")
   (reject
    (lambda () (read-declarations (string-replace catalog "#lang typify" "typify : 1")))
-   "E_HEADER")
-  (reject
-   (lambda () (read-declarations (string-replace catalog "\nend!\n" "\n")))
-   "E_BODY_UNCLOSED")
+   "E_DECLARATION")
+  (reject (lambda () (read-declarations (string-replace catalog "\nend!\n" "\n"))) "E_DECLARATION")
   (reject
    (lambda ()
      (read-declarations
@@ -71,16 +69,16 @@
        catalog
        "category = \"book\" | \"journal\""
        "category = \"book\" | \"journal\"\nis : category = \"book\"")))
-   "E_CLASS_DUPLICATE")
+   "E_DECLARATION")
   (reject
    (lambda ()
      (read-declarations (string-replace catalog "category title\nterm" "category typo\nterm")))
-   "E_CLASS_REFERENCE")
+   "E_CLASS_UNDECLARED")
   (reject
    (lambda ()
      (read-declarations
       (string-replace catalog "does : item <category> <title>" "does : item <missing> <title>")))
-   "E_CAPTURE_UNBOUND")
+   "E_DECLARATION")
   (reject
    (lambda ()
      (read-declarations
@@ -90,17 +88,17 @@
    (lambda ()
      (read-declarations
       (string-replace catalog "does : item <category> <title>" "does : item <category>")))
-   "E_TERM_ARITY")
+   "E_DECLARATION")
   (reject
    (lambda ()
      (read-declarations
       (string-replace catalog "rule : item <kind> <heading> -> output <kind> <heading>\n" "")))
-   "E_CONSTRUCTOR_UNREDUCED")
+   "E_CONSTRUCTOR_UNBOUND")
   (reject
    (lambda ()
      (read-declarations
       (string-replace catalog "-> output <kind> <heading>" "-> item <kind> <heading>")))
-   "E_RULE_STRATIFICATION")
+   "E_RULE_CYCLE")
   (reject
    (lambda ()
      (read-declarations
@@ -108,12 +106,12 @@
        catalog
        "form : item : <category> = <title>"
        "form : item : <category><title>")))
-   "E_TEMPLATE_ADJACENT")
+   "E_CLASS_OVERLAP")
   (reject
    (lambda ()
      (read-declarations
       (string-replace catalog "is : category = \"book\" | \"journal\"" "is : category = /.+/")))
-   "E_DELIMITER_AMBIGUOUS")
+   "E_CLASS_OVERLAP")
   (reject
    (lambda ()
      (read-declarations
@@ -121,16 +119,16 @@
        catalog
        "example : item : book = Algebra"
        "example : item : pamphlet = Algebra")))
-   "E_EXAMPLE_DISPATCH")
+   "E_EXAMPLE")
   (define overlap
     (string-replace
      catalog
      "count : item = 1..*"
      "form : item : book = <title>\ndoes : item book <title>\ncount : item = 1..*"))
-  (reject (lambda () (read-declarations overlap)) "E_FORM_OVERLAP")
+  (reject (lambda () (read-declarations overlap)) "E_FORM_SHADOW")
   (define swallowed
     "#lang typify\ndeclare : Demo\ncomment : go\nis : value = \"yes\" | \"no\"\nprimitive : output : value\nform : go : <value>\ndoes : output <value>\nexample : go : yes\nend!\n")
-  (reject (lambda () (read-declarations swallowed)) "E_EXAMPLE_EMPTY")
+  (reject (lambda () (read-declarations swallowed)) "E_EXAMPLE")
   (define nullary
     "#lang typify\ndeclare : Flags\nprimitive : ready\nform : ready!\ndoes : ready\nexample : ready!\ncount : ready = 1\nend!\n")
   (define flags (hash-ref (read-declarations nullary) "Flags"))
@@ -154,7 +152,7 @@
    '(("vault" "/vaults/research" "rw")))
   (reject
    (lambda () (check-program "vault : /vaults/../research" (hash-ref mounts "Mounts")))
-   "E_PROGRAM_FORM")
+   "E_CLASS")
   (define meta (meta-language))
   (define meta-checked (check-program (meta-source) meta #:file "typify.typify"))
   (define normalized (normalize-terms meta (hash-ref meta-checked 'terms)))

@@ -5,6 +5,7 @@
          racket/match
          racket/promise
          racket/string
+         "classes.rkt"
          "diagnostics.rkt"
          "emission.rkt"
          "language.rkt"
@@ -21,18 +22,26 @@
    ((list? value) (map public-data value))
    (else value)))
 
-(define (load-declarations path) (read-declarations (file->string path) #:file path))
+(define (read-source path)
+  (with-handlers
+   ((exn:fail:filesystem?
+     (lambda (error)
+       (raise-typify
+        "E_FILE"
+        "The requested file cannot be read"
+        #:span
+        (src-span path 1 1 1 1 0 0)
+        #:data
+        (hash 'path (string-replace path "\\" "/"))))))
+   (file->string path)))
+
+(define (load-declarations path) (read-declarations (read-source path) #:file path))
 
 (define (select-language declarations name)
   (hash-ref
    declarations
    name
-   (lambda ()
-     (raise-typify
-      "E_LANGUAGE_UNDECLARED"
-      "The language is not declared"
-      #:data
-      (hash 'language name)))))
+   (lambda () (raise-typify "E_USAGE" "The language is not declared" #:data (hash 'actual name)))))
 
 (define (bounds-report bodies)
   (hash
@@ -41,7 +50,7 @@
     ((body (in-list (sort bodies string<? #:key language-name))))
     (hash 'language (language-name body) 'checks (declaration-check-bounds body)))
    'host
-   (hash 'name "racket" 'version (version))))
+   (hash 'name "racket" 'version (version) 'guards class-host-guards)))
 
 (define (render-bounds report)
   (define output (open-output-string))
@@ -52,6 +61,9 @@
    (hash-ref host 'name)
    (hash-ref host 'version))
   (displayln "Host-dependent representation and product-state upper bounds." output)
+  (for
+   ((name (in-list (sort (hash-keys (hash-ref host 'guards)) string<?))))
+   (fprintf output "Host guard ~a: ~a\n" name (hash-ref (hash-ref host 'guards) name)))
   (for
    ((entry (in-list (hash-ref report 'languages))))
    (define checks (hash-ref entry 'checks))
@@ -114,13 +126,21 @@
   (for
    ((value (in-list arguments)) #:when (string-prefix? value "--"))
    (unless (member value '("--json" "--gbnf" "--bounds" "--version"))
-     (raise-typify "E_USAGE" "The command-line flag is not recognized" #:data (hash 'flag value))))
+     (raise-typify
+      "E_USAGE"
+      "The command-line flag is not recognized"
+      #:data
+      (hash 'actual value))))
   (define positional
     (filter (lambda (value) (not (member value '("--json" "--gbnf" "--bounds")))) arguments))
   (when (and bounds? (not (and (pair? positional) (equal? (car positional) "check"))))
-    (raise-typify "E_USAGE" "--bounds is available only with check"))
+    (raise-typify
+     "E_USAGE"
+     "--bounds is available only with check"
+     #:data
+     (hash 'actual "--bounds")))
   (when (and gbnf? (not (and (pair? positional) (equal? (car positional) "emit"))))
-    (raise-typify "E_USAGE" "--gbnf is available only with emit"))
+    (raise-typify "E_USAGE" "--gbnf is available only with emit" #:data (hash 'actual "--gbnf")))
   (define (checked-response checked (body #f))
     (define response (hash 'ok #t 'terms (hash-ref checked 'terms '()) 'diagnostics '()))
     (if (and body (ormap constructor-rule (hash-values (language-constructors body))))
@@ -135,7 +155,7 @@
       (if bounds? (bounds-report (hash-values declarations)) (checked-response (hash))))
      ((list "check" path name program)
       (define body (select-language (load-declarations path) name))
-      (define checked (check-program (file->string program) body #:file program))
+      (define checked (check-program (read-source program) body #:file program))
       (if bounds? (bounds-report (list body)) (checked-response checked body)))
      ((list "emit" "Typify")
       (if gbnf? (hash 'text (language->gbnf (meta-language))) (language->grammar (meta-language))))
@@ -145,7 +165,9 @@
      (_
       (raise-typify
        "E_USAGE"
-       "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"))))
+       "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"
+       #:data
+       (hash 'actual arguments)))))
   (values (public-data result) json? gbnf?))
 
 (module+
@@ -168,20 +190,7 @@
          (diagnostic-severity item)
          (diagnostic-message item)
          (diagnostic-code item)))
-      (exit (if (equal? (diagnostic-code item) "E_USAGE") 2 1))))
-   (exn:fail:filesystem?
-    (lambda (error)
-      (define item
-        (make-diagnostic
-         "E_UNREADABLE"
-         "The requested file cannot be read"
-         #:data
-         (hash 'reason (exn-message error))))
-      (if json?
-        (displayln
-         (canonical-json (hash 'ok #f 'terms '() 'diagnostics (list (diagnostic->jsexpr item)))))
-        (displayln (exn-message error) (current-error-port)))
-      (exit 2))))
+      (exit (if (member (diagnostic-code item) '("E_USAGE" "E_FILE")) 2 1)))))
   (define-values (result json-output? grammar?) (run-command arguments))
   (cond
    ((equal? arguments '("--version")) (displayln typify-version))

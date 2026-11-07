@@ -65,10 +65,63 @@
   (check (match-template (parse-template "<x>") " value ") (hash "x" " value "))
   (check (match-template (parse-template "literal") "literal") (hash))
   (check (match-template (parse-template "") "") (hash))
-  (reject (lambda () (parse-template "<x> and <x>")) "E_TEMPLATE_DUPLICATE")
-  (reject (lambda () (parse-template "<a><b>")) "E_TEMPLATE_ADJACENT")
-  (reject (lambda () (parse-template "<a")) "E_TEMPLATE")
-  (reject (lambda () (parse-template "< spaced >")) "E_TEMPLATE")
+  (define (located-match template source)
+    (call-with-values (lambda () (match-template/located (parse-template template) source)) list))
+  (check (located-match "δ<word>ω" "δ😀ω") (list (hash "word" "😀") (hash "word" (cons 1 2))))
+  (check
+   (located-match "[<first>] = [<second>]" "[same] = [same]")
+   (list (hash "first" "same" "second" "same") (hash "first" (cons 1 5) "second" (cons 10 14))))
+  (check
+   (located-match "<a> = <b> ; done" "x = y = z ; done")
+   (list (hash "a" "x" "b" "y = z") (hash "a" (cons 0 1) "b" (cons 4 9))))
+  (check (located-match "[<empty>]" "[]") (list (hash "empty" "") (hash "empty" (cons 1 1))))
+  (check (located-match "literal" "literal") (list (hash) (hash)))
+  (check (located-match "" "") (list (hash) (hash)))
+  (check (located-match "tag <x> end" "tag a end trailing") (list #f #f))
+  (check (located-match "<x> end" "a missing") (list #f #f))
+  (check (located-match "<a> = <b> ; done" "x = y ; stop") (list #f #f))
+  (define duplicate-fields (car (read-lines "  α[😀]  :  α[😀]  " #:file "captures.txt")))
+  (define-values
+   (left-captures left-offsets)
+   (match-template/located (parse-template "α[<word>]") (line-record-left duplicate-fields)))
+  (define-values
+   (right-captures right-offsets)
+   (match-template/located (parse-template "α[<word>]") (line-record-right duplicate-fields)))
+  (check left-captures (hash "word" "😀"))
+  (check right-captures (hash "word" "😀"))
+  (check (and (immutable? left-captures) (immutable? left-offsets)) #t)
+  (check (and (immutable? right-captures) (immutable? right-offsets)) #t)
+  (check
+   (span-slice
+    (line-left-span duplicate-fields)
+    (line-record-left duplicate-fields)
+    (car (hash-ref left-offsets "word"))
+    (cdr (hash-ref left-offsets "word")))
+   (src-span "captures.txt" 1 5 1 6 5 9))
+  (check
+   (span-slice
+    (line-right-span duplicate-fields)
+    (line-record-right duplicate-fields)
+    (car (hash-ref right-offsets "word"))
+    (cdr (hash-ref right-offsets "word")))
+   (src-span "captures.txt" 1 14 1 15 18 22))
+  (define empty-field (car (read-lines "  item :   " #:file "empty.txt")))
+  (define-values
+   (empty-captures empty-offsets)
+   (match-template/located (parse-template "<empty>") (line-record-right empty-field)))
+  (check empty-captures (hash "empty" ""))
+  (check empty-offsets (hash "empty" (cons 0 0)))
+  (check
+   (span-slice
+    (line-right-span empty-field)
+    (line-record-right empty-field)
+    (car (hash-ref empty-offsets "empty"))
+    (cdr (hash-ref empty-offsets "empty")))
+   (src-span "empty.txt" 1 9 1 9 8 8))
+  (reject (lambda () (parse-template "<x> and <x>")) "E_DECLARATION")
+  (reject (lambda () (parse-template "<a><b>")) "E_CLASS_OVERLAP")
+  (reject (lambda () (parse-template "<a")) "E_DECLARATION")
+  (reject (lambda () (parse-template "< spaced >")) "E_DECLARATION")
   (define expression (parse-term "item <category> (concat <title> suffix)"))
   (check (term-constructor expression) "item")
   (check
@@ -82,22 +135,24 @@
   (check (term-span (parse-term "  value 😀  ")) (src-span "<input>" 1 3 1 10 2 12))
   (define located (parse-term "emit <x>" #:span (src-span "terms.txt" 4 8 4 16 30 38)))
   (check (capture-span (first (term-arguments located))) (src-span "terms.txt" 4 13 4 16 35 38))
-  (reject (lambda () (parse-term "")) "E_TERM")
-  (reject (lambda () (parse-term "()")) "E_TERM")
-  (reject (lambda () (parse-term "call (inner <x>")) "E_TERM")
-  (reject (lambda () (parse-term "call <x")) "E_TERM")
-  (reject (lambda () (parse-term "call <x>tail")) "E_TERM")
-  (reject (lambda () (parse-term "call < spaced >")) "E_TERM")
-  (reject (lambda () (parse-term "<x>")) "E_TERM")
-  (reject (lambda () (parse-term "call )")) "E_TERM")
-  (reject (lambda () (parse-term "(call) extra")) "E_TERM")
-  (reject (lambda () (instantiate-term (parse-term "call <x>") (hash))) "E_CAPTURE")
+  (reject (lambda () (parse-term "")) "E_DECLARATION")
+  (reject (lambda () (parse-term "()")) "E_DECLARATION")
+  (reject (lambda () (parse-term "call (inner <x>")) "E_DECLARATION")
+  (reject (lambda () (parse-term "call <x")) "E_DECLARATION")
+  (reject (lambda () (parse-term "call <x>tail")) "E_DECLARATION")
+  (reject (lambda () (parse-term "call < spaced >")) "E_DECLARATION")
+  (reject (lambda () (parse-term "<x>")) "E_DECLARATION")
+  (reject (lambda () (parse-term "call )")) "E_DECLARATION")
+  (reject (lambda () (parse-term "(call) extra")) "E_DECLARATION")
+  (reject (lambda () (instantiate-term (parse-term "call <x>") (hash))) "E_DECLARATION")
   (define d1
     (make-diagnostic
-     "E_TERM"
+     "E_DECLARATION"
      "message"
      #:span
      (src-span "a\\b.txt" 2 3 2 5 7 11)
+     #:data
+     (hash 'kind "syntax" 'actual "emit value")
      #:verb
      "emit"
      #:ordinal
@@ -106,10 +161,12 @@
      "emit value"))
   (define d2
     (make-diagnostic
-     "E_TERM"
+     "E_DECLARATION"
      "message"
      #:span
      (src-span "a/b.txt" 5 3 5 5 17 21)
+     #:data
+     (hash 'kind "syntax" 'actual "emit value")
      #:verb
      "emit"
      #:ordinal

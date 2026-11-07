@@ -53,13 +53,70 @@
 
 (define (fail code message span (data (hash))) (raise-typify code message #:span span #:data data))
 
+(define (declaration-fail kind actual message span (extra (hash)))
+  (fail "E_DECLARATION" message span (hash-set* extra 'kind kind 'actual actual)))
+
+(define (term-data value)
+  (cond
+   ((term? value) (cons (term-constructor value) (map term-data (term-arguments value))))
+   ((capture? value) (hash 'capture (capture-name value)))
+   ((literal? value) (literal-value value))
+   (else value)))
+
 (define (words text) (string-split text))
 
 (define (class-run thunk span)
   (with-handlers
    ((class-error?
      (lambda (error)
-       (fail (class-error-code error) (exn-message error) span (class-error-data error)))))
+       (define data (class-error-data error))
+       (define code (class-error-code error))
+       (define-values
+        (native-code native-data)
+        (cond
+         ((equal? code "class-reference")
+          (if (hash-has-key? data 'class)
+            (values "E_CLASS_UNDECLARED" (hash 'class (hash-ref data 'class)))
+            (raise error)))
+         ((equal? code "class-state-cap")
+          (values
+           "E_CAP"
+           (hash 'cap "states" 'limit (hash-ref data 'cap) 'actual (hash-ref data 'states))))
+         ((equal? code "class-repetition-cap")
+          (values
+           "E_CAP"
+           (hash 'cap "repetition" 'limit (hash-ref data 'cap) 'actual (hash-ref data 'count))))
+         ((equal? code "class-reference-cap")
+          (values
+           "E_CAP"
+           (hash 'cap "depth" 'limit (hash-ref data 'cap) 'actual (hash-ref data 'actual))))
+         ((equal? code "class-work-cap")
+          (values
+           "E_CAP"
+           (hash
+            'cap
+            (hash-ref data 'resource)
+            'limit
+            (hash-ref data 'limit)
+            'actual
+            (hash-ref data 'actual))))
+         ((equal? code "class-reserved")
+          (values "E_DECLARATION" (hash 'kind "duplicate" 'actual (hash-ref data 'class))))
+         ((equal? code "class-reference-cycle")
+          (values "E_DECLARATION" (hash 'kind "class-cycle" 'actual (hash-ref data 'chain))))
+         ((member code '("class-syntax" "class-except" "class-host-predicate"))
+          (if (hash-has-key? data 'source)
+            (values "E_DECLARATION" (hash 'kind "syntax" 'actual (hash-ref data 'source)))
+            (raise error)))
+         ((equal? code "class-caps")
+          (cond
+           ((hash-has-key? data 'value)
+            (values "E_DECLARATION" (hash 'kind "syntax" 'actual (hash-ref data 'value))))
+           ((hash-has-key? data 'cap)
+            (values "E_DECLARATION" (hash 'kind "syntax" 'actual (hash-ref data 'cap))))
+           (else (raise error))))
+         (else (raise error))))
+       (fail native-code (exn-message error) span native-data))))
    (thunk)))
 
 (define meta-class-cache (make-hash))
@@ -73,9 +130,27 @@
 (define current-reader-meta (make-parameter #f))
 
 (define (parts production span)
+  (with-handlers
+   ((exn:fail:typify?
+     (lambda (error)
+       (define item (exn:fail:typify-diagnostic error))
+       (if (equal? (diagnostic-code item) "E_CLASS_OVERLAP")
+         (raise
+          (struct-copy
+           exn:fail:typify
+           error
+           (diagnostic
+            (struct-copy
+             diagnostic
+             item
+             (data (hash-set (diagnostic-data item) 'form production))))))
+         (raise error)))))
+   (parts/internal production span)))
+
+(define (parts/internal production span)
   (define record (car (read-lines production #:file (src-span-file span) #:comment-prefix "")))
   (when (memq (line-record-kind record) '(blank comment unclassified))
-    (fail "E_FORM" "A form must have a bang, colon or arrow shape" span))
+    (declaration-fail "syntax" production "A form must have a bang, colon or arrow shape" span))
   (values
    (line-record-kind record)
    (parse-template
@@ -109,16 +184,61 @@
    (((name value) (in-hash captures)))
    (and (hash-has-key? classes name) (class-accepts? (hash-ref classes name) value))))
 
+(define (validate-meta-arguments! name arguments signature span)
+  (unless (= (length arguments) (length signature))
+    (fail
+     "E_TERM_CLASS"
+     "The meta action has the wrong number of arguments"
+     span
+     (hash
+      'kind
+      "arity"
+      'constructor
+      name
+      'class
+      "signature"
+      'actual
+      (length arguments)
+      'expected
+      (length signature))))
+  (for
+   ((value (in-list arguments)) (class-name (in-list signature)))
+   (unless (hash-has-key? (compiled-meta-classes) class-name)
+     (fail
+      "E_CLASS_UNDECLARED"
+      "The meta signature names an undeclared class"
+      span
+      (hash 'class class-name)))
+   (unless (and
+            (string? value)
+            (class-accepts? (hash-ref (compiled-meta-classes) class-name) value))
+     (fail
+      "E_TERM_CLASS"
+      "The meta action violates its argument class"
+      span
+      (hash 'kind "result" 'constructor name 'class class-name 'actual value)))))
+
 (define (meta-row record)
+  (define-values
+   (classified-hit class-failure)
+   (if (current-reader-meta)
+     (scan-forms (current-reader-meta) record)
+     (scan-templates
+      (current-meta-forms)
+      record
+      (compiled-meta-classes)
+      (lambda (entry) (parts (hash-ref entry 'production) (line-record-span record))))))
+  (unless classified-hit (refuse-form! record class-failure))
   (define from-language
     (and (current-reader-meta)
-         (let ((hit (find-form (current-reader-meta) record)))
+         (let ((hit classified-hit))
            (and hit
                 (let* ((value (term-value (form-meaning (car hit)) (cdr hit) (current-reader-meta)))
                        (normalized (normalize-terms (current-reader-meta) (list value))))
                   (unless (= (length normalized) 1)
-                    (fail
-                     "E_META_ACTION"
+                    (declaration-fail
+                     "arity"
+                     normalized
                      "A meta line must reduce to exactly one meta primitive"
                      (line-record-span record)))
                   (define action (car normalized))
@@ -129,23 +249,16 @@
                       (equal? (hash-ref row 'constructor) (car action)))
                      row))
                   (unless entry
-                    (fail
-                     "E_META_ACTION"
+                    (declaration-fail
+                     "reference"
+                     (car action)
                      "The meta primitive is not in the kernel"
                      (line-record-span record)))
-                  (unless (and
-                           (= (length (cdr action)) (length (hash-ref entry 'arguments)))
-                           (for/and
-                            ((value (in-list (cdr action)))
-                             (class-name (in-list (hash-ref entry 'arguments))))
-                            (and (string? value)
-                                 (class-accepts?
-                                  (hash-ref (compiled-meta-classes) class-name)
-                                  value))))
-                    (fail
-                     "E_META_SIGNATURE"
-                     "The meta action violates the kernel primitive contract"
-                     (line-record-span record)))
+                  (validate-meta-arguments!
+                   (car action)
+                   (cdr action)
+                   (hash-ref entry 'arguments)
+                   (line-record-span record))
                   (hash
                    'kind
                    (hash-ref entry 'kind)
@@ -158,11 +271,11 @@
   (or from-language
       (and (not (current-reader-meta))
            (for/or
-            ((entry (in-list (current-meta-forms))))
+            ((entry (in-list (list (car classified-hit)))))
             (define-values
              (kind left right)
              (parts (hash-ref entry 'production) (line-record-span record)))
-            (define captures (form-captures kind left right record))
+            (define captures (cdr classified-hit))
             (and captures
                  (captures-fit? captures (compiled-meta-classes))
                  (let* ((slots (filter slot? (append left (or right '()))))
@@ -175,22 +288,16 @@
                            (equal? (hash-ref original 'constructor) (hash-ref entry 'constructor)))
                           original)))
                    (unless operation
-                     (fail
-                      "E_META_ACTION"
+                     (declaration-fail
+                      "reference"
+                      (hash-ref entry 'constructor)
                       "The meta primitive is not in the kernel"
                       (line-record-span record)))
-                   (unless (and
-                            (= (length arguments) (length signature))
-                            (for/and
-                             ((argument (in-list arguments)) (class-name (in-list signature)))
-                             (and (hash-has-key? (compiled-meta-classes) class-name)
-                                  (class-accepts?
-                                   (hash-ref (compiled-meta-classes) class-name)
-                                   argument))))
-                     (fail
-                      "E_META_SIGNATURE"
-                      "The meta primitive arguments fail its signature"
-                      (line-record-span record)))
+                   (validate-meta-arguments!
+                    (hash-ref entry 'constructor)
+                    arguments
+                    signature
+                    (line-record-span record))
                    (hash
                     'kind
                     (hash-ref operation 'kind)
@@ -202,17 +309,43 @@
                     'record
                     record)))))
       (fail
-       "E_DECLARATION_FORM"
+       "E_FORM_NONE"
        "The line is not a declared meta form"
        (line-record-span record)
-       (hash 'line (line-record-raw record)))))
+       (hash 'actual (line-record-raw record)))))
 
 (define (capture-value row key) (hash-ref (hash-ref row 'captures) key))
 
 (define (row-span row) (line-record-span (hash-ref row 'record)))
 
+(define (row-source row) (line-record-raw (hash-ref row 'record)))
+
 (define (ordered-constructors constructors)
   (sort (hash-values constructors) < #:key constructor-ordinal))
+
+(define (check-rule-cycles! constructors)
+  (define colors (make-hash))
+  (define (visit item)
+    (define name (constructor-name item))
+    (hash-set! colors name 'active)
+    (for
+     ((right (in-list (cdr (constructor-rule item)))))
+     (define next (hash-ref constructors (term-constructor right) #f))
+     (when (and next (constructor-rule next))
+       (case (hash-ref colors (constructor-name next) #f)
+         ((active)
+          (fail
+           "E_RULE_CYCLE"
+           "Rewrite dependencies form a cycle"
+           (term-span right)
+           (hash 'constructor (constructor-name next))))
+         ((done) (void))
+         (else (visit next)))))
+    (hash-set! colors name 'done))
+  (for
+   ((item (in-list (ordered-constructors constructors))))
+   (when (and (constructor-rule item) (not (hash-has-key? colors (constructor-name item))))
+     (visit item))))
 
 (struct declaration-automata (fields whole checks) #:transparent)
 
@@ -273,9 +406,10 @@
   (define lines (read-lines text #:file file))
   (unless (and (pair? lines) (equal? (string-trim (line-record-raw (car lines))) "#lang typify"))
     (fail
-     "E_HEADER"
+     "E_DECLARATION"
      "A declaration file must open with #lang typify"
-     (if (pair? lines) (line-record-span (car lines)) (src-span file 1 1 1 1 0 0))))
+     (if (pair? lines) (line-record-span (car lines)) (src-span file 1 1 1 1 0 0))
+     (hash 'kind "header" 'actual (if (pair? lines) (line-record-raw (car lines)) ""))))
   (define bodies '())
   (define current #f)
   (define opening #f)
@@ -286,48 +420,62 @@
      ((blank) (void))
      ((comment)
       (fail
-       "E_DECLARATION_COMMENT"
+       "E_DECLARATION"
        "Declaration prose belongs outside the declaration"
-       (line-record-span record)))
+       (line-record-span record)
+       (hash 'kind "syntax" 'actual (line-record-raw record))))
      (else
       (define row (meta-row record))
       (case (hash-ref row 'kind)
         ((declare)
          (when current
            (fail
-            "E_BODY_NESTED"
+            "E_DECLARATION"
             "Close the current language before declaring another"
-            (row-span row)))
+            (row-span row)
+            (hash 'kind "body" 'actual (row-source row))))
          (set! current (capture-value row "name"))
          (set! opening (row-span row))
          (set! rows '()))
         ((end)
-         (unless current (fail "E_BODY_END" "No language is open" (row-span row)))
+         (unless current
+           (declaration-fail "body" (row-source row) "No language is open" (row-span row)))
          (set! bodies (append bodies (list (compile-body current rows opening))))
          (set! current #f))
         (else
          (unless current
-           (fail "E_BODY_MISSING" "Declare a language before its contents" (row-span row)))
+           (declaration-fail
+            "body"
+            (row-source row)
+            "Declare a language before its contents"
+            (row-span row)))
          (set! rows (append rows (list row))))))))
-  (when current (fail "E_BODY_UNCLOSED" "The language has no end!" opening))
+  (when current (declaration-fail "body" "EOF" "The language has no end!" opening))
   (define result
     (for/fold
      ((result (hash)))
      ((body (in-list bodies)))
      (when (hash-has-key? result (language-name body))
-       (fail "E_LANGUAGE_DUPLICATE" "The language is declared twice" (language-span body)))
+       (declaration-fail
+        "duplicate"
+        (language-name body)
+        "The language is declared twice"
+        (language-span body)))
      (hash-set result (language-name body) body)))
   (for*
    ((body (in-list bodies)) (name (in-list (language-sees body))))
    (unless (hash-has-key? result name)
      (fail
-      "E_LANGUAGE_REFERENCE"
+      "E_DECLARATION"
       "The referenced language is not declared"
       (language-span body)
-      (hash 'name name))))
+      (hash 'kind "reference" 'actual name))))
   result)
 
 (define (compile-body name rows opening)
+  (class-run (lambda () (compile-body/internal name rows opening)) opening))
+
+(define (compile-body/internal name rows opening)
   (define sources (hash))
   (define caps (hash))
   (define constructors (hash))
@@ -350,15 +498,19 @@
   (define (property! key value row)
     (when (hash-has-key? properties key)
       (fail
-       "E_PROPERTY_DUPLICATE"
+       "E_DECLARATION"
        "The property is declared twice"
        (row-span row)
-       (hash 'property (symbol->string key))))
+       (hash 'kind "duplicate" 'actual (symbol->string key))))
     (set! properties (hash-set properties key value)))
   (define (finish-form!)
     (when current-form
       (unless (hash-ref current-form 'meaning #f)
-        (fail "E_MEANING_MISSING" "Every form requires does" (hash-ref current-form 'span)))
+        (declaration-fail
+         "syntax"
+         (hash-ref current-form 'source)
+         "Every form requires does"
+         (hash-ref current-form 'span)))
       (set! pending-forms (append pending-forms (list current-form)))
       (set! current-form #f)))
   (for
@@ -370,27 +522,31 @@
           (not (hash-ref current-form 'meaning #f))
           (not (memq kind '(does restricts))))
      (fail
-      "E_MEANING_MISSING"
+      "E_DECLARATION"
       "does must immediately follow its form"
-      (hash-ref current-form 'span)))
+      (hash-ref current-form 'span)
+      (hash 'kind "syntax" 'actual (hash-ref current-form 'source))))
    (case kind
      ((class)
       (define key (capture-value row "name"))
       (when (or (member key '("letter" "canonical-path")) (hash-has-key? sources key))
-        (fail "E_CLASS_DUPLICATE" "The class is declared twice or reserved" span (hash 'name key)))
+        (declaration-fail "duplicate" key "The class is declared twice or reserved" span))
       (set! sources (hash-set sources key (capture-value row "value"))))
      ((cap)
       (define key (capture-value row "limit"))
-      (when (hash-has-key? caps key) (fail "E_CAP_DUPLICATE" "The cap is declared twice" span))
+      (when (hash-has-key? caps key)
+        (declaration-fail "duplicate" key "The cap is declared twice" span))
       (define value (string->number (capture-value row "number")))
+      (unless (positive? value)
+        (declaration-fail "syntax" (row-source row) "Every cap must be positive" span))
       (unless (and
                (hash-has-key? meta-cap-defaults key)
                (<= value (hash-ref meta-cap-defaults key)))
         (fail
-         "E_CAP_MAXIMUM"
+         "E_CAP"
          "A body may lower a cap, never raise it"
          span
-         (hash 'cap key 'value value)))
+         (hash 'cap key 'limit (hash-ref meta-cap-defaults key) 'actual value)))
       (set! caps (hash-set caps key value)))
      ((version) (property! 'version (capture-value row "number") row))
      ((comment) (property! 'comment (capture-value row "value") row))
@@ -411,10 +567,10 @@
              (hash-has-key? constructors key)
              (and (hash-has-key? library-arities key) (not kernel-library?)))
         (fail
-         "E_CONSTRUCTOR_DUPLICATE"
+         "E_DECLARATION"
          "The constructor is declared twice or reserved"
          span
-         (hash 'name key)))
+         (hash 'kind "duplicate" 'actual key)))
       (set! constructors
         (hash-set
          constructors
@@ -430,7 +586,8 @@
       (set! constructor-order (append constructor-order (list key))))
      ((fact)
       (define key (capture-value row "name"))
-      (when (hash-has-key? facts key) (fail "E_FACT_DUPLICATE" "The fact is declared twice" span))
+      (when (hash-has-key? facts key)
+        (declaration-fail "duplicate" key "The fact is declared twice" span))
       (set! facts (hash-set facts key span)))
      ((form)
       (finish-form!)
@@ -451,22 +608,28 @@
          'defaults
          '())))
      ((does)
-      (unless current-form (fail "E_MEANING_ORPHAN" "does must follow a form" span))
+      (unless current-form
+        (declaration-fail "orphan" (row-source row) "does must follow a form" span))
       (when (hash-ref current-form 'meaning #f)
-        (fail "E_MEANING_DUPLICATE" "The form has two meanings" span))
+        (declaration-fail "duplicate" (row-source row) "The form has two meanings" span))
       (set! current-form
         (hash-set
          current-form
          'meaning
          (parse-term (capture-value row "value") #:span (line-right-span (hash-ref row 'record))))))
      ((restricts)
-      (unless current-form (fail "E_RESTRICTION_ORPHAN" "restricts! must belong to a form" span))
+      (unless current-form
+        (declaration-fail "orphan" (row-source row) "restricts! must belong to a form" span))
       (when (hash-ref current-form 'restricting? #f)
-        (fail "E_RESTRICTION_DUPLICATE" "The restriction is declared twice" span))
+        (declaration-fail "duplicate" (row-source row) "The restriction is declared twice" span))
       (set! current-form (hash-set current-form 'restricting? #t)))
      ((example default)
       (unless current-form
-        (fail "E_EXAMPLE_ORPHAN" "An example or default must follow a form" span))
+        (declaration-fail
+         "orphan"
+         (row-source row)
+         "An example or default must follow a form"
+         span))
       (define key (if (eq? kind 'example) 'examples 'defaults))
       (set! current-form
         (hash-set
@@ -476,13 +639,18 @@
      ((count)
       (define key (capture-value row "name"))
       (when (hash-has-key? counts key)
-        (fail "E_COUNT_DUPLICATE" "The constructor has two counts" span))
+        (declaration-fail "duplicate" key "The constructor has two counts" span))
       (set! counts (hash-set counts key (capture-value row "multiplicity"))))
      ((rule) (set! rules (append rules (list row))))
      ((sees) (set! sees (append sees (list (capture-value row "name")))))
      ((note) (set! notes (append notes (list (capture-value row "name")))))
      ((cell writes reads ensure join effect stage guard scope fuel) (void))
-     (else (fail "E_META_OPERATION" "The meta operation has no implementation" span))))
+     (else
+      (declaration-fail
+       "reference"
+       (row-source row)
+       "The meta operation has no implementation"
+       span))))
   (finish-form!)
   (define class-sources
     (for/fold
@@ -496,7 +664,7 @@
     ((class-name (in-list (constructor-signature item))))
     (unless (hash-has-key? classes class-name)
       (fail
-       "E_CLASS_REFERENCE"
+       "E_CLASS_UNDECLARED"
        "A constructor uses an undeclared class"
        (constructor-span item)
        (hash 'class class-name)))))
@@ -504,27 +672,42 @@
    ((row (in-list rules)))
    (define source (capture-value row "value"))
    (define sides (string-split source "->" #:trim? #f))
-   (unless (= (length sides) 2) (fail "E_RULE" "A rule has one arrow" (row-span row)))
+   (unless (= (length sides) 2)
+     (declaration-fail "syntax" source "A rule has one arrow" (row-span row)))
    (define left (parse-term (string-trim (car sides)) #:span (row-span row)))
    (define key (term-constructor left))
    (unless (hash-has-key? constructors key)
-     (fail "E_RULE_CONSTRUCTOR" "A rule names an undeclared constructor" (row-span row)))
+     (declaration-fail "reference" key "A rule names an undeclared constructor" (row-span row)))
    (define item (hash-ref constructors key))
-   (when (or (constructor-primitive? item) (constructor-rule item))
+   (when (constructor-primitive? item)
+     (declaration-fail "conflict" key "A primitive cannot also be rewritten" (row-span row)))
+   (when (constructor-rule item)
      (fail
       "E_RULE_DUPLICATE"
       "A primitive cannot be rewritten and a constructor has at most one rule"
-      (row-span row)))
+      (row-span row)
+      (hash 'constructor key 'rule source)))
    (unless (and
             (= (length (term-arguments left)) (length (constructor-signature item)))
             (andmap capture? (term-arguments left)))
      (fail
-      "E_RULE_LEFT"
+      "E_DECLARATION"
       "A rule left side contains only its constructor and variables"
-      (row-span row)))
+      (row-span row)
+      (hash
+       'kind
+       (if (= (length (term-arguments left)) (length (constructor-signature item)))
+         "syntax"
+         "arity")
+       'actual
+       source)))
    (define names (map capture-name (term-arguments left)))
    (when (check-duplicates names)
-     (fail "E_RULE_VARIABLE" "A rule variable is repeated" (row-span row)))
+     (declaration-fail
+      "duplicate"
+      (check-duplicates names)
+      "A rule variable is repeated"
+      (row-span row)))
    (define right
      (map
       (lambda (part) (parse-term (string-trim part) #:span (row-span row)))
@@ -536,22 +719,27 @@
    ((key (in-list (sort (hash-keys facts) string<?))))
    (define span (hash-ref facts key))
    (unless (hash-has-key? constructors key)
-     (fail "E_FACT_CONSTRUCTOR" "The fact constructor is undeclared" span))
+     (declaration-fail "reference" key "The fact constructor is undeclared" span))
    (when (or
           (constructor-primitive? (hash-ref constructors key))
           (constructor-rule (hash-ref constructors key)))
-     (fail "E_FACT_EFFECT" "A fact cannot also be a primitive or rewritten effect" span)))
+     (declaration-fail
+      "conflict"
+      key
+      "A fact cannot also be a primitive or rewritten effect"
+      span)))
   (set! constructors
     (for/hash
      (((key item) (in-hash constructors)))
      (values
       key
       (struct-copy constructor item (fact? (or (not effect-body?) (hash-has-key? facts key)))))))
+  (check-rule-cycles! constructors)
   (for
    ((item (in-list (ordered-constructors constructors))))
    (unless (or (constructor-primitive? item) (constructor-fact? item) (constructor-rule item))
      (fail
-      "E_CONSTRUCTOR_UNREDUCED"
+      "E_CONSTRUCTOR_UNBOUND"
       "A constructor must be primitive or have one rule"
       (constructor-span item)
       (hash 'constructor (constructor-name item))))
@@ -560,9 +748,10 @@
       ((right (in-list (cdr (constructor-rule item)))))
       (unless (hash-has-key? constructors (term-constructor right))
         (fail
-         "E_RULE_RESULT"
+         "E_DECLARATION"
          "A rule emits terms; library calls are arguments of those terms"
-         (term-span right)))
+         (term-span right)
+         (hash 'kind "reference" 'actual (term-constructor right))))
       (validate-term!
        right
        constructors
@@ -583,12 +772,16 @@
     (parts (hash-ref pending 'source) (hash-ref pending 'production-span)))
    (define slots (append (filter slot? left) (if right (filter slot? right) '())))
    (when (check-duplicates (map slot-name slots))
-     (fail "E_TEMPLATE_DUPLICATE" "A placeholder occurs on both sides of the line" span))
+     (declaration-fail
+      "duplicate"
+      (check-duplicates (map slot-name slots))
+      "A placeholder occurs on both sides of the line"
+      span))
    (for
     ((placeholder (in-list slots)))
     (unless (hash-has-key? classes (slot-name placeholder))
       (fail
-       "E_CLASS_REFERENCE"
+       "E_CLASS_UNDECLARED"
        "A form placeholder has no class"
        (slot-span placeholder)
        (hash 'class (slot-name placeholder)))))
@@ -601,10 +794,10 @@
        (define witness (class-delimiter-witness class b))
        (when witness
          (fail
-          "E_DELIMITER_AMBIGUOUS"
+          "E_CLASS_OVERLAP"
           "A placeholder can contain its following delimiter"
           (slot-span a)
-          (hash 'delimiter b 'witness witness)))
+          (hash 'form (hash-ref pending 'source) 'class (slot-name a) 'token b 'witness witness)))
        (set! delimiter-checks
          (cons
           (hash
@@ -621,21 +814,30 @@
    (unless (and
             (hash-has-key? constructors (term-constructor meaning))
             (not (hash-has-key? library-arities (term-constructor meaning))))
-     (fail
-      "E_MEANING_CONSTRUCTOR"
-      "does must build a declared constructor"
-      (term-span meaning)
-      (hash
-       'constructor
-       (term-constructor meaning)
-       'expected
-       "declared-constructor"
-       'actual
-       (cond
-        ((member (term-constructor meaning) '("prefix" "suffix" "equal")) "predicate")
-        ((member (term-constructor meaning) '("ancestors" "split")) "list")
-        ((hash-has-key? library-arities (term-constructor meaning)) "string")
-        (else "undeclared-constructor")))))
+     (if (hash-has-key? library-arities (term-constructor meaning))
+       (fail
+        "E_TERM_CLASS"
+        "does must build a declared constructor"
+        (term-span meaning)
+        (hash
+         'kind
+         "sort"
+         'constructor
+         (term-constructor meaning)
+         'class
+         "constructor"
+         'expected
+         "declared-constructor"
+         'actual
+         (cond
+          ((member (term-constructor meaning) '("prefix" "suffix" "equal")) "predicate")
+          ((member (term-constructor meaning) '("ancestors" "split")) "list")
+          (else "string"))))
+       (declaration-fail
+        "reference"
+        (term-constructor meaning)
+        "does must build a declared constructor"
+        (term-span meaning))))
    (validate-term!
     meaning
     constructors
@@ -666,17 +868,22 @@
    (define multiplicity (hash-ref counts (term-constructor (form-meaning candidate)) "*"))
    (unless (or (member multiplicity '("1" "1..*")) (pair? (form-defaults candidate)))
      (fail
-      "E_RESTRICTION_MISSING"
+      "E_RESTRICTS"
       "A restricting form needs a required multiplicity or a default"
-      (form-span candidate))))
+      (form-span candidate)
+      (hash
+       'form
+       (form-source candidate)
+       'constructor
+       (term-constructor (form-meaning candidate))))))
   (for
    ((key (in-list (sort (hash-keys counts) string<?))))
    (unless (hash-has-key? constructors key)
      (fail
-      "E_COUNT_CONSTRUCTOR"
+      "E_DECLARATION"
       "A count names an undeclared constructor"
       opening
-      (hash 'constructor key))))
+      (hash 'kind "reference" 'actual key))))
   (define body
     (language
      name
@@ -727,10 +934,10 @@
    (define witness (class-overlap-witness left-machine right-machine))
    (when witness
      (fail
-      "E_FORM_OVERLAP"
+      "E_FORM_SHADOW"
       "Two forms accept the same line"
       (form-span later)
-      (hash 'earlier (form-source earlier) 'later (form-source later) 'witness witness)))
+      (hash 'form (form-source later) 'actual (form-source earlier) 'witness witness)))
    (set! overlap-checks
      (cons
       (hash
@@ -754,10 +961,18 @@
        #:comment-prefix
        (language-comment body))))
    (unless (= (length records) 1)
-     (fail "E_EXAMPLE_EMPTY" "An example must dispatch to its intended form" (cdr pair)))
+     (fail
+      "E_EXAMPLE"
+      "An example must dispatch to its intended form"
+      (cdr pair)
+      (hash 'form (form-source candidate) 'actual (car pair))))
    (define hit (find-form body (car records)))
    (unless (and hit (= (form-ordinal (car hit)) (form-ordinal candidate)))
-     (fail "E_EXAMPLE_DISPATCH" "An example does not reach its intended form" (cdr pair)))
+     (fail
+      "E_EXAMPLE"
+      "An example does not reach its intended form"
+      (cdr pair)
+      (hash 'form (form-source candidate) 'actual (car pair))))
    (term-value (form-meaning candidate) (cdr hit) body))
   (define checks
     (hash
@@ -804,21 +1019,28 @@
   (define item (hash-ref constructors name #f))
   (unless (or item (hash-has-key? library-arities name))
     (fail
-     "E_TERM_CONSTRUCTOR"
+     "E_DECLARATION"
      "The term constructor is undeclared"
      (term-span expression)
-     (hash 'constructor name)))
+     (hash 'kind "reference" 'actual name)))
   (when (and upper item (not (constructor-primitive? item)) (>= (constructor-ordinal item) upper))
     (fail
-     "E_RULE_STRATIFICATION"
+     "E_DECLARATION"
      "A rule may refer only to earlier constructors, primitives and library functions"
-     (term-span expression)))
+     (term-span expression)
+     (hash 'kind "stratification" 'actual name)))
   (define arities
     (if item (list (length (constructor-signature item))) (hash-ref library-arities name)))
   (unless (member (length args) arities)
-    (fail "E_TERM_ARITY" "The term has the wrong number of arguments" (term-span expression)))
+    (declaration-fail
+     "arity"
+     (term-data expression)
+     "The term has the wrong number of arguments"
+     (term-span expression)
+     (hash 'expected arities 'count (length args))))
   (for
-   ((argument (in-list args)))
+   ((argument (in-list args)) (index (in-naturals)))
+   (define receiving-class (if item (list-ref (constructor-signature item) index) "string"))
    (cond
     ((capture? argument)
      (unless (if
@@ -826,21 +1048,33 @@
               (hash-has-key? captures (capture-name argument))
               (member (capture-name argument) captures))
        (fail
-        "E_CAPTURE_UNBOUND"
+        "E_DECLARATION"
         "The meaning refers to an unbound capture"
-        (capture-span argument))))
+        (capture-span argument)
+        (hash 'kind "capture" 'actual (capture-name argument)))))
     ((term? argument)
      (unless (hash-has-key? library-arities (term-constructor argument))
        (fail
         "E_TERM_NESTED"
         "A string-class position permits a library call, not a nested user constructor"
-        (term-span argument)))
+        (term-span argument)
+        (hash 'constructor (term-constructor argument) 'actual (term-data argument))))
      (when (member (term-constructor argument) '("ancestors" "split"))
        (fail
         "E_TERM_CLASS"
         "A string-class position cannot receive a list-valued library call"
         (term-span argument)
-        (hash 'constructor (term-constructor argument) 'expected "string" 'actual "list")))
+        (hash
+         'kind
+         "sort"
+         'constructor
+         name
+         'class
+         receiving-class
+         'expected
+         "string"
+         'actual
+         "list")))
      (when (member (term-constructor argument) '("prefix" "suffix" "equal"))
        (fail
         "E_TERM_CLASS"
@@ -848,7 +1082,11 @@
         (term-span argument)
         (hash
          'constructor
-         (term-constructor argument)
+         name
+         'kind
+         "sort"
+         'class
+         receiving-class
          'expected
          "string"
          'actual
@@ -857,7 +1095,12 @@
          '("if" "ensure"))))
      (validate-term! argument constructors classes captures upper #:record-check record-check))
     ((literal? argument) (void))
-    (else (fail "E_TERM" "The term contains an invalid argument" (term-span expression)))))
+    (else
+     (declaration-fail
+      "syntax"
+      (term-data expression)
+      "The term contains an invalid argument"
+      (term-span expression)))))
   (when item
     (for
      ((argument (in-list args))
@@ -870,7 +1113,15 @@
         "E_TERM_CLASS"
         "A literal term argument fails its declared class"
         (literal-span argument)
-        (hash 'class class-name 'value (literal-value argument))))
+        (hash
+         'kind
+         "literal"
+         'constructor
+         name
+         'class
+         class-name
+         'actual
+         (literal-value argument))))
      (when (and (capture? argument) (hash? captures))
        (define source-class (hash-ref captures (capture-name argument)))
        (define target-class (hash-ref classes class-name))
@@ -880,7 +1131,19 @@
           "E_TERM_CLASS"
           "The capture class is not contained in the receiving argument class"
           (capture-span argument)
-          (hash 'capture (capture-name argument) 'class class-name 'witness witness)))
+          (hash
+           'kind
+           "capture"
+           'constructor
+           name
+           'class
+           class-name
+           'actual
+           (compiled-class-name source-class)
+           'capture
+           (capture-name argument)
+           'witness
+           witness)))
        (record-check
         (hash
          'constructor
@@ -894,12 +1157,98 @@
          'bounds
          (class-check-count-bounds source-class target-class)))))))
 
-(define (find-form body record)
-  (for/or
-   ((candidate (in-list (language-forms body))))
-   (define captures
-     (form-captures (form-kind candidate) (form-left candidate) (form-right candidate) record))
-   (and captures (captures-fit? captures (language-classes body)) (cons candidate captures))))
+(struct capture-failure (name token span) #:transparent)
+
+(define (scan-templates candidates record classes templates)
+  (define (field-failure parts captures offsets text span)
+    (for/first
+     ((part (in-list parts))
+      #:when
+      (and (slot? part)
+           (not
+            (class-accepts?
+             (hash-ref classes (slot-name part))
+             (hash-ref captures (slot-name part))))))
+     (define offset (hash-ref offsets (slot-name part)))
+     (capture-failure
+      (slot-name part)
+      (hash-ref captures (slot-name part))
+      (span-slice span text (car offset) (cdr offset)))))
+  (let loop ((remaining candidates) (first-failure #f))
+    (cond
+     ((null? remaining) (values #f first-failure))
+     (else
+      (define candidate (car remaining))
+      (define-values (kind left right) (templates candidate))
+      (cond
+       ((not (eq? kind (line-record-kind record))) (loop (cdr remaining) first-failure))
+       (else
+        (define-values
+         (left-captures left-offsets)
+         (match-template/located left (line-record-left record)))
+        (define-values
+         (right-captures right-offsets)
+         (if right
+           (match-template/located right (line-record-right record))
+           (values (hash) (hash))))
+        (cond
+         ((not (and left-captures right-captures)) (loop (cdr remaining) first-failure))
+         (else
+          (define failure
+            (or (field-failure
+                 left
+                 left-captures
+                 left-offsets
+                 (line-record-left record)
+                 (line-left-span record))
+                (and right
+                     (field-failure
+                      right
+                      right-captures
+                      right-offsets
+                      (line-record-right record)
+                      (line-right-span record)))))
+          (if failure
+            (loop (cdr remaining) (or first-failure failure))
+            (values
+             (cons
+              candidate
+              (for/fold
+               ((captures left-captures))
+               (((key value) (in-hash right-captures)))
+               (hash-set captures key value)))
+             first-failure))))))))))
+
+(define (scan-forms body record)
+  (scan-templates
+   (language-forms body)
+   record
+   (language-classes body)
+   (lambda (candidate)
+     (values (form-kind candidate) (form-left candidate) (form-right candidate)))))
+
+(define (find-form body record) (define-values (hit failure) (scan-forms body record)) hit)
+
+(define (refuse-form! record failure)
+  (cond
+   ((eq? (line-record-kind record) 'unclassified)
+    (fail
+     "E_LINE_SHAPE"
+     "The line has none of the three shapes"
+     (line-record-span record)
+     (hash 'actual (line-record-raw record))))
+   (failure
+    (fail
+     "E_CLASS"
+     "The captured token fails its class"
+     (capture-failure-span failure)
+     (hash 'class (capture-failure-name failure) 'token (capture-failure-token failure))))
+   (else
+    (fail
+     "E_FORM_NONE"
+     "The line matches no structural form"
+     (line-record-span record)
+     (hash 'actual (line-record-raw record))))))
 
 (define (line-accepts? text body)
   (and (not (regexp-match? #rx"[\r\n]" text))
@@ -929,7 +1278,7 @@
             "E_TERM_CLASS"
             "A term argument fails its declared class"
             (term-span expression)
-            (hash 'class class-name 'value argument)))))))
+            (hash 'kind "result" 'constructor (car item) 'class class-name 'actual argument)))))))
   (check value)
   value)
 
@@ -945,19 +1294,15 @@
   (for
    ((record (in-list (read-lines text #:file file #:comment-prefix (language-comment body)))))
    (unless (memq (line-record-kind record) '(blank comment))
-     (define hit (find-form body record))
-     (unless hit
-       (fail
-        "E_PROGRAM_FORM"
-        "The line matches no form with valid captures"
-        (line-record-span record)
-        (hash 'line (line-record-raw record))))
+     (define-values (hit failure) (scan-forms body record))
+     (unless hit (refuse-form! record failure))
      (define candidate (car hit))
      (when (and (equal? (language-order body) "strict") (< (form-ordinal candidate) last-index))
        (fail
-        "E_PROGRAM_ORDER"
+        "E_ORDER"
         "The line violates the declared form order"
-        (line-record-span record)))
+        (line-record-span record)
+        (hash 'form (form-source candidate) 'expected last-index 'actual (form-ordinal candidate))))
      (set! last-index (max last-index (form-ordinal candidate)))
      (define value (term-value (form-meaning candidate) (cdr hit) body))
      (add-term! value (line-record-span record))))
@@ -977,7 +1322,11 @@
        (language-comment body))))
    (define hit (find-form body record))
    (unless hit
-     (fail "E_PROGRAM_FORM" "The default matches no form with valid captures" (cdr default)))
+     (fail
+      "E_FORM_NONE"
+      "The default matches no form with valid captures"
+      (cdr default)
+      (hash 'actual (car default))))
    (add-term!
     (term-value (form-meaning (car hit)) (cdr hit) body)
     (hash
@@ -1003,7 +1352,7 @@
       "E_PROGRAM_COUNT"
       "The constructor count violates its multiplicity"
       (language-span body)
-      (hash 'constructor name 'multiplicity multiplicity 'actual quantity))))
+      (hash 'constructor name 'expected multiplicity 'actual quantity))))
   (hash 'valid #t 'language (language-name body) 'terms terms 'origins origins))
 
 (define library-domain-classes (delay (compile-classes (hash "allowed" "/.*/"))))
@@ -1015,10 +1364,16 @@
   (define (strings!)
     (unless (andmap string? args)
       (fail
-       "E_LIBRARY_ARGUMENT"
+       "E_LIBRARY_DOMAIN"
        "The library function requires string arguments"
        span
-       (hash 'function name))))
+       (hash
+        'constructor
+        name
+        'expected
+        "string"
+        'actual
+        (for/first ((value (in-list args)) #:unless (string? value)) value)))))
   (strings!)
   (define (domain! value index domain valid?)
     (unless valid?
@@ -1026,7 +1381,7 @@
        "E_LIBRARY_DOMAIN"
        "The library argument is outside its specified domain"
        span
-       (hash 'function name 'argument index 'domain domain))))
+       (hash 'constructor name 'expected domain 'actual value 'argument index))))
   (case (string->symbol name)
     ((parent split ancestors)
      (domain! (car args) 1 "canonical-path" (library-pattern-accepts? "canonical-path" (car args))))
@@ -1054,7 +1409,8 @@
     ((join) (string-append (if (equal? (car args) "/") "" (car args)) "/" (cadr args)))
     ((parent)
      (define value (car args))
-     (when (equal? value "/") (fail "E_LIBRARY_PARENT" "The root has no parent" span))
+     (when (equal? value "/")
+       (fail "E_LIBRARY_PARENT" "The root has no parent" span (hash 'path value)))
      (define positions
        (for/list
         ((character (in-string value)) (index (in-naturals)) #:when (char=? character #\/))
@@ -1079,10 +1435,18 @@
   (define (normalize value)
     (define evaluated (evaluate value))
     (unless (and (list? evaluated) (pair? evaluated))
-      (fail "E_NORMAL_FORM" "A top-level meaning must be a term" (language-span body)))
+      (declaration-fail
+       "syntax"
+       evaluated
+       "A top-level meaning must be a term"
+       (language-span body)))
     (define item (hash-ref (language-constructors body) (car evaluated) #f))
     (unless item
-      (fail "E_NORMAL_CONSTRUCTOR" "The term constructor is undeclared" (language-span body)))
+      (declaration-fail
+       "reference"
+       (car evaluated)
+       "The term constructor is undeclared"
+       (language-span body)))
     (for
      ((argument (in-list (cdr evaluated))) (class-name (in-list (constructor-signature item))))
      (unless (and
@@ -1092,7 +1456,15 @@
         "E_TERM_CLASS"
         "The normalized argument fails its declared string class"
         (language-span body)
-        (hash 'constructor (constructor-name item) 'class class-name 'value argument))))
+        (hash
+         'kind
+         "result"
+         'constructor
+         (constructor-name item)
+         'class
+         class-name
+         'actual
+         argument))))
     (if (or (constructor-primitive? item)
             (and (constructor-fact? item) (not (constructor-rule item))))
       (list evaluated)

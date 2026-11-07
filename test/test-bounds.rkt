@@ -6,6 +6,7 @@
          racket/port
          racket/runtime-path
          racket/string
+         "../src/classes.rkt"
          "../src/diagnostics.rkt"
          "../src/language.rkt"
          "../src/main.rkt")
@@ -80,7 +81,7 @@
          ((name '("Alpha" "Zeta")))
          (hash 'language name 'checks (declaration-check-bounds (hash-ref parsed name))))
         'host
-        (hash 'name "racket" 'version (version))))
+        (hash 'name "racket" 'version (version) 'guards class-host-guards)))
      (define all-response (request (list "check" declaration-path "--bounds" "--json")))
      (check
       all-response
@@ -135,10 +136,8 @@
      (reject (list "emit" "Typify" "--unknown") "E_USAGE")
      (reject (list "check" declaration-path "--unknown") "E_USAGE")
      (reject (list "check" declaration-path "--gbnf") "E_USAGE")
-     (reject (list "check" declaration-path "Zeta" invalid-path "--bounds") "E_PROGRAM_FORM")
-     (reject
-      (list "check" declaration-path "Missing" program-path "--bounds")
-      "E_LANGUAGE_UNDECLARED")
+     (reject (list "check" declaration-path "Zeta" invalid-path "--bounds") "E_CLASS")
+     (reject (list "check" declaration-path "Missing" program-path "--bounds") "E_USAGE")
      (define usage (execute (list "emit" "Typify" "--bounds" "--json")))
      (check (hash-ref usage 'exit) 2 "bounds on emit has the usage exit status")
      (define usage-json (string->jsexpr (hash-ref usage 'stdout)))
@@ -146,6 +145,28 @@
       (hash-ref (car (hash-ref usage-json 'diagnostics)) 'code)
       "E_USAGE"
       "bounds on emit reports a native usage diagnostic")
+     (check
+      (hash-ref (hash-ref (car (hash-ref usage-json 'diagnostics)) 'data) 'actual)
+      "--bounds"
+      "usage data identifies the invalid option")
+     (define missing-path (path->string (build-path directory "missing.typify")))
+     (define missing (execute (list "check" missing-path "--json")))
+     (check (hash-ref missing 'exit) 2 "unreadable input retains the command failure status")
+     (define missing-diagnostic
+       (car (hash-ref (string->jsexpr (hash-ref missing 'stdout)) 'diagnostics)))
+     (check (hash-ref missing-diagnostic 'code) "E_FILE" "file errors use the closed registry")
+     (check
+      (hash-ref (hash-ref missing-diagnostic 'data) 'path)
+      (string-replace missing-path "\\" "/")
+      "file errors compare the requested path rather than host error text")
+     (define separated-path (string-append (path->string directory) "/absent\\nested.typify"))
+     (define separated (execute (list "check" separated-path "--json")))
+     (define separated-diagnostic
+       (car (hash-ref (string->jsexpr (hash-ref separated 'stdout)) 'diagnostics)))
+     (check
+      (hash-ref (hash-ref separated-diagnostic 'data) 'path)
+      (string-replace separated-path "\\" "/")
+      "compared file paths use portable separators")
      (define invalid
        (execute (list "check" declaration-path "Zeta" invalid-path "--bounds" "--json")))
      (check (hash-ref invalid 'exit) 1 "bounds does not bypass program validation")

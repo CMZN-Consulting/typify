@@ -22,6 +22,7 @@
          class-check-bound
          class-count-bounds
          class-check-count-bounds
+         class-host-guards
          class-error-message
          default-class-caps
          unicode-version
@@ -49,6 +50,9 @@
 
 (define automaton-work-limit 1048576)
 
+(define class-host-guards
+  (hash "temporary-states" automaton-work-limit "reference-nodes" automaton-work-limit))
+
 (define bounded-machines (make-weak-hasheq))
 
 (define bounded-class-cache (make-weak-hasheq))
@@ -70,13 +74,16 @@
 
 (define (mark-bounded! machine) (hash-set! bounded-machines machine #t) machine)
 
-(define (work-fail phase (bounds #f))
+(define (work-fail phase actual (bounds #f) #:limit (limit automaton-work-limit))
+  (define resource (if (equal? phase "references") "reference-nodes" "temporary-states"))
   (fail
    "class-work-cap"
-   "temporary automaton state count exceeds the construction or search budget"
+   (if (equal? resource "reference-nodes")
+     "expanded class reference nodes exceed the construction budget"
+     "temporary automaton state count exceeds the construction or search budget")
    (if bounds
-     (hash 'limit automaton-work-limit 'phase phase 'resource "temporary-states" 'bounds bounds)
-     (hash 'limit automaton-work-limit 'phase phase 'resource "temporary-states"))))
+     (hash 'limit limit 'actual actual 'phase phase 'resource resource 'bounds bounds)
+     (hash 'limit limit 'actual actual 'phase phase 'resource resource))))
 
 (define (class-work-bound class)
   (define machine (compiled-class-machine class))
@@ -492,7 +499,7 @@
             (fail
              "class-except"
              "except accepts quoted literal values only"
-             (hash 'column (add1 at))))
+             (hash 'source source 'column (add1 at))))
           (define value (cadr (quoted!)))
           (skip!)
           (if (and (peek) (char=? (peek) #\|))
@@ -507,10 +514,13 @@
 
 (define (read-class-source source known caps)
   (unless (and (string? source) (positive? (string-length (string-trim source))))
-    (fail "class-syntax" "class source must be nonempty text"))
+    (fail "class-syntax" "class source must be nonempty text" (hash 'source source)))
   (define trimmed (string-trim source))
   (when (string-prefix? trimmed "@")
-    (fail "class-host-predicate" "host predicates are not part of the class language"))
+    (fail
+     "class-host-predicate"
+     "host predicates are not part of the class language"
+     (hash 'source source)))
   (values (parse-pattern trimmed known caps) '()))
 
 (define (make-nfa tree resolve caps alphabet)
@@ -518,7 +528,7 @@
   (define epsilon (make-hash))
   (define transitions (make-hash))
   (define (state!)
-    (when (>= next automaton-work-limit) (work-fail "nfa"))
+    (when (>= next automaton-work-limit) (work-fail "nfa" (add1 next)))
     (begin0 next (set! next (add1 next))))
   (define (epsilon! from to) (hash-update! epsilon from (lambda (values) (cons to values)) '()))
   (define (edge! from to ranges)
@@ -557,7 +567,7 @@
         (fail
          "class-reference-cap"
          "class reference depth exceeds the declared cap"
-         (hash 'class name 'cap (caps-ref caps 'reference-depth))))
+         (hash 'class name 'cap (caps-ref caps 'reference-depth) 'actual (add1 (length stack)))))
       (build (resolve name) (cons name stack)))
      ((list 'except child literals)
       (define-values
@@ -685,7 +695,7 @@
      identities
      key
      (lambda ()
-       (when (>= next automaton-work-limit) (work-fail "dfa"))
+       (when (>= next automaton-work-limit) (work-fail "dfa" (add1 next)))
        (define identity next)
        (set! next (add1 next))
        (hash-set! identities key identity)
@@ -784,7 +794,7 @@
            (hash-ref nodes state)
            point
            (lambda ()
-             (when (>= next automaton-work-limit) (work-fail "exclusion-trie"))
+             (when (>= next automaton-work-limit) (work-fail "exclusion-trie" (add1 next)))
              (define identity next)
              (set! next (add1 next))
              (hash-set! nodes identity (make-hash))
@@ -887,7 +897,7 @@
   (define expanded-nodes 0)
   (define (expand node stack)
     (set! expanded-nodes (add1 expanded-nodes))
-    (when (> expanded-nodes automaton-work-limit) (work-fail "references"))
+    (when (> expanded-nodes automaton-work-limit) (work-fail "references" expanded-nodes))
     (match
      node
      ((list 'reference name)
@@ -900,7 +910,7 @@
         (fail
          "class-reference-cap"
          "class reference depth exceeds the declared cap"
-         (hash 'class name 'cap (caps-ref caps 'reference-depth))))
+         (hash 'class name 'cap (caps-ref caps 'reference-depth) 'actual (add1 (length stack)))))
       (define body (expand (resolve name) (cons name stack)))
       (define literals (hash-ref exclusions name '()))
       (if (null? literals) body (list 'except body literals)))
@@ -1024,7 +1034,8 @@
            ((transition (in-list (outgoing state))))
            (define target (edge-target transition))
            (unless (hash-has-key? seen target)
-             (when (>= (hash-count seen) cap) (work-fail "product" bounds))
+             (when (>= (hash-count seen) cap)
+               (work-fail "product" (add1 (hash-count seen)) bounds #:limit cap))
              (hash-set! seen target #t)
              (set! next (cons (cons target (cons (caar (edge-ranges transition)) reversed)) next))))
           (loop (cdr front) next)))))))
@@ -1219,7 +1230,7 @@
   (define epsilon (make-hash))
   (define transitions (make-hash))
   (define (state!)
-    (when (>= next automaton-work-limit) (work-fail "sequence"))
+    (when (>= next automaton-work-limit) (work-fail "sequence" (add1 next)))
     (begin0 next (set! next (add1 next))))
   (define (link! from to) (hash-update! epsilon from (lambda (targets) (cons to targets)) '()))
   (define initial (state!))
@@ -1296,7 +1307,8 @@
 
 (define (literal-prefix-machine literal alphabet cap)
   (define size (string-length literal))
-  (when (or (zero? size) (> size cap)) (work-fail "delimiter"))
+  (when (zero? size) (fail "class-literal" "literal prefix must be nonempty text"))
+  (when (> (add1 size) cap) (work-fail "delimiter" (add1 size) #:limit cap))
   (define points (list->vector (map char->integer (string->list literal))))
   (define failures (make-vector size 0))
   (for

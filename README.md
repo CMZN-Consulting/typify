@@ -43,7 +43,9 @@ The runtime depends on the base package. Class matching uses interval automata a
 
 The emitted grammar recognizes line formation under the declared forms and classes. The reader separately checks program counts, ordering, library results and declaration references.
 
-To inspect the host's derived state bounds for declaration checks, run `racket src/main.rkt check catalog-language.typify --bounds --json`.
+To inspect the host's derived state bounds and temporary work guards for declaration checks, run `racket src/main.rkt check catalog-language.typify --bounds --json`. These host bounds are separate from the language's declared caps.
+
+Native diagnostics use the closed registry in [src/diagnostics.rkt](src/diagnostics.rkt). `diagnostic-data-projection` selects each code's required comparison fields and ignores additional host data. Unregistered codes, missing fields and unknown kinds are implementation contract errors. Program diagnostics distinguish an invalid line shape, no matching structural form and a captured token outside its class; token ranges identify the actual program capture.
 
 For the full tests, build the pinned grammar validator and set its executable path and revision using the preparation steps in [the CI workflow](.github/workflows/ci.yml), then run `raco test test`. Those preparation steps need Git, CMake and a C++ compiler. Run `racket test/smoke.rkt` for a small integration check that needs only Racket. Format source with `racket scripts/format.rkt --write`. GitHub Actions also measures grammar agreement and mutation strength. Kernel checks and complete conformance acceptance are separate; missing external evidence fails acceptance.
 

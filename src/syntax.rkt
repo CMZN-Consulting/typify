@@ -14,6 +14,7 @@
          line-right-span
          parse-template
          match-template
+         match-template/located
          parse-term
          instantiate-term)
 
@@ -171,8 +172,16 @@
 
 (define (parse-template source #:file (file "<input>") #:span (provided-span #f))
   (define span (base-span source file provided-span))
-  (define (failure code message start end)
-    (raise-typify code message #:span (span-slice span source start end) #:content source))
+  (define (failure code message start end (data (hash 'kind "syntax" 'actual source)))
+    (raise-typify
+     code
+     message
+     #:span
+     (span-slice span source start end)
+     #:data
+     data
+     #:content
+     source))
   (let loop ((index 0) (literal-start 0) (parts '()) (names '()))
     (cond
      ((= index (string-length source))
@@ -180,22 +189,24 @@
        (if (< literal-start index) (cons (substring source literal-start index) parts) parts)))
      ((char=? (string-ref source index) #\<)
       (define close (find-literal source ">" (add1 index)))
-      (unless close (failure "E_TEMPLATE" "Unclosed placeholder" index (string-length source)))
+      (unless close (failure "E_DECLARATION" "Unclosed placeholder" index (string-length source)))
       (define name (substring source (add1 index) close))
       (unless (valid-name? name)
-        (failure "E_TEMPLATE" "Invalid placeholder name" index (add1 close)))
+        (failure "E_DECLARATION" "Invalid placeholder name" index (add1 close)))
       (when (member name names)
         (failure
-         "E_TEMPLATE_DUPLICATE"
+         "E_DECLARATION"
          "A placeholder name occurs more than once"
          index
-         (add1 close)))
+         (add1 close)
+         (hash 'kind "duplicate" 'actual name)))
       (when (and (= literal-start index) (pair? parts) (slot? (car parts)))
         (failure
-         "E_TEMPLATE_ADJACENT"
+         "E_CLASS_OVERLAP"
          "Adjacent placeholders have no literal boundary"
          index
-         (add1 close)))
+         (add1 close)
+         (hash 'form source 'class (slot-name (car parts)) 'token "")))
       (define before
         (if (< literal-start index) (cons (substring source literal-start index) parts) parts))
       (loop
@@ -205,13 +216,15 @@
        (cons name names)))
      (else (loop (add1 index) literal-start parts names)))))
 
-(define (match-template parts source)
-  (let loop ((remaining parts) (index 0) (captures (hash)))
+(define (match-template/located parts source)
+  (let loop ((remaining parts) (index 0) (captures (hash)) (offsets (hash)))
     (cond
-     ((null? remaining) (and (= index (string-length source)) captures))
+     ((null? remaining)
+      (if (= index (string-length source)) (values captures offsets) (values #f #f)))
      ((string? (car remaining))
-      (and (starts-at? source (car remaining) index)
-           (loop (cdr remaining) (+ index (string-length (car remaining))) captures)))
+      (if (starts-at? source (car remaining) index)
+        (loop (cdr remaining) (+ index (string-length (car remaining))) captures offsets)
+        (values #f #f)))
      ((slot? (car remaining))
       (define following (cdr remaining))
       (define end
@@ -219,12 +232,19 @@
          ((null? following) (string-length source))
          ((string? (car following)) (find-literal source (car following) index))
          (else #f)))
-      (and end
-           (loop
-            following
-            end
-            (hash-set captures (slot-name (car remaining)) (substring source index end)))))
-     (else (raise-argument-error 'match-template "list of literal strings and slots" parts)))))
+      (if end
+        (loop
+         following
+         end
+         (hash-set captures (slot-name (car remaining)) (substring source index end))
+         (hash-set offsets (slot-name (car remaining)) (cons index end)))
+        (values #f #f)))
+     (else
+      (raise-argument-error 'match-template/located "list of literal strings and slots" parts)))))
+
+(define (match-template parts source)
+  (define-values (captures offsets) (match-template/located parts source))
+  captures)
 
 (define (parse-term source #:file (file "<input>") #:span (provided-span #f))
   (define span (base-span source file provided-span))
@@ -232,7 +252,15 @@
   (define size (string-length source))
   (define (at-end?) (= index size))
   (define (failure message (start index) (end (min size (add1 start))))
-    (raise-typify "E_TERM" message #:span (span-slice span source start end) #:content source))
+    (raise-typify
+     "E_DECLARATION"
+     message
+     #:span
+     (span-slice span source start end)
+     #:data
+     (hash 'kind "syntax" 'actual source)
+     #:content
+     source))
   (define (skip!)
     (define before index)
     (let loop ()
@@ -303,11 +331,11 @@
        (capture-name item)
        (lambda ()
          (raise-typify
-          "E_CAPTURE"
+          "E_DECLARATION"
           "No value was supplied for a capture"
           #:span
           (capture-span item)
           #:data
-          (hasheq 'capture (capture-name item))))))
+          (hasheq 'kind "capture" 'actual (capture-name item))))))
      (else (raise-argument-error 'instantiate-term "term, literal or capture" item))))
   (cons (term-constructor expression) (map argument (term-arguments expression))))
