@@ -65,7 +65,8 @@
         "status": "present",
         "plan": [],
         "ensure": [],
-        "skips": []
+        "skips": [],
+        "recorded": []
       },
       {
         "path": "services/api/mounts.typify",
@@ -79,7 +80,8 @@
           ]
         ],
         "ensure": [],
-        "skips": []
+        "skips": [],
+        "recorded": []
       }
     ],
     "state": {
@@ -116,7 +118,8 @@
     ],
     "status": "ok",
     "ensure": [],
-    "skips": []
+    "skips": [],
+    "diagnostics": []
   },
   "programs": [
     {
@@ -125,7 +128,8 @@
       "status": "present",
       "plan": [],
       "ensure": [],
-      "skips": []
+      "skips": [],
+      "recorded": []
     },
     {
       "path": "services/api/mounts.typify",
@@ -139,7 +143,8 @@
         ]
       ],
       "ensure": [],
-      "skips": []
+      "skips": [],
+      "recorded": []
     }
   ],
   "predicted_state": {
@@ -191,7 +196,8 @@
             "status": "present",
             "plan": [],
             "ensure": [],
-            "skips": []
+            "skips": [],
+            "recorded": []
           },
           {
             "path": "services/api/mounts.typify",
@@ -205,7 +211,8 @@
               ]
             ],
             "ensure": [],
-            "skips": []
+            "skips": [],
+            "recorded": []
           }
         ],
         "state": {
@@ -242,7 +249,8 @@
         ],
         "status": "ok",
         "ensure": [],
-        "skips": []
+        "skips": [],
+        "diagnostics": []
       },
       "diagnostics": [],
       "provenance": [
@@ -308,7 +316,10 @@
               "V"
             ]
           }
-        ]
+        ],
+        "status": "failed",
+        "skips": [],
+        "recorded": []
       },
       "diagnostics": [
         {

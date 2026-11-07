@@ -78,7 +78,10 @@
               "U"
             ]
           }
-        ]
+        ],
+        "status": "failed",
+        "skips": [],
+        "recorded": []
       },
       "diagnostics": [
         {
@@ -172,7 +175,10 @@
               "U"
             ]
           }
-        ]
+        ],
+        "status": "failed",
+        "skips": [],
+        "recorded": []
       },
       "diagnostics": [
         {

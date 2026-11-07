@@ -46,42 +46,44 @@
   ],
   "ask_lines": [
     "? : form : access : <mode>",
-    "? : is : mode = \"ro\" | \"rw\"",
     "? : term : access : mode",
     "? : does : access <mode>",
+    "? : is : mode = \"ro\" | \"rw\"",
+    "? : example : access : rw",
     "? : count : access = 0..1",
-    "? : missing : default : access : ro",
-    "? : example : access : rw"
+    "? : default : access : ro"
   ],
   "stdout_json": {
     "word": "access",
     "status": "declared",
     "lines": [
       "? : form : access : <mode>",
-      "? : is : mode = \"ro\" | \"rw\"",
       "? : term : access : mode",
       "? : does : access <mode>",
+      "? : is : mode = \"ro\" | \"rw\"",
+      "? : example : access : rw",
       "? : count : access = 0..1",
-      "? : missing : default : access : ro",
-      "? : example : access : rw"
+      "? : default : access : ro"
     ],
     "near": [],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_json": {
     "word": "access",
     "status": "declared",
     "lines": [
       "? : form : access : <mode>",
-      "? : is : mode = \"ro\" | \"rw\"",
       "? : term : access : mode",
       "? : does : access <mode>",
+      "? : is : mode = \"ro\" | \"rw\"",
+      "? : example : access : rw",
       "? : count : access = 0..1",
-      "? : missing : default : access : ro",
-      "? : example : access : rw"
+      "? : default : access : ro"
     ],
     "near": [],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_provenance": [
     "§6",

@@ -138,7 +138,8 @@
             "data": {
               "constructor": "subtitle",
               "expected": "0..1",
-              "actual": 2
+              "actual": 2,
+              "key": []
             },
             "provenance": [
               "§4",
@@ -180,7 +181,8 @@
           "data": {
             "constructor": "subtitle",
             "expected": "0..1",
-            "actual": 2
+            "actual": 2,
+            "key": []
           },
           "provenance": [
             "§4",

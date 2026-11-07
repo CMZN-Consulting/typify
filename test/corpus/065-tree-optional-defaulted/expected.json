@@ -40,71 +40,75 @@
     "X",
     "Y"
   ],
-  "stdout_json": [
-    {
-      "path": "services/api/app.typify",
-      "language": "App",
-      "placeholders": {
-        "service": "api"
-      },
-      "status": "present",
-      "terms": [
-        [
-          "run",
-          "worker"
+  "stdout_json": {
+    "ok": true,
+    "programs": [
+      {
+        "path": "services/api/app.typify",
+        "language": "App",
+        "placeholders": {
+          "service": "api"
+        },
+        "status": "present",
+        "terms": [
+          [
+            "run",
+            "worker"
+          ]
+        ],
+        "origins": [
+          {
+            "kind": "program",
+            "path": "services/api/app.typify",
+            "line": 1
+          }
         ]
-      ],
-      "origins": [
-        {
-          "kind": "program",
-          "path": "services/api/app.typify",
-          "line": 1
-        }
-      ]
-    },
-    {
-      "path": "services/api/config.typify",
-      "language": "Config",
-      "placeholders": {
-        "service": "api"
       },
-      "status": "defaulted",
-      "terms": [
-        [
-          "access",
-          "ro"
+      {
+        "path": "services/api/config.typify",
+        "language": "Config",
+        "placeholders": {
+          "service": "api"
+        },
+        "status": "defaulted",
+        "terms": [
+          [
+            "access",
+            "ro"
+          ]
+        ],
+        "origins": [
+          {
+            "kind": "default",
+            "path": "declarations.typify",
+            "line": 13
+          }
         ]
-      ],
-      "origins": [
-        {
-          "kind": "default",
-          "path": "declarations.typify",
-          "line": 13
-        }
-      ]
-    },
-    {
-      "path": "services/api/notes.typify",
-      "language": "Notes",
-      "placeholders": {
-        "service": "api"
       },
-      "status": "present",
-      "terms": [
-        [
-          "memo",
-          "ready"
+      {
+        "path": "services/api/notes.typify",
+        "language": "Notes",
+        "placeholders": {
+          "service": "api"
+        },
+        "status": "present",
+        "terms": [
+          [
+            "memo",
+            "ready"
+          ]
+        ],
+        "origins": [
+          {
+            "kind": "program",
+            "path": "services/api/notes.typify",
+            "line": 1
+          }
         ]
-      ],
-      "origins": [
-        {
-          "kind": "program",
-          "path": "services/api/notes.typify",
-          "line": 1
-        }
-      ]
-    }
-  ],
+      }
+    ],
+    "diagnostics": []
+  },
   "tree_entries": [
     {
       "path": "services/api/app.typify",

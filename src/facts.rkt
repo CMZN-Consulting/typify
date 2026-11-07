@@ -77,10 +77,15 @@
                   (prefix (if (equal? base "/") "/" (string-append base "/"))))
              (not
               (for/or
-               ((item (in-list (hash-ref data 'facts))))
+               ((item (in-list (hash-ref data 'facts)))
+                #:when
+                (member (hash-ref item 'fact) '("directory" "symlink")))
                (define path (car (hash-ref item 'args)))
                (and (not (equal? path base))
                     (string-prefix? path prefix)
+                    (>=
+                     (length (string-split (substring path (string-length prefix)) "/" #:trim? #f))
+                     2)
                     (equal? (last (string-split path "/" #:trim? #f)) name)))))))
     (if clean? (values #t #t) (values #f #f)))
    (else

@@ -214,12 +214,13 @@
      (write-file root "R1/S1/value.data" "mark : Match\n")
      (write-file root "R1/S2/value.data" "mark : Ignored\n")
      (check
-      "repeated-capture-across-components-is-one-binding"
+      "repeated-template-capture-is-duplicate-under-the-latest-contract"
       (lambda ()
-        (map
-         (lambda (program) (hash-ref program 'path))
-         (read-tree (declarations (body "Repeat" "R<area>/S<area>/value.data")) root)))
-      '("R1/S1/value.data"))
+        (diagnostic-data
+         (diagnostic-of
+          (lambda ()
+            (read-tree (declarations (body "Repeat" "R<area>/S<area>/value.data")) root)))))
+      (hash 'kind "duplicate" 'actual "<area>"))
      (check
       "out-of-root-template-is-refused"
       (lambda ()
@@ -377,21 +378,21 @@
      (define gather-body
        (string-append
         "declare : Gather\ncap : length = 64\nis : word = /[A-Za-z]+/\n"
-        "primitive : use : word\neffect : use = external\nterm : deny : word\nfact : deny\n"
+        "primitive : use : word\neffect : use = external\n"
         "term : gather\nfuel : gather = 4\n"
-        "rule : gather -> (each <entry> in (inherited deny) (use <entry>))\n"
+        "rule : gather -> (each <entry> in (inherited Near.deny) (use <entry>)) ; (each <entry> in (inherited Far.deny) (use <entry>))\n"
         "form : gather!\ndoes : gather\nfile : nested/deep/use.data\nend!\n"))
-     (define (inherited-programs (guard ""))
+     (define (inherited-programs (guard "") (fuel 4))
        (read-tree
         (declarations
          (denials "Far" "root.data")
          (denials "Near" "nested/settings.data" guard)
-         gather-body)
+         (string-replace gather-body "fuel : gather = 4" (format "fuel : gather = ~a" fuel)))
         inherited-root
         #:facts
         (hash 'collector "typify 1.0" 'root "/" 'facts '())))
      (check
-      "inherited-terms-preserve-nearest-program-and-own-line-order"
+      "qualified-inherited-terms-preserve-authored-loop-and-own-line-order"
       (lambda ()
         (define-values (report events) (plan-programs/details (inherited-programs)))
         (map (lambda (event) (hash-ref event 'term)) events))
@@ -405,6 +406,25 @@
          (hash-ref (second programs) 'status)
          (map (lambda (event) (hash-ref event 'term)) events)))
       '("guarded" (("use" "Far") ("use" "FarLast"))))
+     (check
+      "crossed-guarded-target-is-reported-by-the-shared-lookup"
+      (lambda ()
+        (define programs (inherited-programs "guard : deny = (exists /absent)"))
+        (define observed
+          (program-lookup
+           (third programs)
+           "Near.deny"
+           (hash 'kind "program" 'path "nested/deep/use.data" 'line 1)))
+        (list
+         (lookup-observation-values observed)
+         (map (lambda (skip) (hash-ref skip 'program)) (lookup-observation-skips observed))))
+      '(() ("nested/settings.data")))
+     (check
+      "inherited-fuel-overflow-relates-the-first-excess-term-origin"
+      (lambda ()
+        (define item (diagnostic-of (lambda () (plan-programs (inherited-programs "" 1)))))
+        (list (diagnostic-code item) (diagnostic-related item)))
+      (list "E_RULE_FUEL" (list (hash 'kind "program" 'path "nested/settings.data" 'line 2))))
      (unless (eq? (system-type 'os) 'windows)
        (define outside (build-path temporary "outside"))
        (make-directory outside)

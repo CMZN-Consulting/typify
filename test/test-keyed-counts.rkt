@@ -7,7 +7,7 @@
 (define (source clauses (defaults "") (extra ""))
   (string-append
    "#lang typify\ndeclare : Grants\ncap : length = 64\n"
-   "is : path = canonical-path\nis : mode = \"ro\" | \"rw\"\n"
+   "is : path = /\\/[a-z]+/\nis : mode = \"ro\" | \"rw\"\n"
    "term : vault : path mode\nform : vault : <path> = <mode>\ndoes : vault <path> <mode>\n"
    defaults
    "\n"

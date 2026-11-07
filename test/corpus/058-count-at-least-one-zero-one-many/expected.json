@@ -54,7 +54,8 @@
             "data": {
               "constructor": "step",
               "expected": "1..*",
-              "actual": 0
+              "actual": 0,
+              "key": []
             },
             "provenance": [
               "§4",
@@ -85,7 +86,8 @@
           "data": {
             "constructor": "step",
             "expected": "1..*",
-            "actual": 0
+            "actual": 0,
+            "key": []
           },
           "provenance": [
             "§4",

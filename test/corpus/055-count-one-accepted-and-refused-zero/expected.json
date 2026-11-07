@@ -100,7 +100,8 @@
             "data": {
               "constructor": "title",
               "expected": "1",
-              "actual": 0
+              "actual": 0,
+              "key": []
             },
             "provenance": [
               "§4",
@@ -131,7 +132,8 @@
           "data": {
             "constructor": "title",
             "expected": "1",
-            "actual": 0
+            "actual": 0,
+            "key": []
           },
           "provenance": [
             "§4",

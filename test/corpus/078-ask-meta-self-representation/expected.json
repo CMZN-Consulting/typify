@@ -44,42 +44,41 @@
   ],
   "ask_lines": [
     "? : form : ? : <verb>",
-    "? : is : verb = letter /[A-Za-z0-9_-]*/",
     "? : term : ask-word : verb",
     "? : does : ask-word <verb>",
-    "? : count : ask-word = *",
-    "? : missing : none",
-    "? : example : ? : form"
+    "? : is : verb = letter /[A-Za-z0-9_-]*/",
+    "? : example : ? : form",
+    "? : count : ask-word = *"
   ],
   "stdout_json": {
     "word": "?",
     "status": "declared",
     "lines": [
       "? : form : ? : <verb>",
-      "? : is : verb = letter /[A-Za-z0-9_-]*/",
       "? : term : ask-word : verb",
       "? : does : ask-word <verb>",
-      "? : count : ask-word = *",
-      "? : missing : none",
-      "? : example : ? : form"
+      "? : is : verb = letter /[A-Za-z0-9_-]*/",
+      "? : example : ? : form",
+      "? : count : ask-word = *"
     ],
     "near": [],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_json": {
     "word": "?",
     "status": "declared",
     "lines": [
       "? : form : ? : <verb>",
-      "? : is : verb = letter /[A-Za-z0-9_-]*/",
       "? : term : ask-word : verb",
       "? : does : ask-word <verb>",
-      "? : count : ask-word = *",
-      "? : missing : none",
-      "? : example : ? : form"
+      "? : is : verb = letter /[A-Za-z0-9_-]*/",
+      "? : example : ? : form",
+      "? : count : ask-word = *"
     ],
     "near": [],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_provenance": [
     "§6",

@@ -40,6 +40,7 @@
     "test/test-plan-generated.rkt"
     "test/test-model-rulings.rkt"
     "test/test-keyed-counts.rkt"
+    "test/test-lookups.rkt"
     "test/test-tree.rkt"
     "test/test-facts.rkt"
     "test/test-stage2-cli.rkt"

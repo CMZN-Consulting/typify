@@ -26,13 +26,92 @@
          declaration-check-bounds
          language-model
          language-keyed-counts
+         language-template-names
+         language-composition
          evaluate-rule-expression
          primitive-events
          language-needs-facts?
          program-guarded?
+         lookup-reference
+         program-lookup
+         current-lookup-observer
+         (struct-out lookup-observation)
          form-automata)
 
 (struct constructor (name signature primitive? fact? rule span ordinal) #:transparent)
+
+(struct lookup-observation (values origins skips) #:transparent)
+
+(define current-lookup-observer (make-parameter void))
+
+(define language-lookup-cache (make-weak-hasheq))
+
+(define language-template-cache (make-weak-hasheq))
+
+(define language-composition-cache (make-ephemeron-hasheq))
+
+(define current-partition-model (make-parameter #f))
+
+(define current-template-names (make-parameter '()))
+
+(define (language-template-names body) (hash-ref language-template-cache body '()))
+
+(define (language-composition body) (hash-ref language-composition-cache body (list body)))
+
+(define (lookup-reference body reference)
+  (hash-ref
+   (hash-ref language-lookup-cache body (hash))
+   reference
+   (lambda ()
+     (if (string-contains? reference ".")
+       reference
+       (string-append (language-name body) "." reference)))))
+
+(define (program-lookup program reference origin)
+  (define qualified (lookup-reference (hash-ref program 'body) reference))
+  (define parts (string-split qualified "." #:trim? #f))
+  (unless (= (length parts) 2)
+    (raise-arguments-error
+     'program-lookup
+     "a checked lookup reference is required"
+     "reference"
+     reference))
+  (define entries '())
+  (define skips '())
+  (for
+   ((record (in-list (hash-ref program 'enclosing '())))
+    #:when
+    (equal? (language-name (hash-ref record 'body)) (car parts)))
+   (if (equal? (hash-ref record 'status "present") "guarded")
+     (set! skips
+       (append
+        skips
+        (for/list
+         ((skip (in-list (hash-ref record 'skips '())))
+          #:when
+          (and (equal? (hash-ref skip 'reason) "guard") (hash-has-key? skip 'origin)))
+         (hash
+          'reason
+          "guard"
+          'fact
+          (hash-ref skip 'fact)
+          'args
+          (hash-ref skip 'args)
+          'program
+          (hash-ref record 'path)))))
+     (for
+      ((value (in-list (hash-ref record 'terms '())))
+       (source (in-list (hash-ref record 'origins '())))
+       #:when
+       (equal? (car value) (cadr parts)))
+      (unless (= (length value) 2)
+        (raise-arguments-error
+         'program-lookup
+         "the checked lookup constructor must be unary"
+         "reference"
+         qualified))
+      (set! entries (append entries (list (cons (cadr value) source)))))))
+  (lookup-observation (map car entries) (map cdr entries) skips))
 
 (struct
  form
@@ -830,6 +909,44 @@
 
 (define (language-keyed-counts body) (hash-ref language-keyed-count-cache body (hash)))
 
+(define (validate-example-meaning body expression bindings)
+  (define deferred (gensym 'lookup-value))
+  (define (argument value)
+    (cond
+     ((literal? value) (literal-value value))
+     ((capture? value) (hash-ref bindings (capture-name value) deferred))
+     ((term? value)
+      (if (member (term-constructor value) '("context" "inherited"))
+        deferred
+        (let ((arguments (map argument (term-arguments value))))
+          (if (or (member deferred arguments)
+                  (not (hash-has-key? library-arities (term-constructor value))))
+            deferred
+            (library-call (term-constructor value) arguments (term-span value))))))
+     (else deferred)))
+  (define item (hash-ref (language-constructors body) (term-constructor expression) #f))
+  (when item
+    (for
+     ((value (in-list (map argument (term-arguments expression))))
+      (class-name (in-list (constructor-signature item))))
+     (unless (or
+              (eq? value deferred)
+              (and (string? value)
+                   (class-accepts? (hash-ref (language-classes body) class-name) value)))
+       (fail
+        "E_TERM_CLASS"
+        "An example's computed argument fails its receiving class"
+        (term-span expression)
+        (hash
+         'kind
+         "result"
+         'constructor
+         (constructor-name item)
+         'class
+         class-name
+         'actual
+         value))))))
+
 (define (constructor-descriptors constructors)
   (for/hash
    (((name item) (in-hash constructors)))
@@ -1057,43 +1174,92 @@
          (row-span row)
          (hash 'kind "reference" 'actual name))))))
   (define declared-constructors
-    (for*/hash
+    (for*/fold
+     ((declared (hash)))
      ((body (in-list ordered-bodies)) (name (in-list (hash-keys (language-constructors body)))))
-     (values name #t)))
-  (define (check-lookups expression)
+     (hash-update declared name (lambda (bodies) (append bodies (list body))) '())))
+  (for
+   ((body (in-list ordered-bodies)))
+   (hash-set! language-lookup-cache body (hash))
+   (hash-set! language-composition-cache body ordered-bodies))
+  (define (check-lookups body expression)
     (when (term? expression)
       (when (and
              (member (term-constructor expression) '("context" "inherited"))
              (= (length (term-arguments expression)) 1)
              (literal? (car (term-arguments expression))))
         (define name (literal-value (car (term-arguments expression))))
-        (unless (hash-has-key? declared-constructors name)
-          (recover
-           (lambda ()
+        (recover
+         (lambda ()
+           (define pieces (string-split name "." #:trim? #f))
+           (define candidates
+             (if (= (length pieces) 1)
+               (hash-ref declared-constructors name '())
+               (if (and (= (length pieces) 2)
+                        (hash-has-key? result (car pieces))
+                        (hash-has-key?
+                         (language-constructors (hash-ref result (car pieces)))
+                         (cadr pieces)))
+                 (list (hash-ref result (car pieces)))
+                 '())))
+           (unless (= (length candidates) 1)
+             (raise-typify
+              "E_DECLARATION"
+              "The lookup must name exactly one declaring language"
+              #:span
+              (term-span expression)
+              #:data
+              (hash 'kind "reference" 'actual name)
+              #:related
+              (for/list
+               ((candidate (in-list candidates)))
+               (hash
+                'language
+                (language-name candidate)
+                'file
+                (src-span-file (language-span candidate))
+                'range
+                (src-span->jsexpr (language-span candidate))))))
+           (define target (car candidates))
+           (define constructor-name (last pieces))
+           (define item (hash-ref (language-constructors target) constructor-name))
+           (unless (= (length (constructor-signature item)) 1)
              (declaration-fail
-              "reference"
+              "arity"
               name
-              "The lookup names no declared constructor"
-              (term-span expression))))))
-      (for-each check-lookups (term-arguments expression))))
+              "A lookup requires a unary constructor"
+              (term-span expression)))
+           (hash-set!
+            language-lookup-cache
+            body
+            (hash-set
+             (hash-ref language-lookup-cache body)
+             name
+             (string-append (language-name target) "." constructor-name))))))
+      (for-each (lambda (argument) (check-lookups body argument)) (term-arguments expression))))
   (for
    ((body (in-list ordered-bodies)))
-   (for ((candidate (in-list (language-forms body)))) (check-lookups (form-meaning candidate)))
+   (for ((candidate (in-list (language-forms body)))) (check-lookups body (form-meaning candidate)))
    (for
     ((item (in-list (ordered-constructors (language-constructors body)))))
-    (when (constructor-rule item) (for-each check-lookups (cdr (constructor-rule item)))))
+    (when (constructor-rule item)
+      (for-each (lambda (right) (check-lookups body right)) (cdr (constructor-rule item)))))
    (define model (language-model body))
    (for*
     ((clauses (in-hash-values (compiled-model-ensures model))) (clause (in-list clauses)))
-    (check-lookups (model-ensure-expression clause)))
+    (check-lookups body (model-ensure-expression clause)))
    (for*
     ((clauses (in-hash-values (compiled-model-reads model))) (clause (in-list clauses)))
-    (check-lookups (model-read-fact clause)))
-   (for ((expression (in-hash-values (compiled-model-guards model)))) (check-lookups expression)))
+    (check-lookups body (model-read-fact clause)))
+   (for
+    ((expression (in-hash-values (compiled-model-guards model))))
+    (check-lookups body expression)))
   result)
 
 (define (compile-body name rows opening)
-  (class-run (lambda () (compile-body/internal name rows opening)) opening))
+  (parameterize
+   ((current-partition-model #f) (current-template-names '()))
+   (class-run (lambda () (compile-body/internal name rows opening)) opening)))
 
 (define (compile-body/internal name rows opening)
   (define sources (hash))
@@ -1297,13 +1463,13 @@
               (hash 'multiplicity (capture-value row "multiplicity") 'width width)))))
         ((rule) (set! rules (append rules (list row))))
         ((sees) (set! sees (append sees (list (capture-value row "name")))))
-        ((note) (set! notes (append notes (list (capture-value row "name")))))
+        ((note) (set! notes (append notes (list (capture-value row "text")))))
         ((cell)
          (define key (capture-value row "name"))
          (when (or (reserved-name? key) (hash-has-key? properties (cons 'cell key)))
            (declaration-fail "duplicate" key "The cell is declared twice or reserved" span))
          (set! properties (hash-set properties (cons 'cell key) #t)))
-        ((writes reads ensure join effect stage guard scope fuel) (void))
+        ((writes reads ensure join effect effect-state stage guard scope fuel) (void))
         (else
          (declaration-fail
           "reference"
@@ -1356,20 +1522,9 @@
         (let* ((row (for/first ((row (in-list rows)) #:when (eq? (hash-ref row 'kind) 'file)) row))
                (parts
                 (recover
-                 (lambda ()
-                   (define span (line-right-span (hash-ref row 'record)))
-                   (for/fold
-                    ((parts '()) (offset 0) #:result parts)
-                    ((component (in-list (string-split file "/" #:trim? #f))))
-                    (values
-                     (append
-                      parts
-                      (parse-template
-                       component
-                       #:span
-                       (span-slice span file offset (+ offset (string-length component)))))
-                     (+ offset (string-length component) 1))))
+                 (lambda () (parse-template file #:span (line-right-span (hash-ref row 'record))))
                  '())))
+          (current-template-names (map slot-name (filter slot? parts)))
           (for/fold
            ((bindings (hash)))
            ((part (in-list parts)) #:when (slot? part))
@@ -1498,6 +1653,7 @@
      opening
      #:on-error
      (lambda (item) (record-diagnostics! (list item)))))
+  (current-partition-model model)
   (record-diagnostics! (model-check-notes model))
   (check-rule-cycles! constructors rule-lefts)
   (define (constructor-use-span item)
@@ -1783,7 +1939,18 @@
      caps
      rows
      opening))
+  (for
+   ((row (in-list rows)) #:when (eq? (hash-ref row 'kind) 'note))
+   (recover
+    (lambda ()
+      (unless (hash-has-key? constructors (capture-value row "constructor"))
+        (declaration-fail
+         "reference"
+         (capture-value row "constructor")
+         "The note names no declared constructor"
+         (row-span row))))))
   (hash-set! language-keyed-count-cache body keyed-counts)
+  (hash-set! language-template-cache body (current-template-names))
   (for
    (((key constraint) (in-hash keyed-counts)) #:when (hash-has-key? constructors key))
    (when (>
@@ -1877,6 +2044,17 @@
          "An example does not reach its intended form"
          (cdr pair)
          (hash 'form (form-source candidate) 'actual (car pair))))
+      (when (member pair (form-examples candidate))
+        (define witnesses
+          (for/hash
+           (((name class) (in-hash template-captures)))
+           (values name (and class (hash-ref (class-witnesses class) 'shortest #f)))))
+        (parameterize
+         ((current-program-span (cdr pair)))
+         (validate-example-meaning
+          body
+          (form-meaning (car hit))
+          (merge-captures witnesses (cdr hit)))))
       (when (member pair (form-defaults candidate))
         (define row
           (for/first
@@ -2013,6 +2191,31 @@
         (string-join (make-list (car arities) "string") " "))
       'actual
       (length args))))
+  (define model (current-partition-model))
+  (define write (and model (hash-ref (compiled-model-writes model) name #f)))
+  (when (and
+         write
+         (model-cell-stacking? (hash-ref (compiled-model-cells model) (model-write-cell write))))
+    (define partitions (length (current-template-names)))
+    (unless (if
+             (eq? (model-write-operation write) 'put)
+             (= (model-write-width write) (add1 partitions))
+             (<= partitions (model-write-width write) (add1 partitions)))
+      (declaration-fail
+       "partition"
+       (term-source expression)
+       "The stacking key width must follow the holding file template"
+       (term-span expression)))
+    (for
+     ((argument
+       (in-list (take args (min (model-write-width write) (length (current-template-names))))))
+      (expected (in-list (current-template-names))))
+     (unless (and (capture? argument) (equal? (capture-name argument) expected))
+       (declaration-fail
+        "partition"
+        (term-source expression)
+        "A partition argument must be its holding file-template placeholder"
+        (term-span expression)))))
   (when (and (member name '("context" "inherited")) (not (literal? (car args))))
     (declaration-fail
      "syntax"
@@ -2288,9 +2491,25 @@
      (inherited (inherited constructor origin))
      ((eq? context missing-context) '())
      (else (list (context constructor origin)))))
-  (unless (and (list? result) (andmap string? result))
-    (raise-arguments-error 'inherited "the lookup must return a list of strings" "result" result))
-  result)
+  (define observed
+    (if (lookup-observation? result)
+      result
+      (lookup-observation result (and (list? result) (make-list (length result) #f)) '())))
+  (unless (and
+           (list? (lookup-observation-values observed))
+           (andmap string? (lookup-observation-values observed))
+           (list? (lookup-observation-origins observed))
+           (=
+            (length (lookup-observation-values observed))
+            (length (lookup-observation-origins observed)))
+           (list? (lookup-observation-skips observed)))
+    (raise-arguments-error
+     'inherited
+     "the lookup must return strings with aligned origin metadata"
+     "result"
+     result))
+  ((current-lookup-observer) observed)
+  (lookup-observation-values observed))
 
 (define (context-value inherited context constructor origin)
   (define values (inherited-values inherited context constructor origin))
@@ -2450,10 +2669,16 @@
                       (width
                        (if (constructor-primitive? item)
                          (if write (model-write-width write) 0)
-                         (min 1 (length arguments)))))
+                         (min 1 (length arguments))))
+                      (partitioned?
+                       (and write
+                            (positive? width)
+                            (pair? (language-template-names body))
+                            (model-cell-stacking?
+                             (hash-ref (compiled-model-cells model) (model-write-cell write))))))
                  (for/list
-                  ((argument (in-list (take arguments width))) (index (in-naturals)))
-                  (receive index argument)))
+                  ((index (in-list (if partitioned? (list (sub1 width)) (range width)))))
+                  (receive index (list-ref arguments index))))
                (for/list
                 ((argument (in-list (term-arguments guard))))
                 (evaluate-rule-expression
@@ -2616,7 +2841,12 @@
            (hash 'constructor carrier 'fact fact-name 'args fact-args 'reason "if" 'origin origin)
            skips))))
      ((equal? name "each")
-      (define values (expression-value (caddr args) bindings origin #:sort "list"))
+      (define observed #f)
+      (define observe (current-lookup-observer))
+      (define values
+        (parameterize
+         ((current-lookup-observer (lambda (result) (set! observed result) (observe result))))
+         (expression-value (caddr args) bindings origin #:sort "list")))
       (unless (and (list? values) (andmap string? values))
         (fail
          "E_TERM_CLASS"
@@ -2632,10 +2862,18 @@
           'actual
           (if (boolean? values) "predicate" "string"))))
       (when (> (length values) fuel)
-        (fail
+        (raise-typify
          "E_RULE_FUEL"
          "The loop exceeds its carrying constructor's fuel cap"
+         #:span
          (term-span expression)
+         #:related
+         (if (and (equal? (term-constructor (caddr args)) "inherited")
+                  observed
+                  (hash? (list-ref (lookup-observation-origins observed) fuel)))
+           (list (list-ref (lookup-observation-origins observed) fuel))
+           '())
+         #:data
          (hash 'constructor carrier 'limit fuel 'actual (length values))))
       (for
        ((value (in-list values)))
@@ -2769,7 +3007,9 @@
            events))))))
   (define diagnostics '())
   (parameterize
-   ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics)))))
+   ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics))))
+    (current-lookup-observer
+     (lambda (observed) (set! skips (append (reverse (lookup-observation-skips observed)) skips)))))
    (for
     ((value (in-list terms))
      (origin (in-list origins))
@@ -2926,6 +3166,8 @@
     (set! entries (append entries (list hit))))
   (parameterize
    ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics))))
+    (current-lookup-observer
+     (lambda (observed) (set! skips (append skips (lookup-observation-skips observed)))))
     (current-source-text-lines
      (for/hash
       ((record (in-list records)))
@@ -3058,7 +3300,7 @@
      (and (not (eq? guard-observation failed-guard))
           (or guard-observation (and guard (guard raw-terms raw-origins)))
           #t))
-   (when (hash? guard-observation) (set! skips (list guard-observation)))
+   (when (hash? guard-observation) (set! skips (append skips (list guard-observation))))
    (unless (or guarded? (eq? guard-observation failed-guard))
      (for
       ((entry (in-list entries)) (origin (in-list raw-origins)) (span (in-list raw-spans)))

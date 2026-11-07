@@ -7,6 +7,7 @@
          "../src/language.rkt"
          "../src/meta.rkt"
          "../src/model.rkt"
+         "../src/syntax.rkt"
          "../src/plan.rkt")
 
 (provide run-tests)
@@ -36,6 +37,10 @@
    (hash-ref checked 'effective-lines)
    '_term-spans
    (hash-ref checked '_term-spans)
+   'line-spans
+   (for/hash
+    ((line (in-list (read-lines text #:file path))))
+    (values (src-span-start-line (line-record-span line)) (line-record-span line)))
    'enclosing
    enclosing))
 
@@ -220,6 +225,7 @@
      '("is : seat = \"a\" | \"b\""
        "is : path = canonical-path"
        "is : mode = \"rw\""
+       "file : <seat>/policy.typify"
        "cell : mounts = shadow stacking"
        "primitive : bind : seat path mode"
        "primitive : mask : seat path"
@@ -230,21 +236,30 @@
        "writes : mask : mounts = put 2"
        "writes : clear : mounts = delete 1"
        "ensure : view : visible-at-end = (visible mounts <1> <2>)"
-       "form : bind : <seat> @ <path>"
+       "form : bind : <path>"
        "does : bind <seat> <path> rw"
-       "form : mask : <seat> @ <path>"
+       "form : mask : <path>"
        "does : mask <seat> <path>"
-       "form : clear : <seat>"
+       "form : clear!"
        "does : clear <seat>"
-       "form : view : <seat> @ <path>"
+       "form : view : <path>"
        "does : view <seat> <path>")))
   (define partition-errors '())
   (define partition-plan
-    (plan-program
-     partitioned
-     "bind : a @ /vault/child\nbind : b @ /vault/child\nmask : a @ /vault\nview : a @ /vault/child\nview : b @ /vault/child"
-     #:path
-     "partition-program.typify"
+    (plan-programs
+     (list
+      (record
+       partitioned
+       "bind : /vault/child\nmask : /vault\nview : /vault/child"
+       "a/policy.typify"
+       #:captures
+       (hash "seat" "a"))
+      (record
+       partitioned
+       "bind : /vault/child\nview : /vault/child"
+       "b/policy.typify"
+       #:captures
+       (hash "seat" "b")))
      #:on-error
      (lambda (item) (set! partition-errors (cons item partition-errors)))))
   (check
@@ -260,33 +275,65 @@
    '("a" "/vault/child")
    "state predicate diagnostics retain the complete partitioned key")
   (define cleared
-    (plan-program
-     partitioned
-     "bind : a @ /vault/child\nbind : b @ /vault/child\nmask : a @ /vault\nclear : a\nview : b @ /vault/child"))
+    (plan-programs
+     (list
+      (record
+       partitioned
+       "bind : /vault/child\nmask : /vault\nclear!"
+       "a/policy.typify"
+       #:captures
+       (hash "seat" "a"))
+      (record
+       partitioned
+       "bind : /vault/child\nview : /vault/child"
+       "b/policy.typify"
+       #:captures
+       (hash "seat" "b")))))
   (check
    (map (lambda (entry) (hash-ref entry 'key)) (hash-ref (hash-ref cleared 'state) "mounts"))
    '(("b" "/vault/child"))
    "delete-one clears a partition by tuple prefix")
-  (define ancestor
-    (body
-     "Ancestor"
-     '("term : deny-exec : value" "form : deny : <value>" "does : deny-exec <value>")))
-  (define inherited
-    (body
-     "Inherited"
-     '("term : deny-exec : value"
-       "fact : deny-exec"
-       "primitive : emit : value"
-       "effect : emit = external"
-       "term : batch : value"
-       "fuel : batch = 4"
-       "rule : batch <ignored> -> (each <item> in (inherited deny-exec) (emit <item>))"
-       "form : run!"
-       "does : batch seed")))
+  (define inherited-bodies
+    (read-declarations
+     (string-append
+      (source
+       "Ancestor"
+       '("term : deny-exec : value" "form : deny : <value>" "does : deny-exec <value>"))
+      (string-join
+       '("declare : Inherited"
+         "primitive : emit : value"
+         "effect : emit = external"
+         "term : batch : value"
+         "fuel : batch = 4"
+         "rule : batch <ignored> -> (each <item> in (inherited Ancestor.deny-exec) (emit <item>))"
+         "form : run!"
+         "does : batch seed"
+         "end!")
+       "\n"))
+     #:file
+     "inherited-language.typify"))
+  (define ancestor (hash-ref inherited-bodies "Ancestor"))
+  (define inherited (hash-ref inherited-bodies "Inherited"))
   (define near (record ancestor "deny : sudo\ndeny : su" "root/near/policy.typify"))
   (define far (record ancestor "deny : root-only" "root/policy.typify"))
   (define hidden
-    (hash-set (record ancestor "deny : hidden" "root/hidden/policy.typify") 'status "guarded"))
+    (hash-set*
+     (record ancestor "deny : hidden" "root/near/hidden-policy.typify")
+     'status
+     "guarded"
+     'skips
+     (list
+      (hash
+       'constructor
+       "deny-exec"
+       'fact
+       "exists"
+       'args
+       '("/hidden")
+       'reason
+       "guard"
+       'origin
+       (hash 'kind "program" 'path "root/near/hidden-policy.typify" 'line 1)))))
   (define child
     (record inherited "run!" "root/near/child/policy.typify" #:enclosing (list near hidden far)))
   (define inherited-plan (plan-programs (list child)))
@@ -294,6 +341,19 @@
    (hash-ref (car (hash-ref inherited-plan 'programs)) 'plan)
    (map (lambda (word) (hash 'term (list "emit" word) 'unchecked #t)) '("sudo" "su" "root-only"))
    "inherited iterates all first arguments nearest-first and excludes guarded programs")
+  (check
+   (hash-ref inherited-plan 'skips)
+   (list
+    (hash
+     'reason
+     "guard"
+     'fact
+     "exists"
+     'args
+     '("/hidden")
+     'program
+     "root/near/hidden-policy.typify"))
+   "lookup guard skips use the distinct union wire")
   (define templated
     (body
      "Templated"
@@ -396,9 +456,9 @@
    (read-declarations/diagnostics
     (source
      "DuplicatePair"
-     '("join : modes : \"a\" \"a\" = \"a\""
-       "join : modes : \"a\" \"a\" = \"b\""
-       "join : modes : \"a\" \"a\" = \"c\""))
+     '("join : modes : \"a\" \"b\" = \"a\""
+       "join : modes : \"a\" \"b\" = \"b\""
+       "join : modes : \"a\" \"b\" = \"c\""))
     #:file
     "duplicate-pair.typify"))
   (check
@@ -407,7 +467,7 @@
    "a conflicting pair does not cause table-law cascades")
   (check
    (diagnostic-data (car duplicate-table))
-   (hash 'cell "modes" 'expected "once" 'actual "a a")
+   (hash 'cell "modes" 'expected "once" 'actual "a b")
    "duplicate pair data names once and the second listing's pair")
   (check
    (src-span-start-line (diagnostic-range (car duplicate-table)))
@@ -492,6 +552,7 @@
      "Coverage"
      '("is : seat = \"a\" | \"b\""
        "is : path = canonical-path"
+       "file : <seat>/policy.typify"
        "cell : mounts = shadow stacking"
        "primitive : bind : seat path value"
        "writes : bind : mounts = put 2"
@@ -501,36 +562,189 @@
        "fact : inspect"
        "ensure : inspect : covered-result = (covered mounts <1> <2>)"
        "ensure : inspect : uncovered-result = (uncovered mounts <1> <2>)"
-       "form : bind : <seat> @ <path>"
+       "form : bind : <path>"
        "does : bind <seat> <path> rw"
-       "form : mask : <seat> @ <path>"
+       "form : mask : <path>"
        "does : mask <seat> <path>"
-       "form : inspect : <seat> @ <path>"
+       "form : inspect : <path>"
        "does : inspect <seat> <path>")))
   (for
    ((entry
      (in-list
       (list
-       (cons "bind : a @ /root\ninspect : a @ /root/child" '(#t #f))
-       (cons "bind : a @ /root\ninspect : a @ /root" '(#f #t))
-       (cons "mask : a @ /root\ninspect : a @ /root/child" '(#f #t))
-       (cons "bind : a @ /root\nmask : a @ /\ninspect : a @ /root/child" '(#f #t))
-       (cons "bind : a @ /root\ninspect : b @ /root/child" '(#f #t))))))
+       (list "bind : /root\ninspect : /root/child" #f '(#t #f))
+       (list "bind : /root\ninspect : /root" #f '(#f #t))
+       (list "mask : /root\ninspect : /root/child" #f '(#f #t))
+       (list "bind : /root\nmask : /\ninspect : /root/child" #f '(#f #t))
+       (list "bind : /root" "inspect : /root/child" '(#f #t))))))
    (define diagnostics '())
    (define report
-     (plan-program
-      coverage
-      (car entry)
+     (plan-programs
+      (filter
+       values
+       (list
+        (record coverage (car entry) "a/policy.typify" #:captures (hash "seat" "a"))
+        (and (cadr entry)
+             (record coverage (cadr entry) "b/policy.typify" #:captures (hash "seat" "b")))))
       #:on-error
       (lambda (item) (set! diagnostics (cons item diagnostics)))))
    (check
     (map (lambda (item) (hash-ref item 'ok)) (hash-ref report 'ensure))
-    (cdr entry)
+    (caddr entry)
     "coverage tests visible proper ancestors in the same partition")
    (check
     (map diagnostic-code diagnostics)
     '("E_ENSURE")
     "covered and uncovered are exact negations"))
+  (define state-only
+    (body
+     "StateOnly"
+     '("is : entry-key = \"book\""
+       "cell : bookmarks = shadow"
+       "primitive : remember : entry-key"
+       "writes : remember : bookmarks = put 1 \"denied\""
+       "effect : remember = state"
+       "ensure : remember : present = (bound bookmarks <1>)"
+       "form : remember : <entry-key>"
+       "does : remember <entry-key>")))
+  (check
+   (model-state? (language-model state-only) "remember")
+   #t
+   "state effect metadata is separate from external")
+  (define-values
+   (state-report state-events)
+   (plan-program/details state-only "remember : book" #:path "state-program.typify"))
+  (check (hash-ref state-report 'plan) '() "a state writer has no host action")
+  (check
+   (hash-ref state-report 'recorded)
+   (list
+    (hash
+     'term
+     '("remember" "book")
+     'origin
+     (hash 'kind "program" 'path "state-program.typify" 'line 1)))
+   "recorded terms retain their original primitive arguments and exact wire origin")
+  (check (hash-ref state-report 'origins) '() "top-level origins refer only to executed terms")
+  (check
+   (hash-ref state-report 'modelled)
+   "0 of 0"
+   "recorded writers do not inflate executed modelling counts")
+  (check
+   (hash-ref (car (hash-ref (hash-ref state-report 'state) "bookmarks")) 'value)
+   '("denied")
+   "a literal appends only to the state entry")
+  (check
+   (hash-ref (car state-events) 'state-only?)
+   #t
+   "detail events identify recorded work for host-count consumers")
+  (check
+   (hash-ref (car (hash-ref state-report 'ensure)) 'ok)
+   #t
+   "recorded writers participate in final-state ensures")
+  (check
+   (hash-ref state-report 'bound)
+   (hash 'c 1 'n 1 'limit 1)
+   "the bound counts recorded events")
+  (define state-root
+    (plan-programs (list (record state-only "remember : book" "state-program.typify"))))
+  (check
+   (hash-has-key? state-root 'recorded)
+   #f
+   "root reports keep recorded terms only in each program")
+  (check
+   (hash-ref (car (hash-ref state-root 'programs)) 'recorded)
+   (hash-ref state-report 'recorded)
+   "recorded origins retain kind, path, and line in both plan modes")
+  (define variable-values
+    (body
+     "VariableValues"
+     '("is : entry-key = \"book\""
+       "cell : entries = shadow"
+       "primitive : mask : entry-key"
+       "writes : mask : entries = put 1"
+       "primitive : skeleton : entry-key"
+       "writes : skeleton : entries = put 1 \"one\""
+       "primitive : write : entry-key value"
+       "writes : write : entries = put 1 \"tail\""
+       "form : mask : <entry-key>"
+       "does : mask <entry-key>"
+       "form : skeleton : <entry-key>"
+       "does : skeleton <entry-key>"
+       "form : write : <entry-key> = <value>"
+       "does : write <entry-key> <value>")))
+  (for
+   ((entry
+     (in-list
+      (list
+       (cons "mask : book" '())
+       (cons "skeleton : book" '("one"))
+       (cons "write : book = head" '("head" "tail"))))))
+   (define result (plan-program variable-values (car entry)))
+   (check
+    (hash-ref (car (hash-ref (hash-ref result 'state) "entries")) 'value)
+    (cdr entry)
+    "one cell admits heterogeneous zero, one, and two-value puts"))
+  (check
+   (hash-ref (plan-program variable-values "write : book = head") 'plan)
+   '(("write" "book" "head"))
+   "an appended state literal never changes the primitive wire")
+  (define composition
+    (read-declarations
+     (string-append
+      (source
+       "First"
+       '("is : ka = \"book\""
+         "cell : entries = shadow"
+         "primitive : put : ka"
+         "writes : put : entries = put 1"
+         "form : put : <ka>"
+         "does : put <ka>"))
+      (string-join
+       '("declare : Second"
+         "is : kb = \"book\""
+         "cell : entries = shadow"
+         "file : a/program.typify"
+         "primitive : put : kb"
+         "writes : put : entries = put 1"
+         "form : put : <kb>"
+         "does : put <kb>"
+         "end!")
+       "\n"))
+     #:file
+     "shared-order.typify"))
+  (define key-conflict
+    (with-handlers
+     ((exn:fail:typify? exn:fail:typify-diagnostic))
+     (plan-programs
+      (list
+       (record (hash-ref composition "Second") "put : book" "a/program.typify")
+       (record (hash-ref composition "First") "put : book" "z/program.typify")))
+     #f))
+  (check
+   (and key-conflict (diagnostic-code key-conflict))
+   "E_DECLARATION"
+   "equal key denotations do not bypass named-class agreement")
+  (check
+   (and key-conflict (diagnostic-data key-conflict))
+   (hash 'kind "conflict" 'actual "entries")
+   "shared metadata rejects key class names rather than values")
+  (check
+   (and key-conflict (src-span-start-line (diagnostic-range key-conflict)))
+   12
+   "shared metadata is resolved in declaration order despite reversed tree order")
+  (define absent-conflict
+    (with-handlers
+     ((exn:fail:typify? exn:fail:typify-diagnostic))
+     (plan-program (hash-ref composition "First") "put : book" #:path "z/program.typify")
+     #f))
+  (check
+   (and absent-conflict (diagnostic-data absent-conflict))
+   (hash 'kind "conflict" 'actual "entries")
+   "one-program composition includes a conflicting language with no located record")
+  (check
+   (and absent-conflict (src-span-start-line (diagnostic-range absent-conflict)))
+   12
+   "an absent language still participates in declaration-ordered metadata")
   (hash 'suite "model-rulings" 'checks checks 'status "passed"))
 
 (module+ test (run-tests))

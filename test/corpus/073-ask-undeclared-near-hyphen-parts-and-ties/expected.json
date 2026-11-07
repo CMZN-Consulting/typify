@@ -56,7 +56,8 @@
       "mount-point",
       "read-only-mount"
     ],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_json": {
     "word": "mount",
@@ -70,7 +71,8 @@
       "mount-point",
       "read-only-mount"
     ],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_provenance": [
     "§6",

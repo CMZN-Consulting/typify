@@ -15,6 +15,9 @@
          model-fuel
          model-key-widths
          model-key-width
+         model-key-classes
+         model-write-key-classes
+         model-state?
          model-check-notes
          model-check-stacking-write!
          model-host-guards
@@ -26,7 +29,7 @@
 
 (struct model-cell (name law stacking? table span) #:transparent)
 
-(struct model-write (constructor cell operation width span) #:transparent)
+(struct model-write (constructor cell operation width span literals) #:transparent)
 
 (struct model-read (constructor fact behavior span) #:transparent)
 
@@ -34,7 +37,20 @@
 
 (struct
  compiled-model
- (cells writes reads ensures joins external stages guards scopes fuels constructors classes span)
+ (cells
+  writes
+  reads
+  ensures
+  joins
+  external
+  stages
+  guards
+  scopes
+  fuels
+  constructors
+  classes
+  span
+  states)
  #:transparent)
 
 (define model-host-guards (hash "join-law-checks" 1048576))
@@ -75,6 +91,30 @@
 (define (model-key-width model cell)
   (define widths (model-key-widths model cell))
   (and (pair? widths) (car widths)))
+
+(define (model-write-key-classes model write)
+  (take
+   (hash-ref
+    (hash-ref (compiled-model-constructors model) (model-write-constructor write))
+    'signature)
+   (model-write-width write)))
+
+(define (model-key-classes model cell)
+  (define first-put
+    (for/first
+     ((write
+       (in-list
+        (sort
+         (hash-values (compiled-model-writes model))
+         <
+         #:key
+         (lambda (write) (src-span-start-byte (model-write-span write))))))
+      #:when
+      (and (equal? (model-write-cell write) cell) (eq? (model-write-operation write) 'put)))
+     write))
+  (and first-put (model-write-key-classes model first-put)))
+
+(define (model-state? model constructor) (hash-ref (compiled-model-states model) constructor #f))
 
 (define (model-check-notes model)
   (define writes
@@ -322,6 +362,7 @@
   (define table-domains (hash))
   (define used-tables (make-hash))
   (define external (hash))
+  (define states (hash))
   (define external-spans (hash))
   (define stages (hash))
   (define guards (hash))
@@ -367,10 +408,33 @@
          (define descriptor (constructor! name row #:primitive? #t))
          (duplicate! writes name row)
          (define match
-           (regexp-match #px"^([^ =]+) *= *(put|delete) +([0-9]+)$" (capture-value row "value")))
+           (regexp-match
+            #px"^([^ =]+) *= *(put|delete) +([0-9]+)(?: +(.*))?$"
+            (capture-value row "value")))
          (unless match
            (decl-fail "syntax" (row-text row) "The write clause is malformed" (row-span row)))
          (define width (string->number (list-ref match 3)))
+         (define literal-source (list-ref match 4))
+         (define literals
+           (if literal-source
+             (begin
+               (unless (equal? (list-ref match 2) "put")
+                 (decl-fail "syntax" (row-text row) "A delete has no literal value" (row-span row)))
+               (list
+                (with-handlers
+                 ((class-error?
+                   (lambda (error)
+                     (decl-fail "syntax" (row-text row) (exn-message error) (row-span row)))))
+                 (decode-quoted-literal literal-source))))
+             '()))
+         (for
+          ((literal (in-list literals)))
+          (unless (class-accepts? (hash-ref classes "value") literal)
+            (decl-fail
+             "syntax"
+             (row-text row)
+             "A write literal requires allowed code points within the length cap"
+             (row-span row))))
          (unless (<=
                   (if (equal? (list-ref match 2) "delete") 0 1)
                   width
@@ -389,7 +453,8 @@
              (list-ref match 1)
              (string->symbol (list-ref match 2))
              width
-             (row-span row)))))
+             (row-span row)
+             literals))))
         ((reads)
          (define name (capture-value row "name"))
          (constructor! name row #:primitive? #t)
@@ -444,18 +509,28 @@
            (define result (caddr triple))
            (define table (hash-ref joins name (hash)))
            (define key (cons left right))
-           (when (and (hash-has-key? table key) (not (equal? (hash-ref table key) result)))
-             (join-fail name "once" (list left right) (row-span row)))
+           (unless (hash-has-key? join-spans name)
+             (set! join-spans (hash-set join-spans name (row-span row))))
            (set! join-entries
              (hash-update join-entries name (lambda (prior) (append prior (list triple))) '()))
-           (set! joins (hash-set joins name (hash-set* table key result (cons right left) result)))
-           (unless (hash-has-key? join-spans name)
-             (set! join-spans (hash-set join-spans name (row-span row))))))
-        ((effect)
+           (cond
+            ((equal? left right)
+             (unless (equal? result left)
+               (join-fail name "idempotent" left (hash-ref join-spans name)))
+             (set! joins (hash-set joins name table)))
+            (else
+             (when (and (hash-has-key? table key) (not (equal? (hash-ref table key) result)))
+               (join-fail name "once" (list left right) (row-span row)))
+             (set! joins
+               (hash-set joins name (hash-set* table key result (cons right left) result)))))))
+        ((effect effect-state)
          (define name (capture-value row "name"))
          (constructor! name row #:primitive? #t)
-         (duplicate! external name row)
-         (set! external (hash-set external name #t))
+         (when (or (hash-has-key? external name) (hash-has-key? states name))
+           (decl-fail "duplicate" name "The primitive effect is declared twice" (row-span row)))
+         (if (eq? (hash-ref row 'kind) 'effect-state)
+           (set! states (hash-set states name #t))
+           (set! external (hash-set external name #t)))
          (set! external-spans (hash-set external-spans name (row-span row))))
         ((stage)
          (define name (capture-value row "name"))
@@ -527,6 +602,7 @@
           "A bare read requires a declared write key"
           (model-read-span clause)))))))
   (define key-widths (hash))
+  (define key-classes (hash))
   (for
    ((write
      (in-list
@@ -540,6 +616,10 @@
    (attempt
     (lambda ()
       (define cell-name (model-write-cell write))
+      (define signature
+        (take
+         (hash-ref (hash-ref constructors (model-write-constructor write)) 'signature)
+         (model-write-width write)))
       (when (and
              (hash-has-key? key-widths cell-name)
              (not (= (hash-ref key-widths cell-name) (model-write-width write))))
@@ -548,6 +628,15 @@
          cell-name
          "A cell's put writers disagree on key width"
          (model-write-span write)))
+      (when (and
+             (hash-has-key? key-classes cell-name)
+             (not (equal? (hash-ref key-classes cell-name) signature)))
+        (decl-fail
+         "conflict"
+         cell-name
+         "A cell's put writers disagree on key class names"
+         (model-write-span write)))
+      (set! key-classes (hash-set key-classes cell-name signature))
       (set! key-widths (hash-set key-widths cell-name (model-write-width write))))))
   (for
    (((name write) (in-hash writes)))
@@ -575,6 +664,22 @@
        (define cell (hash-ref cells (model-write-cell write)))
        (when (and
               (eq? (model-write-operation write) 'delete)
+              (hash-has-key? key-classes (model-write-cell write))
+              (<=
+               (model-write-width write)
+               (length (hash-ref key-classes (model-write-cell write)))))
+         (define actual
+           (take (hash-ref (hash-ref constructors name) 'signature) (model-write-width write)))
+         (unless (equal?
+                  actual
+                  (take (hash-ref key-classes (model-write-cell write)) (model-write-width write)))
+           (decl-fail
+            "conflict"
+            name
+            "A delete prefix disagrees on key class names"
+            (model-write-span write))))
+       (when (and
+              (eq? (model-write-operation write) 'delete)
               (hash-has-key? key-widths (model-write-cell write))
               (> (model-write-width write) (hash-ref key-widths (model-write-cell write))))
          (decl-fail
@@ -590,20 +695,23 @@
          (when width (check-stacking-key! cell write width classes constructors)))
        (when (and (eq? (model-cell-law cell) 'join) (eq? (model-write-operation write) 'put))
          (define signature (hash-ref (hash-ref constructors name) 'signature))
-         (unless (= (- (length signature) (model-write-width write)) 1)
+         (define remaining (- (length signature) (model-write-width write)))
+         (unless (= (+ remaining (length (model-write-literals write))) 1)
            (decl-fail
             "arity"
             name
             "A join cell has one literal value argument"
             (model-write-span write)))
          (define domain
-           (and (hash-has-key? classes (list-ref signature (model-write-width write)))
-                (literal-domain
-                 (list-ref signature (model-write-width write))
-                 classes
-                 (model-write-span write))))
+           (if (zero? remaining)
+             (model-write-literals write)
+             (and (hash-has-key? classes (list-ref signature (model-write-width write)))
+                  (literal-domain
+                   (list-ref signature (model-write-width write))
+                   classes
+                   (model-write-span write)))))
          (when domain
-           (define normalized (sort (remove-duplicates domain) string<?))
+           (define normalized (remove-duplicates domain))
            (when (and
                   (hash-has-key? join-domains (model-cell-name cell))
                   (not (equal? (hash-ref join-domains (model-cell-name cell)) normalized)))
@@ -650,7 +758,11 @@
    (((name table) (in-hash joins)) #:unless (failed? 'join name))
    (attempt
     (lambda ()
-      (define domain (hash-ref table-domains name (lambda () (table-domain table))))
+      (define domain
+        (hash-ref
+         table-domains
+         name
+         (lambda () (remove-duplicates (append-map values (hash-ref join-entries name '()))))))
       (when (hash-has-key? table-domains name)
         (for*
          ((triple (in-list (hash-ref join-entries name '()))) (literal (in-list triple)))
@@ -680,4 +792,5 @@
    fuels
    constructors
    classes
-   span))
+   span
+   states))

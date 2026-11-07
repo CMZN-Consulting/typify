@@ -70,10 +70,10 @@
      (hash 'source "declaration" 'input lines)))
   (define colon-language
     (body
-     '("is : text = /.*/"
-       "primitive : output : text"
-       "form : <text> : yes"
-       "does : output <text>")))
+     '("is : sample-text = /.*/"
+       "primitive : output : sample-text"
+       "form : <sample-text> : yes"
+       "does : output <sample-text>")))
   (line-check colon-language "alpha:yes" #t)
   (line-check colon-language " alpha : yes " #t)
   (line-check colon-language "alpha:beta:yes" #f)
@@ -99,25 +99,28 @@
    "hash-prefixed form survives a different program comment prefix")
   (define arrow-right-language
     (body
-     '("is : text = /.*/"
-       "primitive : output : text"
-       "form : go -> <text>"
-       "does : output <text>")))
+     '("is : sample-text = /.*/"
+       "primitive : output : sample-text"
+       "form : go -> <sample-text>"
+       "does : output <sample-text>")))
   (line-check arrow-right-language "go->alpha" #t)
   (line-check arrow-right-language "go->alpha:beta" #f)
   (line-check arrow-right-language "go : alpha" #f)
   (define arrow-left-language
     (body
-     '("is : text = /.*/"
-       "primitive : output : text"
-       "form : <text> -> yes"
-       "does : output <text>")))
+     '("is : sample-text = /.*/"
+       "primitive : output : sample-text"
+       "form : <sample-text> -> yes"
+       "does : output <sample-text>")))
   (line-check arrow-left-language "alpha->yes" #t)
   (line-check arrow-left-language "alpha->beta->yes" #f)
   (line-check arrow-left-language "alpha:beta->yes" #f)
   (define bang-language
     (body
-     '("is : text = /.*/" "primitive : output : text" "form : <text>!" "does : output <text>")))
+     '("is : sample-text = /.*/"
+       "primitive : output : sample-text"
+       "form : <sample-text>!"
+       "does : output <sample-text>")))
   (for ((text '("hello!" " hello! "))) (line-check bang-language text #t))
   (for ((text '("!" "two words!" "a!b!" "a->b!" "a:b!"))) (line-check bang-language text #f))
   (define bracket-language
@@ -188,7 +191,7 @@
      (for/first
       ((entry (in-list (hash-ref (declaration-check-bounds colon-language) 'classes)))
        #:when
-       (equal? (hash-ref entry 'name) "text"))
+       (equal? (hash-ref entry 'name) "sample-text"))
       entry)
      'bounds))
   (check

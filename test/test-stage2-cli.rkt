@@ -151,16 +151,62 @@
       (hash-ref (diagnostic-data malformed) 'path)
       facts
       "malformed facts identify their file")
+     (define ignored-check (request (list "check" declarations "Records" program "--facts" facts)))
+     (check
+      (hash-ref ignored-check 'terms)
+      '(("store" "/sample" "blue"))
+      "check ignores a malformed supplied facts file")
+     (check
+      (hash-ref (request (list "check" declarations "--facts" absent)) 'ok)
+      #t
+      "declaration-only check also ignores supplied facts")
+     (define incompatible (refusal (list "emit" declarations "Records" "--gbnf" "--json")))
+     (check
+      (hash-ref (diagnostic-data incompatible) 'actual)
+      "--gbnf"
+      "GBNF and JSON flags are mutually exclusive")
      (define grammar (request (list "emit" declarations "Records" "--json")))
      (check
       (hash-has-key? grammar 'diagnostics)
       #f
       "emit prints the grammar without a report wrapper")
      (define failed-emit (execute (list "emit" absent "Records" "--json")))
+     (check (hash-ref failed-emit 'exit) 1 "failed declaration emission exits one")
      (check
       (sort (hash-keys (string->jsexpr (hash-ref failed-emit 'stdout))) symbol<?)
       '(diagnostics ok)
       "failed emit prints the native failure object")
+     (write-declaration
+      (string-join
+       '("#lang typify"
+         "declare : StateFacts"
+         "cell : memory = shadow"
+         "primitive : remember : canonical-path"
+         "effect : remember = state"
+         "writes : remember : memory = put 1 \"noted\""
+         "form : remember : <canonical-path>"
+         "does : remember <canonical-path>"
+         "end!")
+       "\n"))
+     (write-program "remember : /sample")
+     (define recorded (request (list "plan" declarations "StateFacts" program)))
+     (check (hash-ref recorded 'plan) '() "state-only terms are not executed host actions")
+     (check (hash-ref recorded 'origins) '() "top-level origins align with executed terms")
+     (check (hash-ref recorded 'modelled) "0 of 0" "modelled counts only executed actions")
+     (check
+      (hash-ref recorded 'recorded)
+      (list
+       (hash 'term '("remember" "/sample") 'origin (hash 'kind "program" 'path program 'line 1)))
+      "recorded terms carry their own compact origins")
+     (check
+      (hash-ref (car (hash-ref (hash-ref recorded 'state) "memory")) 'value)
+      '("noted")
+      "literal write values appear only in the state entry")
+     (define recorded-text (execute (list "plan" declarations "StateFacts" program)))
+     (check
+      (hash-ref recorded-text 'stdout)
+      (format "ok\n~a recorded [\"remember\",\"/sample\"]\n" program)
+      "text output distinguishes recorded terms")
      (define slot-directory (build-path root "SLOT[2]"))
      (make-directory slot-directory)
      (display-to-file "ready!" (build-path slot-directory "data.typify"))

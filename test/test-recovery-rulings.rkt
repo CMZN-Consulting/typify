@@ -367,12 +367,12 @@
    "program actual text matches its covered range")
   (define quoted-rule
     (source
-     '("is : text = /.*/"
-       "primitive : output : text"
-       "term : action : text"
+     '("is : sample-text = /.*/"
+       "primitive : output : sample-text"
+       "term : action : sample-text"
        "rule : action <x> -> output \"a;b -> c\" ; output (concat \"x;y\" \" -> z\")"
-       "form : item : <text>"
-       "does : action <text>")))
+       "form : item : <sample-text>"
+       "does : action <sample-text>")))
   (define quoted-body (hash-ref (read-declarations quoted-rule) "Example"))
   (check
    (normalize-terms quoted-body (hash-ref (check-program "item:seed" quoted-body) 'terms))

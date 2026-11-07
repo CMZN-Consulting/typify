@@ -60,7 +60,10 @@
   (define simple (body basic-rows))
   (define dynamic-bang
     (body
-     '("is : text = /.*/" "primitive : output : text" "form : <text>!" "does : output <text>")))
+     '("is : sample-text = /.*/"
+       "primitive : output : sample-text"
+       "form : <sample-text>!"
+       "does : output <sample-text>")))
   (check
    (hash-ref (check-program "123-name!" dynamic-bang) 'terms)
    '(("output" "123-name"))

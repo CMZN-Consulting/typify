@@ -57,9 +57,9 @@
           }
         },
         "data": {
-          "cell": "perms",
-          "expected": "commutativity",
-          "actual": "\"rw\" \"ro\""
+          "cell": "bad_modes",
+          "expected": "once",
+          "actual": "rw ro"
         },
         "provenance": [
           "H",
@@ -87,9 +87,9 @@
         }
       },
       "data": {
-        "cell": "perms",
-        "expected": "commutativity",
-        "actual": "\"rw\" \"ro\""
+        "cell": "bad_modes",
+        "expected": "once",
+        "actual": "rw ro"
       },
       "provenance": [
         "H",

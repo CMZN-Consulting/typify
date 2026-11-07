@@ -77,41 +77,28 @@
       (hash 'ok #t 'terms '(("output" "hello")) 'diagnostics '())
       "normal program check response is unchanged")
      (define parsed (read-declarations declarations #:file declaration-path))
-     (define expected-bounds
-       (hash
-        'languages
-        (for/list
-         ((name '("Alpha" "Zeta")))
-         (hash 'language name 'checks (declaration-check-bounds (hash-ref parsed name))))
-        'host
-        (hash
-         'name
-         "racket"
-         'version
-         (version)
-         'guards
-         (for/fold
-          ((guards class-host-guards))
-          (((key value) (in-hash model-host-guards)))
-          (hash-set guards key value)))))
+     (define (expected-limits names)
+       (for*/fold
+        ((limits
+          (for/fold
+           ((limits (hash)))
+           (((name limit)
+             (in-hash
+              (for/fold
+               ((guards class-host-guards))
+               (((key value) (in-hash model-host-guards)))
+               (hash-set guards key value)))))
+           (hash-set limits name (hash 'limit limit)))))
+        ((name (in-list names)) ((cap limit) (in-hash (language-caps (hash-ref parsed name)))))
+        (hash-set limits (string-append name "." cap) (hash 'limit limit))))
+     (define expected-bounds (expected-limits '("Alpha" "Zeta")))
      (define expected-all (hash 'ok #t 'bounds expected-bounds 'diagnostics '()))
      (define all-response (request (list "check" declaration-path "--bounds" "--json")))
      (check
       all-response
       (list expected-all #t #f)
       "all-language JSON bounds match the recorded API data")
-     (define expected-selected
-       (hash
-        'ok
-        #t
-        'diagnostics
-        '()
-        'bounds
-        (hash
-         'languages
-         (list (cadr (hash-ref expected-bounds 'languages)))
-         'host
-         (hash-ref expected-bounds 'host))))
+     (define expected-selected (hash 'ok #t 'diagnostics '() 'bounds (expected-limits '("Zeta"))))
      (check
       (request (append selected-arguments '("--bounds" "--json")))
       (list expected-selected #t #f)
@@ -121,22 +108,20 @@
       expected-all
       "the bounds flag is recognized before the command")
      (define text (render-bounds (hash-ref expected-selected 'bounds)))
-     (for
-      ((pattern
-        (list
-         #px"Class [^\n]+bounded-states<=[0-9]+"
-         #px"Form [^\n]+whole-states<=[0-9]+"
-         #px"Inclusion [^\n]+product-states<=[0-9]+"
-         #px"Delimiter [^\n]+product-states<=[0-9]+"
-         #px"Overlap [^\n]+product-states<=[0-9]+")))
-      (check
-       (regexp-match? pattern text)
-       #t
-       "the text projection prints numeric derived upper bounds"))
      (check
-      (string-contains? text "Host-dependent")
-      #t
-      "the report identifies its host-dependent representation")
+      (hash-ref (hash-ref expected-bounds "Zeta.length") 'limit)
+      8
+      "the selected body lowers its effective length cap")
+     (check
+      (hash-ref (hash-ref expected-bounds "Alpha.length") 'limit)
+      4096
+      "defaulted effective caps are printed by language name")
+     (for
+      (((name value) (in-hash (hash-ref expected-selected 'bounds))))
+      (check
+       (string-contains? text (format "~a: ~a\n" name (hash-ref value 'limit)))
+       #t
+       "text output prints one named limit per line"))
      (define clean-text (execute selected-arguments))
      (check (hash-ref clean-text 'exit) 0 "clean text check succeeds")
      (check (hash-ref clean-text 'stdout) "" "ordinary successful text check stays silent")
@@ -194,7 +179,39 @@
      (check
       (hash-has-key? (string->jsexpr (hash-ref invalid 'stdout)) 'languages)
       #f
-      "a failing check does not report successful derived bounds"))
+      "a failing check does not report successful derived bounds")
+     (display-to-file
+      (string-join
+       '("#lang typify"
+         "declare : A"
+         "primitive : tick"
+         "effect : tick = external"
+         "term : twice"
+         "rule : twice -> tick ; tick"
+         "form : a!"
+         "does : twice"
+         "end!"
+         "declare : B"
+         "primitive : tick"
+         "effect : tick = external"
+         "term : thrice"
+         "fuel : thrice = 5"
+         "rule : thrice -> tick ; tick ; tick"
+         "form : b!"
+         "does : thrice"
+         "end!")
+       "\n")
+      declaration-path
+      #:exists
+      'truncate/replace)
+     (define rule-bounds
+       (hash-ref (car (request (list "check" declaration-path "--bounds" "--json"))) 'bounds))
+     (check (hash-ref rule-bounds 'c) 3 "the composition c is the largest per-body bound")
+     (check (hash-ref rule-bounds 'k) 1 "the composition k bounds each folded state event")
+     (check
+      (hash-ref (hash-ref rule-bounds "B.thrice.fuel") 'limit)
+      5
+      "constructor fuel caps use qualified names"))
    (lambda () (delete-directory/files directory)))
   (hash 'suite "bounds" 'checks checks 'status "passed"))
 

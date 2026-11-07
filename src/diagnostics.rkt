@@ -148,7 +148,8 @@
      "stratification"
      "reference"
      "conflict"
-     "effect")
+     "effect"
+     "partition")
    "E_TERM_CLASS"
    '("literal" "capture" "result" "arity" "sort")))
 

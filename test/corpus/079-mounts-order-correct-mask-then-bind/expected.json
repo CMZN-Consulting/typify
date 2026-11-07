@@ -128,7 +128,9 @@
       }
     ],
     "status": "ok",
-    "skips": []
+    "skips": [],
+    "diagnostics": [],
+    "recorded": []
   },
   "plan": [
     [

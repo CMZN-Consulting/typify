@@ -44,7 +44,9 @@
    'loop-depth
    (add1 (modulo (quotient index 144) 2))
    'delete-width
-   (modulo (quotient index 288) (add1 width))
+   (if (odd? (quotient index 27))
+     (+ (sub1 width) (modulo (quotient index 288) 2))
+     (modulo (quotient index 288) (add1 width)))
    'alias-depth
    (modulo (quotient index 432) 4)
    'put-stage
@@ -73,13 +75,23 @@
     (if stacking? (append (make-list (sub1 width) left) (list path-left)) (make-list width left)))
   (define key-b
     (if stacking?
-      (append (if (= width 1) '() (cons right (make-list (- width 2) left))) (list path-right))
+      (append (make-list (sub1 width) left) (list path-right))
       (cons right (make-list (sub1 width) left))))
   (define slot-names (for/list ((i (in-range width))) (format "p~a" i)))
-  (define clear-names (for/list ((i (in-range delete-width))) (format "q~a" i)))
+  (define clear-names (take slot-names delete-width))
+  (define partition-count (if stacking? (sub1 width) 0))
+  (define partition-names (take slot-names partition-count))
+  (define visible-names (drop slot-names partition-count))
+  (define clear-visible (drop clear-names (min partition-count delete-width)))
+  (define captures
+    (for/hash ((name (in-list partition-names)) (value (in-list key-a))) (values name value)))
+  (define program-path
+    (string-join (append (take key-a partition-count) '("generated-program.typify")) "/"))
   (define key-class (if (zero? aliases) "key-base" (format "key~a" aliases)))
   (define variables (append (map capture slot-names) '("<v>")))
+  (define helper-variables (append (map capture visible-names) '("<v>")))
   (define signature (append slot-names '("payload")))
+  (define helper-signature (append visible-names '("payload")))
   (define iteration-count (add1 (modulo index fuel)))
   (define components
     (cons (format "g~a" index) (for/list ((i (in-range (sub1 iteration-count)))) (format "c~a" i))))
@@ -100,9 +112,12 @@
      (for/list
       ((name (in-list slot-names)) (position (in-naturals 1)))
       (format "is : ~a = ~a" name (if (and stacking? (= position width)) "path-base" key-class)))
-     (for/list
-      ((name (in-list clear-names)) (position (in-naturals 1)))
-      (format "is : ~a = ~a" name (if (and stacking? (= position width)) "path-base" key-class)))
+     (if (pair? partition-names)
+       (list
+        (string-append
+         "file : "
+         (string-join (append (map capture partition-names) '("generated-program.typify")) "/")))
+       '())
      (list
       "is : payload = \"ro\" | \"rw\""
       "is : tick-path = canonical-path"
@@ -125,29 +140,29 @@
       (format "stage : emit = ~a" (hash-ref params 'emit-stage)))
      (for/list
       ((i (in-range 1 (add1 depth))))
-      (format "term : step~a : ~a" i (join-words signature)))
+      (format "term : step~a : ~a" i (join-words helper-signature)))
      (for/list
       ((i (in-range 1 (add1 depth))))
       (format
        "rule : step~a ~a -> ~a ~a"
        i
-       (join-words variables)
+       (join-words helper-variables)
        (if (= i 1) "put" (format "step~a" (sub1 i)))
-       (join-words variables)))
+       (join-words (if (= i 1) variables helper-variables))))
      (list
       "term : batch : tick-path"
       (format "fuel : batch = ~a" fuel)
       (if (= loops 1)
         "rule : batch <path> -> (each <x> in (split <path>) (emit <x>))"
         "rule : batch <path> -> (each <x> in (split <path>) (each <y> in (split <path>) (emit (concat <x> <y>))))")
-      (format "form : set : ~a = <payload>" (string-join (map capture slot-names) " / "))
+      (format "form : set : ~a = <payload>" (string-join (map capture visible-names) " / "))
       (format
        "does : ~a ~a <payload>"
        (if (zero? depth) "put" (format "step~a" depth))
-       (join-words (map capture slot-names)))
-      (if (zero? delete-width)
+       (join-words (map capture (if (zero? depth) slot-names visible-names))))
+      (if (null? clear-visible)
         "form : clear!"
-        (format "form : clear : ~a" (string-join (map capture clear-names) " / ")))
+        (format "form : clear : ~a" (string-join (map capture clear-visible) " / ")))
       (if (zero? delete-width)
         "does : clear"
         (format "does : clear ~a" (join-words (map capture clear-names)))))
@@ -155,17 +170,26 @@
   (define program
     (string-join
      (list
-      (format "set : ~a = ro" (string-join key-a " / "))
-      (format "set : ~a = rw" (string-join key-a " / "))
-      (format "set : ~a = ro" (string-join key-b " / "))
-      (if (zero? delete-width)
+      (format "set : ~a = ro" (string-join (drop key-a partition-count) " / "))
+      (format "set : ~a = rw" (string-join (drop key-a partition-count) " / "))
+      (format "set : ~a = ro" (string-join (drop key-b partition-count) " / "))
+      (if (null? clear-visible)
         "clear!"
-        (format "clear : ~a" (string-join (take key-a delete-width) " / ")))
+        (format
+         "clear : ~a"
+         (string-join (drop (take key-a delete-width) (min partition-count delete-width)) " / ")))
       (string-append "tick : " path))
      "\n"))
-  (values (declaration (hash-ref params 'name) rows) program key-a key-b components))
+  (values
+   (declaration (hash-ref params 'name) rows)
+   program
+   key-a
+   key-b
+   components
+   captures
+   program-path))
 
-(define (oracle params key-a key-b components)
+(define (oracle params key-a key-b components program-path)
   (define events
     (append
      (list
@@ -186,7 +210,7 @@
   (define ordered
     (append-map (lambda (stage) (filter (lambda (event) (= (car event) stage)) events)) '(0 1 2)))
   (define state (hash))
-  (define (origin line) (hash 'kind "program" 'path "generated-program.typify" 'line line))
+  (define (origin line) (hash 'kind "program" 'path program-path 'line line))
   (for
    ((event (in-list ordered)))
    (define term (caddr event))
@@ -247,7 +271,7 @@
    (set! attempted (add1 attempted))
    (define before failures)
    (define params (parameters index))
-   (define-values (source program key-a key-b components) (case-data params))
+   (define-values (source program key-a key-b components captures program-path) (case-data params))
    (hash-set! hashes (content-hash source) #t)
    (with-handlers
     ((exn:fail?
@@ -260,10 +284,10 @@
       (hash-ref
        (read-declarations source #:file "generated-language.typify")
        (hash-ref params 'name)))
-    (define report (plan-program language program #:path "generated-program.typify"))
+    (define report (plan-program language program #:path program-path #:captures captures))
     (define-values
      (expected-plan expected-state expected-origins)
-     (oracle params key-a key-b components))
+     (oracle params key-a key-b components program-path))
     (define expected-c (expt (hash-ref params 'fuel) (hash-ref params 'loop-depth)))
     (define plan (hash-ref report 'plan))
     (define state-size (length (hash-ref (hash-ref report 'state) "entries")))
@@ -382,7 +406,16 @@
      'scope
      "Distinct literal key domains; shadow, first, max-join, partitioned stacking, staged put/delete tuples, rewrite chains, and split loops."
      'excluded-features
-     '("masks" "guards" "context" "inherited" "ensures" "multiple cells")
+     '("masks"
+       "guards"
+       "context"
+       "inherited"
+       "ensures"
+       "multiple cells"
+       "state-only writers"
+       "literal appends")
+     'delete-width-law
+     "Partitioned deletes name all file-template components or the full key; zero is generated only for unpartitioned cells."
      'canary-role
      "Positive control for detecting an understated bound; not a blind-defect enumerator."
      'independent-oracle

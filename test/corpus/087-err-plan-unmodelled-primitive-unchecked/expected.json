@@ -156,7 +156,9 @@
           }
         ],
         "ensure": [],
-        "skips": []
+        "skips": [],
+        "diagnostics": [],
+        "recorded": []
       },
       "plan": [
         [

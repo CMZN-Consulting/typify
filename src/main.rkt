@@ -77,89 +77,48 @@
    (lambda () (raise-typify "E_USAGE" "The language is not declared" #:data (hash 'actual name)))))
 
 (define (bounds-report bodies)
-  (hash
-   'languages
-   (for/list
-    ((body (in-list (sort bodies string<? #:key language-name))))
-    (hash 'language (language-name body) 'checks (declaration-check-bounds body)))
-   'host
-   (hash
-    'name
-    "racket"
-    'version
-    (version)
-    'guards
+  (define limits
+    (for*/fold
+     ((limits (hash)))
+     ((body (in-list bodies)) ((name limit) (in-hash (language-caps body))))
+     (hash-set limits (string-append (language-name body) "." name) (hash 'limit limit))))
+  (define fuelled
+    (for*/fold
+     ((limits limits))
+     ((body (in-list bodies)) ((name limit) (in-hash (compiled-model-fuels (language-model body)))))
+     (hash-set limits (string-append (language-name body) "." name ".fuel") (hash 'limit limit))))
+  (define guarded
     (for/fold
-     ((guards class-host-guards))
-     (((key value) (in-hash model-host-guards)))
-     (hash-set guards key value)))))
+     ((limits fuelled))
+     (((name limit)
+       (in-hash
+        (for/fold
+         ((guards class-host-guards))
+         (((key value) (in-hash model-host-guards)))
+         (hash-set guards key value)))))
+     (hash-set limits name (hash 'limit limit))))
+  (if (for/or
+       ((body (in-list bodies)))
+       (ormap constructor-rule (hash-values (language-constructors body))))
+    (for/fold
+     ((limits guarded))
+     ((name '(c k)))
+     (hash-set
+      limits
+      name
+      (for/fold
+       ((maximum 0))
+       ((body (in-list bodies)))
+       (max maximum (hash-ref (declaration-bound body) name)))))
+    guarded))
 
 (define (render-bounds report)
-  (define output (open-output-string))
-  (define host (hash-ref report 'host))
-  (fprintf
-   output
-   "Derived automaton bounds (~a ~a)\n"
-   (hash-ref host 'name)
-   (hash-ref host 'version))
-  (displayln "Host-dependent representation and product-state upper bounds." output)
-  (for
-   ((name (in-list (sort (hash-keys (hash-ref host 'guards)) string<?))))
-   (fprintf output "Host guard ~a: ~a\n" name (hash-ref (hash-ref host 'guards) name)))
-  (for
-   ((entry (in-list (hash-ref report 'languages))))
-   (define checks (hash-ref entry 'checks))
-   (fprintf output "Language ~a\n" (hash-ref entry 'language))
-   (unless (hash-ref checks 'recorded #f) (displayln "  Checks were not recorded." output))
-   (for
-    ((item (in-list (hash-ref checks 'classes '()))))
-    (define bounds (hash-ref item 'bounds))
-    (fprintf
-     output
-     "  Class ~a: controls=~a, bounded-states<=~a, edge-groups<=~a, intervals<=~a\n"
-     (hash-ref item 'name)
-     (hash-ref bounds 'pattern-control-states)
-     (hash-ref bounds 'bounded-states-upper-bound)
-     (hash-ref bounds 'bounded-edge-groups-upper-bound)
-     (hash-ref bounds 'bounded-interval-pieces-upper-bound)))
-   (for
-    ((item (in-list (hash-ref checks 'forms '()))))
-    (define right (hash-ref item 'right))
-    (fprintf
-     output
-     "  Form ~a: left-states<=~a, right-states<=~a, whole-states<=~a\n"
-     (hash-ref item 'ordinal)
-     (hash-ref (hash-ref item 'left) 'bounded-states-upper-bound)
-     (if (hash? right) (hash-ref right 'bounded-states-upper-bound) "none")
-     (hash-ref (hash-ref item 'whole) 'bounded-states-upper-bound)))
-   (for
-    ((item (in-list (hash-ref checks 'signature-inclusions '()))))
-    (fprintf
-     output
-     "  Inclusion ~a[~a] <~a> -> ~a: product-states<=~a\n"
-     (hash-ref item 'constructor)
-     (hash-ref item 'argument)
-     (hash-ref item 'capture)
-     (hash-ref item 'class)
-     (hash-ref (hash-ref item 'bounds) 'states-upper-bound)))
-   (for
-    ((item (in-list (hash-ref checks 'delimiters '()))))
-    (fprintf
-     output
-     "  Delimiter form ~a <~a> before ~s: product-states<=~a\n"
-     (hash-ref item 'form)
-     (hash-ref item 'capture)
-     (hash-ref item 'delimiter)
-     (hash-ref (hash-ref item 'bounds) 'states-upper-bound)))
-   (for
-    ((item (in-list (hash-ref checks 'overlaps '()))))
-    (fprintf
-     output
-     "  Overlap forms ~a/~a: product-states<=~a\n"
-     (hash-ref item 'earlier)
-     (hash-ref item 'later)
-     (hash-ref (hash-ref item 'bounds) 'states-upper-bound))))
-  (get-output-string output))
+  (apply
+   string-append
+   (for/list
+    ((name (in-list (sort (hash-keys report) string<? #:key (lambda (key) (format "~a" key))))))
+    (define value (hash-ref report name))
+    (format "~a: ~a\n" name (if (hash? value) (hash-ref value 'limit) value)))))
 
 (define (program-captures body path)
   (cond
@@ -265,8 +224,9 @@
     (for/list
      ((event (in-list events)))
      (format
-      "~a ~a~a\n"
+      "~a ~a~a~a\n"
       (hash-ref (hash-ref event 'program) 'path)
+      (if (hash-ref event 'state-only? #f) "recorded " "")
       (canonical-json (hash-ref event 'term))
       (if (hash-ref event 'modelled?) "" " unchecked"))))))
 
@@ -308,6 +268,8 @@
   (define bounds? (hash-ref options "--bounds" #f))
   (define facts-path (hash-ref options "--facts" #f))
   (define text-output #f)
+  (when (and gbnf? json?)
+    (raise-typify "E_USAGE" "--gbnf cannot be combined with --json" #:data (hash 'actual "--gbnf")))
   (when (and
          facts-path
          (not (and (pair? positional) (member (car positional) '("check" "tree" "plan")))))
@@ -316,12 +278,6 @@
      "--facts is available only with check, tree or plan"
      #:data
      (hash 'actual "--facts")))
-  (when (and
-         facts-path
-         (pair? positional)
-         (equal? (car positional) "check")
-         (not (= (length positional) 4)))
-    (raise-typify "E_USAGE" "--facts requires a one-program check" #:data (hash 'actual "--facts")))
   (when (and bounds? (not (and (pair? positional) (equal? (car positional) "check"))))
     (raise-typify
      "E_USAGE"
@@ -368,15 +324,6 @@
       (define-values (declarations diagnostics) (load-declarations/diagnostics path))
       (define body (select-language declarations name))
       (define captures (program-captures body program))
-      (define-values
-       (facts facts-hash)
-       (facts-input
-        (and facts-path
-             (for/or
-              ((row (in-list (language-rows body))))
-              (memq (hash-ref row 'kind) '(guard reads))))
-        facts-path
-        (current-directory)))
       (define checked
         (check-program/diagnostics
          (read-source program)
@@ -385,8 +332,8 @@
          program
          #:captures
          captures
-         #:facts
-         (lambda (name arguments origin) (fact-query facts name arguments))))
+         #:guard
+         #f))
       (define complete
         (hash-set
          checked
@@ -520,28 +467,29 @@
     (hash 'ok #f 'diagnostics diagnostics))
    ((equal? command "tree") (hash 'ok #f 'programs '() 'diagnostics diagnostics))
    ((equal? command "plan")
-    (hash-set
-     (hash
-      'status
-      "failed"
-      'state
-      (hash)
-      'bound
-      (hash 'c 0 'n 0 'limit 0)
-      'modelled
-      "0 of 0"
-      'facts
-      "none"
-      'origins
-      '()
-      'ensure
-      '()
-      'skips
-      '()
-      'diagnostics
-      diagnostics)
-     (if (= (length positional) 4) 'plan 'programs)
-     '()))
+    (define empty
+      (hash
+       'status
+       "failed"
+       'state
+       (hash)
+       'bound
+       (hash 'c 0 'n 0 'limit 0)
+       'modelled
+       "0 of 0"
+       'facts
+       "none"
+       'origins
+       '()
+       'ensure
+       '()
+       'skips
+       '()
+       'diagnostics
+       diagnostics))
+    (if (= (length positional) 4)
+      (hash-set* empty 'plan '() 'recorded '())
+      (hash-set empty 'programs '())))
    ((equal? command "facts")
     (hash
      'collector
@@ -566,7 +514,13 @@
          (displayln (canonical-json (command-error-result arguments items)))
          (display-diagnostics native))
        (values
-        (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items) 2 1)
+        (if (and (not (ormap (lambda (item) (equal? (diagnostic-code item) "E_USAGE")) items))
+                 (let-values (((positional options) (parse-options arguments)))
+                   (and (pair? positional) (equal? (car positional) "emit"))))
+          1
+          (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items)
+            2
+            1))
         native))))
    (define-values (result json-output? grammar? text-output) (run-command/details arguments))
    (define diagnostics (hash-ref result 'diagnostics '()))

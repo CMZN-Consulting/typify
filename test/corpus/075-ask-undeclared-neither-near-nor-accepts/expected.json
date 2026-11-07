@@ -49,7 +49,8 @@
       "? : price = undeclared"
     ],
     "near": [],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_json": {
     "word": "price",
@@ -58,7 +59,8 @@
       "? : price = undeclared"
     ],
     "near": [],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_provenance": [
     "§6",

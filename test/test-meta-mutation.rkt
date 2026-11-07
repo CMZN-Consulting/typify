@@ -6,7 +6,9 @@
          racket/path
          racket/string
          "../src/language.rkt"
+         "../src/diagnostics.rkt"
          "../src/meta.rkt"
+         "../src/model.rkt"
          "blind-corpus.rkt")
 
 (provide run-tests mutation-operators)
@@ -30,17 +32,17 @@
      "version : 7"
      "comment : //"
      "is : color = \"blue\" | \"red\""
-     "is : text = /[A-Za-z ]+/"
-     "primitive : output : color text"
+     "is : sample-text = /[A-Za-z ]+/"
+     "primitive : output : color sample-text"
      "primitive : stop"
-     "term : wrap : color text"
+     "term : wrap : color sample-text"
      "term : halt"
-     "term : annotation : text"
+     "term : annotation : sample-text"
      "fact : annotation"
      "rule : wrap <c> <t> -> output <c> <t>"
      "rule : halt -> stop"
-     "form : item : <color> = <text>"
-     "does : wrap <color> <text>"
+     "form : item : <color> = <sample-text>"
+     "does : wrap <color> <sample-text>"
      "restricts!"
      "example : item : blue = Warm sky"
      "default : item : red = Calm sky"
@@ -52,7 +54,7 @@
      "required!"
      "order : strict"
      "sees : Auxiliary_2-N"
-     "note : quoting"
+     "note : wrap = quoting"
      "cap : states = 4096"
      "cap : repetition = 256"
      "cap : depth = 8"
@@ -188,11 +190,21 @@
        "does : choose-width <width>"
        "effect : choose-order = external"
        "effect : choose-width = external"
+       "end!"
+       "declare : StateFacts"
+       "is : mark = \"seen\""
+       "cell : bookmarks = shadow"
+       "primitive : remember : mark"
+       "writes : remember : bookmarks = put 1"
+       "effect : remember = state"
+       "form : remember!"
+       "does : remember seen"
        "end!")
      "\n"))
   (define declarations (read-declarations source))
   (define body (hash-ref declarations "Catalog"))
   (define inherited (hash-ref declarations "InheritedMeta"))
+  (define state-body (hash-ref declarations "StateFacts"))
   (list
    (hash-ref (check-program "item : journal = Market Research" body) 'terms)
    (hash-ref (check-program "order : strict\norder : free\nwidth : 1\nwidth : 2" inherited) 'terms)
@@ -205,7 +217,20 @@
    (rejects?
     (lambda ()
       (read-declarations
-       (string-replace source "count : item = 0..1 by 1" "count : item = 0..1 by 3"))))))
+       (string-replace source "count : item = 0..1 by 1" "count : item = 0..1 by 3"))))
+   (model-state? (language-model state-body) "remember")
+   (with-handlers
+    ((exn:fail:typify?
+      (lambda (error)
+        (for/first
+         ((item (in-list (exn:fail:typify-diagnostics error)))
+          #:when
+          (equal? (diagnostic-code item) "E_CLASS"))
+         (hash-ref (diagnostic-data item) 'class)))))
+    (read-declarations
+     (string-replace source "count : item = 0..1 by 1" "count : item = 0..1 by A"))
+    "accepted")
+   (hash-ref (check-program "effect : remember = state" (meta-language)) 'terms)))
 
 (define internal-oracles
   (list
@@ -221,7 +246,10 @@
       ("0..1" 1)
       (("item" "book" "One") ("item" "journal" "Two"))
       #t
-      #t))
+      #t
+      #t
+      "width"
+      (("declare-state" "remember"))))
    (oracle
     "mixed-constructor-needs-fact-marker"
     (lambda ()

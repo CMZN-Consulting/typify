@@ -117,7 +117,9 @@
         ],
         "ensure": [],
         "status": "ok",
-        "skips": []
+        "skips": [],
+        "diagnostics": [],
+        "recorded": []
       },
       "plan": [
         [
@@ -244,7 +246,10 @@
               "V"
             ]
           }
-        ]
+        ],
+        "status": "failed",
+        "skips": [],
+        "recorded": []
       },
       "diagnostics": [
         {

@@ -156,7 +156,26 @@
         "§9",
         "K",
         "Y"
-      ]
+      ],
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_FILE",
+            "file": "nonexistent.typify",
+            "range": null,
+            "data": {
+              "path": "nonexistent.typify"
+            },
+            "provenance": [
+              "§9",
+              "K",
+              "Y"
+            ]
+          }
+        ]
+      }
     },
     {
       "name": "exit-code-2-usage-error",
@@ -186,7 +205,25 @@
         "§9",
         "K",
         "Y"
-      ]
+      ],
+      "stdout_json": {
+        "ok": false,
+        "diagnostics": [
+          {
+            "code": "E_USAGE",
+            "file": "",
+            "range": null,
+            "data": {
+              "actual": "unknown-subcommand"
+            },
+            "provenance": [
+              "§9",
+              "K",
+              "Y"
+            ]
+          }
+        ]
+      }
     }
   ]
 }

@@ -55,19 +55,12 @@
 (define (fact-callback data) (lambda (name arguments origin) (fact-query data name arguments)))
 
 (define (inherited-callback program)
-  (lambda (constructor origin)
-    (for*/list
-     ((record (in-list (hash-ref program 'enclosing '())))
-      #:unless
-      (equal? (hash-ref record 'status "present") "guarded")
-      (value (in-list (hash-ref record 'terms '())))
-      #:when
-      (and (equal? (car value) constructor) (pair? (cdr value))))
-     (cadr value))))
+  (lambda (constructor origin) (program-lookup program constructor origin)))
 
 (define (context-callback program)
   (lambda (constructor origin)
-    (define found ((inherited-callback program) constructor origin))
+    (define observed ((inherited-callback program) constructor origin))
+    (define found (if (lookup-observation? observed) (lookup-observation-values observed) observed))
     (when (null? found)
       (raise-typify
        "E_CONTEXT"
@@ -241,13 +234,33 @@
    (and (eq? (model-cell-law cell) 'join)
         (hash-ref (compiled-model-joins model) (model-cell-table cell)))))
 
+(define (key-class-identities body names)
+  (for/list
+   ((name (in-list names)))
+   (if (member name builtin-class-names)
+     (list 'builtin name)
+     (list 'declared name (compiled-class-source (hash-ref (language-classes body) name))))))
+
 (define (collect-cells programs)
+  (define bodies
+    (sort
+     (remove-duplicates
+      (append-map (lambda (program) (language-composition (hash-ref program 'body))) programs)
+      eq?)
+     (lambda (left right)
+       (define a (language-span left))
+       (define b (language-span right))
+       (if (string=? (src-span-file a) (src-span-file b))
+         (< (src-span-start-byte a) (src-span-start-byte b))
+         (string<? (src-span-file a) (src-span-file b))))))
   (define cells (hash))
   (define meanings (hash))
   (define widths (hash))
+  (define key-classes (hash))
+  (define key-identities (hash))
   (for
-   ((program (in-list programs)))
-   (define model (language-model (hash-ref program 'body)))
+   ((body (in-list bodies)))
+   (define model (language-model body))
    (for
     ((name (in-list (sort (hash-keys (compiled-model-cells model)) string<?))))
     (define cell (hash-ref (compiled-model-cells model) name))
@@ -272,6 +285,21 @@
          (model-cell-span cell)
          #:data
          (hash 'kind "conflict" 'actual name)))
+      (define signature (model-key-classes model name))
+      (define identities (key-class-identities body signature))
+      (when (and
+             (hash-has-key? key-classes name)
+             (or (not (equal? (hash-ref key-classes name) signature))
+                 (not (equal? (hash-ref key-identities name) identities))))
+        (raise-typify
+         "E_DECLARATION"
+         "Shared cell key classes disagree by name"
+         #:span
+         (model-cell-span cell)
+         #:data
+         (hash 'kind "conflict" 'actual name)))
+      (set! key-classes (hash-set key-classes name signature))
+      (set! key-identities (hash-set key-identities name identities))
       (set! widths (hash-set widths name width)))))
   (for
    ((name (in-list (sort (hash-keys cells) string<?))))
@@ -284,8 +312,8 @@
       #:data
       (hash 'kind "reference" 'actual name))))
   (for
-   ((program (in-list programs)))
-   (define model (language-model (hash-ref program 'body)))
+   ((body (in-list bodies)))
+   (define model (language-model body))
    (for
     ((write (in-hash-values (compiled-model-writes model)))
      #:when
@@ -294,6 +322,16 @@
       (raise-typify
        "E_DECLARATION"
        "A delete prefix is wider than the root cell's key"
+       #:span
+       (model-write-span write)
+       #:data
+       (hash 'kind "conflict" 'actual (model-write-constructor write))))
+    (unless (equal?
+             (key-class-identities body (model-write-key-classes model write))
+             (take (hash-ref key-identities (model-write-cell write)) (model-write-width write)))
+      (raise-typify
+       "E_DECLARATION"
+       "A delete prefix disagrees with root key class names"
        #:span
        (model-write-span write)
        #:data
@@ -453,6 +491,10 @@
   (define events '())
   (define ensures '())
   (define skips '())
+  (define (record-lookup! observation program-index)
+    (for
+     ((skip (in-list (lookup-observation-skips observation))))
+     (set! skips (cons (hash-set skip 'program-index program-index) skips))))
   (define maximum-c 0)
   (define effective-lines 0)
   (for
@@ -519,6 +561,14 @@
    (define scope-constructor (hash-ref event 'scope-constructor name))
    (define write (hash-ref (compiled-model-writes model) name #f))
    (define key (if write (take (cdr original) (model-write-width write)) '()))
+   (define fact-key
+     (if (and write
+              (pair? key)
+              (model-cell-stacking?
+               (hash-ref (compiled-model-cells model) (model-write-cell write)))
+              (> (hash-ref widths (model-write-cell write)) 1))
+       (list (last key))
+       key))
    (define bindings
      (for/hash
       ((value (in-list (cdr original))) (position (in-naturals 1)))
@@ -527,27 +577,30 @@
    (for
     ((read (in-list (hash-ref (compiled-model-reads model) name '()))) #:break skip?)
     (define expression (model-read-fact read))
-    (define tested-key key)
+    (define tested-key fact-key)
     (define (query-read fact arguments source-origin)
       (set! tested-key arguments)
       (query-fact fact arguments source-origin))
     (define present?
       (if (string? expression)
-        (let-values (((present? value) (query-fact expression key origin))) present?)
-        (evaluate-rule-expression
-         body
-         expression
-         bindings
-         #:context
-         (context-callback program)
-         #:inherited
-         (inherited-callback program)
-         #:captures
-         (hash-ref program 'placeholders (hash))
-         #:fact
-         query-read
-         #:origin
-         origin)))
+        (let-values (((present? value) (query-fact expression fact-key origin))) present?)
+        (parameterize
+         ((current-lookup-observer
+           (lambda (observation) (record-lookup! observation (hash-ref event 'program-index)))))
+         (evaluate-rule-expression
+          body
+          expression
+          bindings
+          #:context
+          (context-callback program)
+          #:inherited
+          (inherited-callback program)
+          #:captures
+          (hash-ref program 'placeholders (hash))
+          #:fact
+          query-read
+          #:origin
+          origin))))
     (unless present?
       (if (eq? (model-read-behavior read) 'skip)
         (begin
@@ -582,12 +635,26 @@
           'origins
           (list origin))))))
    (unless skip?
-     (define value (if write (drop (cdr original) (model-write-width write)) '()))
-     (define planned (if write (cons name (append key value)) original))
+     (define value
+       (if write
+         (append (drop (cdr original) (model-write-width write)) (model-write-literals write))
+         '()))
+     (define state-only? (model-state? model name))
      (set! applied
-       (cons (hash-set* event 'term planned 'origin origin 'modelled? (and write #t)) applied))
+       (cons
+        (hash-set*
+         event
+         'term
+         original
+         'origin
+         origin
+         'modelled?
+         (and write #t)
+         'state-only?
+         state-only?)
+        applied))
      (when write
-       (set! modelled (add1 modelled))
+       (unless state-only? (set! modelled (add1 modelled)))
        (define cell-name (model-write-cell write))
        (define cell (hash-ref (compiled-model-cells model) cell-name))
        (define entries (hash-ref state cell-name))
@@ -650,20 +717,23 @@
          (state-query state cells name (cons (car arguments) key)))
        (query-fact name arguments source-origin)))
    (define passed?
-     (evaluate-rule-expression
-      body
-      (model-ensure-expression invariant)
-      (ensure-bindings clause)
-      #:context
-      (context-callback program)
-      #:inherited
-      (inherited-callback program)
-      #:captures
-      (hash-ref program 'placeholders (hash))
-      #:fact
-      query
-      #:origin
-      origin))
+     (parameterize
+      ((current-lookup-observer
+        (lambda (observation) (record-lookup! observation (hash-ref clause 'program-index)))))
+      (evaluate-rule-expression
+       body
+       (model-ensure-expression invariant)
+       (ensure-bindings clause)
+       #:context
+       (context-callback program)
+       #:inherited
+       (inherited-callback program)
+       #:captures
+       (hash-ref program 'placeholders (hash))
+       #:fact
+       query
+       #:origin
+       origin)))
    (set! ensure-results
      (cons
       (hash
@@ -686,7 +756,10 @@
         #:data
         (hash 'ensure (model-ensure-name invariant) 'key last-key 'origins (list origin))))
      (if on-error (on-error diagnostic) (raise-diagnostics (list diagnostic)))))
-  (define final-events (reverse applied))
+  (define folded-events (reverse applied))
+  (define final-events
+    (filter (lambda (event) (not (hash-ref event 'state-only? #f))) folded-events))
+  (define recorded-events (filter (lambda (event) (hash-ref event 'state-only? #f)) folded-events))
   (define final-ensures (reverse ensure-results))
   (define final-skips (reverse skips))
   (define bound (hash 'c maximum-c 'n effective-lines 'limit (* maximum-c effective-lines)))
@@ -722,6 +795,8 @@
        report
        'plan
        (map event->jsexpr final-events)
+       'recorded
+       (map recorded->jsexpr recorded-events)
        'ensure
        (map (lambda (item) (hash-remove item 'program-index)) final-ensures))
       (hash-set
@@ -742,11 +817,19 @@
          (for/list
           ((item (in-list final-ensures)) #:when (= (hash-ref item 'program-index) index))
           (hash-remove item 'program-index))
+         'recorded
+         (for/list
+          ((event (in-list recorded-events)) #:when (= (hash-ref event 'program-index) index))
+          (recorded->jsexpr event))
          'skips
          (for/list
           ((item (in-list final-skips)) #:when (= (hash-ref item 'program-index) index))
           (skip->jsexpr item)))))))
-  (values result final-events))
+  (values result folded-events))
+
+(define (recorded->jsexpr event)
+  (define origin (hash-ref event 'origin))
+  (hash 'term (hash-ref event 'term) 'origin (origin-only origin)))
 
 (define (event->jsexpr event)
   (if (hash-ref event 'modelled?)
@@ -755,5 +838,8 @@
 
 (define (skip->jsexpr item)
   (for/hash
-   ((name '(constructor fact args reason origin)))
+   ((name
+     (if (and (equal? (hash-ref item 'reason) "guard") (hash-has-key? item 'program))
+       '(reason fact args program)
+       '(constructor fact args reason origin))))
    (values name (if (eq? name 'origin) (origin-only (hash-ref item name)) (hash-ref item name)))))

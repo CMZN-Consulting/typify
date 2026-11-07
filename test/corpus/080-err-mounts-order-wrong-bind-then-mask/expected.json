@@ -159,8 +159,9 @@
         ]
       }
     ],
-    "status": "ok",
-    "skips": []
+    "status": "failed",
+    "skips": [],
+    "recorded": []
   },
   "plan": [
     [

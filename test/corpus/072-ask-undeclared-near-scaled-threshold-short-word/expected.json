@@ -56,7 +56,8 @@
       "act",
       "cut"
     ],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_json": {
     "word": "cat",
@@ -70,7 +71,8 @@
       "act",
       "cut"
     ],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_provenance": [
     "§6",

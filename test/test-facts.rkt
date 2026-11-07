@@ -157,6 +157,31 @@
          (query #f "clean" '("/vault" ".obsidian"))))
       '((#f #f) (#t #t) (#t #t) (#t #t) (#f #f)))
      (check
+      "clean-ignores-immediate-markers-and-regular-files-but-includes-nested-links"
+      (lambda ()
+        (define ordinary
+          (validate-facts
+           (hash
+            'collector
+            "typify 1.0"
+            'root
+            "/"
+            'facts
+            (list
+             (hash 'fact "directory" 'args '("/vault/.obsidian"))
+             (hash 'fact "exists" 'args '("/vault/deep/.obsidian"))))))
+        (define linked
+          (hash-set
+           ordinary
+           'facts
+           (cons
+            (hash 'fact "symlink" 'args '("/vault/deep/.obsidian") 'value "target")
+            (hash-ref ordinary 'facts))))
+        (list
+         (query ordinary "clean" '("/vault" ".obsidian"))
+         (query linked "clean" '("/vault" ".obsidian"))))
+      '((#t #t) (#f #f)))
+     (check
       "clean-is-never-accepted-as-a-collector-wire-fact"
       (lambda ()
         (with-handlers

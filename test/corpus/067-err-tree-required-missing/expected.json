@@ -41,49 +41,69 @@
     "X",
     "Y"
   ],
-  "stdout_json": [
-    {
-      "path": "services/api/app.typify",
-      "language": "App",
-      "placeholders": {
-        "service": "api"
+  "stdout_json": {
+    "ok": false,
+    "programs": [
+      {
+        "path": "services/api/app.typify",
+        "language": "App",
+        "placeholders": {
+          "service": "api"
+        },
+        "status": "missing",
+        "terms": [],
+        "origins": []
       },
-      "status": "missing",
-      "terms": [],
-      "origins": []
-    },
-    {
-      "path": "services/api/config.typify",
-      "language": "Config",
-      "placeholders": {
-        "service": "api"
-      },
-      "status": "present",
-      "terms": [
-        [
-          "access",
-          "rw"
+      {
+        "path": "services/api/config.typify",
+        "language": "Config",
+        "placeholders": {
+          "service": "api"
+        },
+        "status": "present",
+        "terms": [
+          [
+            "access",
+            "rw"
+          ]
+        ],
+        "origins": [
+          {
+            "kind": "program",
+            "path": "services/api/config.typify",
+            "line": 1
+          }
         ]
-      ],
-      "origins": [
-        {
-          "kind": "program",
-          "path": "services/api/config.typify",
-          "line": 1
-        }
-      ]
-    },
-    {
-      "path": "services/api/notes.typify",
-      "language": "Notes",
-      "placeholders": {
-        "service": "api"
       },
-      "status": "absent-empty",
-      "terms": [],
-      "origins": []
-    }
-  ],
+      {
+        "path": "services/api/notes.typify",
+        "language": "Notes",
+        "placeholders": {
+          "service": "api"
+        },
+        "status": "absent-empty",
+        "terms": [],
+        "origins": []
+      }
+    ],
+    "diagnostics": [
+      {
+        "code": "E_REQUIRED",
+        "file": "declarations.typify",
+        "range": null,
+        "data": {
+          "path": "services/api/app.typify"
+        },
+        "provenance": [
+          "§7",
+          "G",
+          "K",
+          "X",
+          "Y"
+        ]
+      }
+    ]
+  },
   "tree_entries": [
     {
       "path": "services/api/app.typify",

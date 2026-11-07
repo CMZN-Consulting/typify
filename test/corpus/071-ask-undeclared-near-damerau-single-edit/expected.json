@@ -53,7 +53,8 @@
     "near": [
       "bind"
     ],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_json": {
     "word": "bindd",
@@ -65,7 +66,8 @@
     "near": [
       "bind"
     ],
-    "accepts": []
+    "accepts": [],
+    "diagnostics": []
   },
   "ask_provenance": [
     "§6",

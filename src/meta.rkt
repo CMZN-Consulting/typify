@@ -18,6 +18,8 @@
    "name"
    "value"
    "/.*/"
+   "text"
+   "/.*/"
    "number"
    "/0|[1-9][0-9]*/"
    "ordering"
@@ -122,7 +124,12 @@
    (entry 'restricts "restricts!" "mark-restriction" '() "restricts!")
    (entry 'default "default : <value>" "declare-default" '("value") "default : item : book")
    (entry 'sees "sees : <name>" "declare-reference" '("name") "sees : Catalog")
-   (entry 'note "note : <name>" "declare-note" '("name") "note : quoting")
+   (entry
+    'note
+    "note : <constructor> = <text>"
+    "declare-note"
+    '("constructor" "text")
+    "note : item = quoting")
    (entry 'cap "cap : <limit> = <number>" "declare-cap" '("limit" "number") "cap : states = 4096")
    (entry 'cell "cell : <name> = <law>" "declare-cell" '("name" "law") "cell : mounts = shadow")
    (entry
@@ -155,6 +162,12 @@
     "declare-external"
     '("name")
     "effect : output = external")
+   (entry
+    'effect-state
+    "effect : <name> = state"
+    "declare-state"
+    '("name")
+    "effect : remember = state")
    (entry
     'stage
     "stage : <name> = <number>"
