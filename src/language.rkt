@@ -118,7 +118,9 @@
           (cons (src-span-file selected) (src-span-start-line selected))
           #f)))
   (define projected-data
-    (if (and line-payload? raw) (hash-set data 'actual (string-trim raw #px"[ \t]")) data))
+    (if (and line-payload? raw)
+      (hash-set data 'actual (string-trim raw #px"[ \t]" #:repeat? #t))
+      data))
   (if selected
     (struct-copy
      diagnostic
@@ -675,7 +677,9 @@
   (define header-valid?
     (and (pair? lines)
          (not (regexp-match? #rx"\r" (line-record-raw (car lines))))
-         (equal? (string-trim (line-record-raw (car lines)) #px"[ \t]") "#lang typify")))
+         (equal?
+          (string-trim (line-record-raw (car lines)) #px"[ \t]" #:repeat? #t)
+          "#lang typify")))
   (unless header-valid?
     (recover
      (lambda ()
@@ -1760,7 +1764,7 @@
       (and (eq? (line-record-kind record) 'unclassified)
            (regexp-match?
             #px"^\\?(?:$|[ \t:!])"
-            (string-trim (line-record-raw record) #px"[ \t]")))))
+            (string-trim (line-record-raw record) #px"[ \t]" #:repeat? #t)))))
 
 (define (valid-question? record)
   (and (eq? (line-record-kind record) 'colon)

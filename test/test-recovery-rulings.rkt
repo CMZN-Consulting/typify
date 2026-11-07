@@ -59,6 +59,14 @@
    (map form-source (language-forms (hash-ref retried "Retry")))
    '("ready!")
    "the body remains available for recovery")
+  (define-values
+   (padded-model padded-diagnostics)
+   (read-declarations/diagnostics
+    "  \t#lang typify\t  \ndeclare : Padded\nterm : ready\nform : ready!\ndoes : ready\nend!\n"
+    #:file
+    "rules.typify"))
+  (check padded-diagnostics '() "all outer header blanks are stripped")
+  (check (hash-has-key? padded-model "Padded") #t "padded valid header needs no recovery")
   (define tied-errors (errors "nonsense\n"))
   (check
    (map diagnostic-code tied-errors)
