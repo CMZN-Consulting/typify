@@ -301,6 +301,13 @@
    (hash-has-key? (read-declarations (meta-source)) "Typify")
    #t
    "exact canonical bootstrap is permitted")
+  (define canonical-model (read-declarations (meta-source)))
+  (define canonical-emitted (emit-declarations canonical-model))
+  (check canonical-emitted (meta-source) "canonical grammar emits byte-identically")
+  (check
+   (emit-declarations (read-declarations canonical-emitted))
+   canonical-emitted
+   "canonical emission remains a strict-bootstrap fixed point")
   (define-values
    (spoofed spoof-errors)
    (read-declarations/diagnostics (source '("is : number = /[0-9]+/") "Typify")))

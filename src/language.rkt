@@ -1959,20 +1959,18 @@
    1))
 
 (define (emit-declarations bodies)
-  (string-append
-   (string-join
-    (append
-     '("#lang typify" "")
-     (append-map
-      (lambda (body)
-        (append
-         (list (string-append "declare : " (language-name body)))
-         (map
-          (lambda (row) (string-trim (line-record-raw (hash-ref row 'record))))
-          (language-rows body))
-         '("end!" "")))
-      (sort (hash-values bodies) string<? #:key language-name)))
-    "\n")
+  (string-join
+   (append
+    '("#lang typify" "")
+    (append-map
+     (lambda (body)
+       (append
+        (list (string-append "declare : " (language-name body)))
+        (map
+         (lambda (row) (string-trim (line-record-raw (hash-ref row 'record))))
+         (language-rows body))
+        '("end!" "")))
+     (sort (hash-values bodies) string<? #:key language-name)))
    "\n"))
 
 (define (declaration->jsexpr body #:origins? (origins? #t))
