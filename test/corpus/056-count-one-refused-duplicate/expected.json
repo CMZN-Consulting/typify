@@ -68,6 +68,18 @@
           "G",
           "K",
           "X"
+        ],
+        "related": [
+          {
+            "kind": "program",
+            "path": "dup.typify",
+            "line": 1
+          },
+          {
+            "kind": "program",
+            "path": "dup.typify",
+            "line": 2
+          }
         ]
       }
     ]
@@ -98,6 +110,18 @@
         "G",
         "K",
         "X"
+      ],
+      "related": [
+        {
+          "kind": "program",
+          "path": "dup.typify",
+          "line": 1
+        },
+        {
+          "kind": "program",
+          "path": "dup.typify",
+          "line": 2
+        }
       ]
     }
   ]

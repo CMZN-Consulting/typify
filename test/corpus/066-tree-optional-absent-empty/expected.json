@@ -24,7 +24,6 @@
     "typify",
     "tree",
     "declarations.typify",
-    "ProjectLayout",
     ".",
     "--json"
   ],

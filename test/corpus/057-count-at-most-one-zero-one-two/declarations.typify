@@ -2,14 +2,14 @@
 
 declare : CountAtMostOne
 version : 1
-is : name = /[a-z]+/
-term : subtitle : name
-term : body : name
-form : subtitle : <name>
-does : subtitle <name>
+is : word = /[a-z]+/
+term : subtitle : word
+term : body : word
+form : subtitle : <word>
+does : subtitle <word>
 count : subtitle = 0..1
 example : subtitle : overview
-form : body : <name>
-does : body <name>
+form : body : <word>
+does : body <word>
 example : body : content
 end!

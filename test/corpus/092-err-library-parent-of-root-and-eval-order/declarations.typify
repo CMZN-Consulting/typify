@@ -2,9 +2,11 @@
 
 declare : LibraryErrors
 version : 1
-is : path = canonical-path
-term : touch : path
-primitive!
+is : seg = /[a-z0-9._-]+/ except "." | ".."
+is : path = "/" | ("/" seg)+
+is : base = path
+is : rel = path
+primitive : touch : path
 writes : touch : fs = put 1
 cell : fs = shadow
 term : touch-parent : path
@@ -12,8 +14,8 @@ term : touch-join : path path
 form : touch-parent : <path>
 does : touch-parent <path>
 example : touch-parent : /mounts/sub
-form : touch-join : <path> <path>
-does : touch-join <path> <path>
+form : touch-join : <base> <rel>
+does : touch-join <base> <rel>
 example : touch-join : /mounts /sub
 rule : touch-parent <p> -> touch (parent <p>)
 rule : touch-join <a> <b> -> touch (join <a> <b>)

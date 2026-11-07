@@ -1,6 +1,6 @@
 {
   "case_id": "005-err-line-malformed-empty-bang-verb",
-  "title": "Malformed kernel line: bang line whose verb begins with a digit",
+  "title": "Malformed kernel line (D5): bang line with empty verb '!'",
   "sections_covered": [
     "§2",
     "§9",
@@ -45,17 +45,17 @@
         "range": {
           "start": {
             "line": 1,
-            "column": 1,
-            "byteOffset": 0
+            "column": 4,
+            "byteOffset": 3
           },
           "end": {
             "line": 1,
-            "column": 8,
-            "byteOffset": 7
+            "column": 5,
+            "byteOffset": 4
           }
         },
         "data": {
-          "actual": "123bad!"
+          "actual": "!"
         },
         "provenance": [
           "§2",
@@ -71,17 +71,17 @@
       "range": {
         "start": {
           "line": 1,
-          "column": 1,
-          "byteOffset": 0
+          "column": 4,
+          "byteOffset": 3
         },
         "end": {
           "line": 1,
-          "column": 8,
-          "byteOffset": 7
+          "column": 5,
+          "byteOffset": 4
         }
       },
       "data": {
-        "actual": "123bad!"
+        "actual": "!"
       },
       "provenance": [
         "§2",

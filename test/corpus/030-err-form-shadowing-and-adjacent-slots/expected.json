@@ -46,18 +46,18 @@
         "file": "declarations.typify",
         "range": {
           "start": {
-            "line": 10,
-            "column": 15,
-            "byteOffset": 180
+            "line": 11,
+            "column": 1,
+            "byteOffset": 183
           },
           "end": {
-            "line": 10,
-            "column": 29,
-            "byteOffset": 194
+            "line": 11,
+            "column": 28,
+            "byteOffset": 210
           }
         },
         "data": {
-          "form": "pair : <alpha><alpha>",
+          "form": "pair : <alpha><beta>",
           "class": "alpha",
           "token": ""
         },
@@ -74,14 +74,14 @@
         "file": "declarations.typify",
         "range": {
           "start": {
-            "line": 14,
+            "line": 15,
             "column": 1,
-            "byteOffset": 266
+            "byteOffset": 281
           },
           "end": {
-            "line": 14,
+            "line": 15,
             "column": 22,
-            "byteOffset": 287
+            "byteOffset": 302
           }
         },
         "data": {
@@ -104,18 +104,18 @@
       "file": "declarations.typify",
       "range": {
         "start": {
-          "line": 10,
-          "column": 15,
-          "byteOffset": 180
+          "line": 11,
+          "column": 1,
+          "byteOffset": 183
         },
         "end": {
-          "line": 10,
-          "column": 29,
-          "byteOffset": 194
+          "line": 11,
+          "column": 28,
+          "byteOffset": 210
         }
       },
       "data": {
-        "form": "pair : <alpha><alpha>",
+        "form": "pair : <alpha><beta>",
         "class": "alpha",
         "token": ""
       },
@@ -132,14 +132,14 @@
       "file": "declarations.typify",
       "range": {
         "start": {
-          "line": 14,
+          "line": 15,
           "column": 1,
-          "byteOffset": 266
+          "byteOffset": 281
         },
         "end": {
-          "line": 14,
+          "line": 15,
           "column": 22,
-          "byteOffset": 287
+          "byteOffset": 302
         }
       },
       "data": {

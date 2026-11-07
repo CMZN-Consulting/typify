@@ -65,8 +65,8 @@
         "range": {
           "start": {
             "line": 10,
-            "column": 23,
-            "byteOffset": 185
+            "column": 1,
+            "byteOffset": 163
           },
           "end": {
             "line": 10,
@@ -117,8 +117,8 @@
       "range": {
         "start": {
           "line": 10,
-          "column": 23,
-          "byteOffset": 185
+          "column": 1,
+          "byteOffset": 163
         },
         "end": {
           "line": 10,

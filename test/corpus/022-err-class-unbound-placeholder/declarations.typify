@@ -2,8 +2,8 @@
 
 declare : UnboundSlot
 version : 1
-is : name = /[a-z]+/
-term : greet : name
+is : word = /[a-z]+/
+term : greet : word
 form : greet : <unknown>
 does : greet <other>
 end!

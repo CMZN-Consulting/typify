@@ -4,12 +4,10 @@ declare : Mounts
 version : 1
 is : path = canonical-path
 is : mode = "ro" | "rw"
-term : bind : path mode
-primitive!
+primitive : bind : path mode
 writes : bind : mounts = put 1
 reads : bind : exists = reject
-term : mask : path
-primitive!
+primitive : mask : path
 writes : mask : mounts = put 1
 cell : mounts = shadow stacking
 term : share : path mode

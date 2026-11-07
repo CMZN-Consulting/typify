@@ -66,14 +66,14 @@
         "file": "declarations.typify",
         "range": {
           "start": {
-            "line": 10,
-            "column": 8,
-            "byteOffset": 162
+            "line": 11,
+            "column": 1,
+            "byteOffset": 177
           },
           "end": {
-            "line": 10,
-            "column": 23,
-            "byteOffset": 177
+            "line": 11,
+            "column": 30,
+            "byteOffset": 206
           }
         },
         "data": {
@@ -119,14 +119,14 @@
       "file": "declarations.typify",
       "range": {
         "start": {
-          "line": 10,
-          "column": 8,
-          "byteOffset": 162
+          "line": 11,
+          "column": 1,
+          "byteOffset": 177
         },
         "end": {
-          "line": 10,
-          "column": 23,
-          "byteOffset": 177
+          "line": 11,
+          "column": 30,
+          "byteOffset": 206
         }
       },
       "data": {

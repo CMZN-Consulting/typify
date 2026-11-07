@@ -1,9 +1,10 @@
 #lang typify
 
-declare : BadFormatClass
+declare : IntersectedFormatClass
 version : 1
 is : tricky = /[a-z\u200d\u202e\u00a0]+/
 term : label : tricky
 form : label : <tricky>
 does : label <tricky>
+example : label : clean
 end!

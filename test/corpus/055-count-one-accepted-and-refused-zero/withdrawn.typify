@@ -2,9 +2,10 @@
 
 declare : WithdrawnCountSpelling
 version : 1
-is : name = /[a-z]+/
-term : title : name
-form : title : <name>
-does : title <name>
+is : word = /[a-z]+/
+term : title : word
+form : title : <word>
+does : title <word>
 count : title = one
+example : title : handbook
 end!

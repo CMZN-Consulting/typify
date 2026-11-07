@@ -1,6 +1,6 @@
 {
   "case_id": "020-err-class-matches-zwj-and-bidi",
-  "title": "Declaration error: class explicitly names U+200D (ZWJ), U+202E (Bidi RLO), and U+00A0 (Zs != U+0020)",
+  "title": "Global code-point intersection (D8, 03:56Z, 05:09Z): '/[a-z\\u200d\\u202e\\u00a0]+/' is legal at declaration time and refuses U+200D ZWJ in program with E_CLASS",
   "sections_covered": [
     "§4",
     "F",
@@ -20,6 +20,8 @@
     "typify",
     "check",
     "declarations.typify",
+    "IntersectedFormatClass",
+    "program.typify",
     "--json"
   ],
   "exit_code": 1,
@@ -40,23 +42,23 @@
     "terms": [],
     "diagnostics": [
       {
-        "code": "E_DECLARATION",
-        "file": "declarations.typify",
+        "code": "E_CLASS",
+        "file": "program.typify",
         "range": {
           "start": {
-            "line": 5,
-            "column": 14,
-            "byteOffset": 64
+            "line": 1,
+            "column": 9,
+            "byteOffset": 8
           },
           "end": {
-            "line": 5,
-            "column": 42,
-            "byteOffset": 92
+            "line": 1,
+            "column": 12,
+            "byteOffset": 13
           }
         },
         "data": {
-          "kind": "syntax",
-          "actual": "/[a-z\\u200d\\u202e\\u00a0]+/"
+          "class": "tricky",
+          "token": "a‍b"
         },
         "provenance": [
           "§4",
@@ -69,23 +71,23 @@
   },
   "diagnostics": [
     {
-      "code": "E_DECLARATION",
-      "file": "declarations.typify",
+      "code": "E_CLASS",
+      "file": "program.typify",
       "range": {
         "start": {
-          "line": 5,
-          "column": 14,
-          "byteOffset": 64
+          "line": 1,
+          "column": 9,
+          "byteOffset": 8
         },
         "end": {
-          "line": 5,
-          "column": 42,
-          "byteOffset": 92
+          "line": 1,
+          "column": 12,
+          "byteOffset": 13
         }
       },
       "data": {
-        "kind": "syntax",
-        "actual": "/[a-z\\u200d\\u202e\\u00a0]+/"
+        "class": "tricky",
+        "token": "a‍b"
       },
       "provenance": [
         "§4",

@@ -2,10 +2,10 @@
 
 declare : RootConfig
 version : 1
+file : root.typify
+required!
 is : path = canonical-path
 term : base-dir : path
-fact : base-dir
-scope : base-dir = root
 form : base-dir : <path>
 does : base-dir <path>
 count : base-dir = 1
@@ -14,10 +14,13 @@ end!
 
 declare : ServiceMount
 version : 1
+file : services/<svc>/mounts.typify
+required!
+sees : RootConfig
+is : svc = /[a-z][a-z0-9-]*/
 is : seg = /[a-z0-9._-]+/ except "." | ".."
-is : path = canonical-path
-term : bind : path path
-primitive!
+is : path = "/" | ("/" seg)+
+primitive : bind : path path
 writes : bind : mounts = put 1
 cell : mounts = shadow stacking
 term : mount-rel : path seg
@@ -26,20 +29,4 @@ form : mount-rel : <path> <seg>
 does : mount-rel <path> <seg>
 example : mount-rel : /mounts/root cache
 rule : mount-rel <g> <s> -> bind (join (context base-dir) <s>) (join (context base-dir) <s>)
-end!
-
-declare : RootTreePlan
-version : 1
-sees : RootConfig ServiceMount
-is : svc = /[a-z][a-z0-9-]*/
-term : root-cfg :
-term : svc-mnt : svc
-form : root.typify : RootConfig
-does : root-cfg
-count : root-cfg = 1
-example : root.typify : RootConfig
-form : services/<svc>/mounts.typify : ServiceMount
-does : svc-mnt <svc>
-count : svc-mnt = 1..*
-example : services/api/mounts.typify : ServiceMount
 end!

@@ -15,9 +15,9 @@
 
 (define fixture-hashes
   (list
-   (cons "declarations.typify" "815fe198f5f75e0ae1164473a9b432eea9de19c6c24a6e76af808c8b8516c6e0")
+   (cons "declarations.typify" "d436add2061182aa8547c1c0c93cc9bd9f46bc9050ef182fd52f5347b1b3d89f")
    (cons "program.typify" "79b453736b6d986f7fe4074b449f38e7f56d4d99c948ef8b0350b1a72bafdb53")
-   (cons "expected.json" "392e00c6a2bee382b42861417848f266dca606196427c2397a3ad73bf6eb8cf7")))
+   (cons "expected.json" "27e699961d18ba9ca840f090df0faecce7e9ddfa6b18978da41ebc462364e546")))
 
 (define expected-addresses
   (for/list

@@ -8,4 +8,5 @@ does : item <word>
 form : orphan : <word>
 form : valid : <word>
 does : item <word>
+example : valid : alpha
 end!

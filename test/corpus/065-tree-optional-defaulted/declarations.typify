@@ -2,6 +2,9 @@
 
 declare : Config
 version : 1
+file : services/<service>/config.typify
+optional!
+is : service = /[a-z][a-z0-9-]*/
 is : mode = "ro" | "rw"
 term : access : mode
 form : access : <mode>
@@ -13,6 +16,10 @@ end!
 
 declare : App
 version : 1
+file : services/<service>/app.typify
+required!
+sees : Config Notes
+is : service = /[a-z][a-z0-9-]*/
 is : word = /[a-z]+/
 term : run : word
 form : run : <word>
@@ -23,31 +30,13 @@ end!
 
 declare : Notes
 version : 1
+file : services/<service>/notes.typify
+optional!
+is : service = /[a-z][a-z0-9-]*/
 is : word = /[a-z]+/
 term : memo : word
 form : memo : <word>
 does : memo <word>
 count : memo = *
 example : memo : todo
-end!
-
-declare : ProjectLayout
-version : 1
-sees : Config App Notes
-is : service = /[a-z][a-z0-9-]*/
-term : svc-config : service
-term : svc-app : service
-term : svc-notes : service
-form : services/<service>/config.typify : Config
-does : svc-config <service>
-count : svc-config = 0..1
-example : services/api/config.typify : Config
-form : services/<service>/app.typify : App
-does : svc-app <service>
-count : svc-app = 1
-example : services/api/app.typify : App
-form : services/<service>/notes.typify : Notes
-does : svc-notes <service>
-count : svc-notes = 0..1
-example : services/api/notes.typify : Notes
 end!

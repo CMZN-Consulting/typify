@@ -1,9 +1,10 @@
 #lang typify
 
-declare : BadControlClass
+declare : IntersectedControlClass
 version : 1
 is : raw = /[\x00-\x7f]+/
 term : entry : raw
 form : entry : <raw>
 does : entry <raw>
+example : entry : clean
 end!

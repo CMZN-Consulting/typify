@@ -118,16 +118,17 @@
     ],
     "ensure": [
       {
-        "constructor": "share",
-        "name": "child-visible",
-        "predicate": [
-          "visible",
-          "mounts",
-          "/mounts/research"
-        ],
-        "ok": true
+        "ensure": "child-visible",
+        "ok": true,
+        "origin": {
+          "kind": "program",
+          "path": "program.typify",
+          "line": 1
+        }
       }
-    ]
+    ],
+    "status": "ok",
+    "skips": []
   },
   "plan": [
     [
@@ -179,14 +180,13 @@
   "modelled": "2 of 2",
   "ensure": [
     {
-      "constructor": "share",
-      "name": "child-visible",
-      "predicate": [
-        "visible",
-        "mounts",
-        "/mounts/research"
-      ],
-      "ok": true
+      "ensure": "child-visible",
+      "ok": true,
+      "origin": {
+        "kind": "program",
+        "path": "program.typify",
+        "line": 1
+      }
     }
   ],
   "plan_provenance": [

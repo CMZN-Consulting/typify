@@ -110,7 +110,9 @@
           "Y"
         ]
       }
-    ]
+    ],
+    "status": "ok",
+    "skips": []
   },
   "diagnostics": [
     {

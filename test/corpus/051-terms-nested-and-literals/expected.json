@@ -82,14 +82,14 @@
             "file": "bad_declarations.typify",
             "range": {
               "start": {
-                "line": 11,
+                "line": 12,
                 "column": 14,
-                "byteOffset": 199
+                "byteOffset": 224
               },
               "end": {
-                "line": 11,
+                "line": 12,
                 "column": 27,
-                "byteOffset": 212
+                "byteOffset": 237
               }
             },
             "data": {
@@ -111,14 +111,14 @@
           "file": "bad_declarations.typify",
           "range": {
             "start": {
-              "line": 11,
+              "line": 12,
               "column": 14,
-              "byteOffset": 199
+              "byteOffset": 224
             },
             "end": {
-              "line": 11,
+              "line": 12,
               "column": 27,
-              "byteOffset": 212
+              "byteOffset": 237
             }
           },
           "data": {

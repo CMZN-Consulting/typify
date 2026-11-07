@@ -1,6 +1,6 @@
 {
   "case_id": "099-emit-json-and-gbnf-catalog",
-  "title": "Grammar emission ('typify emit', 06:00Z, 06:05Z, 06:20Z J): emits JSON grammar with comment, caps, qualified classes, and forms by default, and GBNF with '--gbnf'",
+  "title": "Grammar emission ('typify emit', 06:00Z, 06:05Z, 06:20Z J): emits canonical JSON grammar by default and schematic-equivalent GBNF with '--gbnf' (no fixed GBNF byte comparison)",
   "sections_covered": [
     "§8",
     "§9",
@@ -27,7 +27,8 @@
         "typify",
         "emit",
         "declarations.typify",
-        "Catalog"
+        "Catalog",
+        "--json"
       ],
       "exit_code": 0,
       "verdict": "accepted",
@@ -80,7 +81,6 @@
       ],
       "exit_code": 0,
       "verdict": "accepted",
-      "stdout_gbnf": "root ::= line\nline ::= \"item : \" category \" = \" title\ncategory ::= \"book\" | \"journal\"\ntitle ::= [^=]+\n",
       "provenance": [
         "§8",
         "§9",
@@ -88,8 +88,62 @@
         "J",
         "R",
         "Y"
-      ]
+      ],
+      "gbnf_assertions": {
+        "schematic_note": "Under 06:05Z J, the 4-line GBNF sample in 06:00Z is schematic; the emitter preserves the refused code points of F, the caps, and exact line formation (including the reserved '?' line), so exact GBNF bytes are not fixed by the definition.",
+        "required_nonterminals": [
+          "root",
+          "category",
+          "title"
+        ],
+        "accepts_lines": [
+          "item : journal = Market Research",
+          "? : item"
+        ],
+        "rejects_lines": [
+          "item : audio = Podcast",
+          "malformed bare line"
+        ]
+      }
     }
   ],
-  "diagnostics": []
+  "diagnostics": [],
+  "invocation": [
+    "typify",
+    "emit",
+    "declarations.typify",
+    "Catalog",
+    "--json"
+  ],
+  "exit_code": 0,
+  "verdict": "accepted",
+  "stdout_json": {
+    "language": "Catalog",
+    "version": 1,
+    "comment": "#",
+    "caps": {
+      "states": 4096,
+      "repetition": 256,
+      "depth": 8,
+      "length": 4096
+    },
+    "classes": {
+      "Catalog.category": {
+        "literals": [
+          "book",
+          "journal"
+        ]
+      },
+      "Catalog.title": {
+        "pattern": "[^=]+"
+      }
+    },
+    "forms": [
+      {
+        "verb": "item",
+        "shape": "colon",
+        "production": "item : <category> = <title>"
+      }
+    ]
+  }
 }

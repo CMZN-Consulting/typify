@@ -2,14 +2,14 @@
 
 declare : CountOne
 version : 1
-is : name = /[a-z]+/
-term : title : name
-term : note : name
-form : title : <name>
-does : title <name>
+is : word = /[a-z]+/
+term : title : word
+term : note : word
+form : title : <word>
+does : title <word>
 count : title = 1
 example : title : handbook
-form : note : <name>
-does : note <name>
+form : note : <word>
+does : note <word>
 example : note : draft
 end!

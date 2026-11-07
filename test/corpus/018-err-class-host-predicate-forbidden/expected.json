@@ -45,18 +45,18 @@
         "range": {
           "start": {
             "line": 5,
-            "column": 11,
-            "byteOffset": 59
+            "column": 1,
+            "byteOffset": 49
           },
           "end": {
             "line": 5,
-            "column": 16,
-            "byteOffset": 64
+            "column": 25,
+            "byteOffset": 73
           }
         },
         "data": {
           "kind": "syntax",
-          "actual": "/\\d+/"
+          "actual": "is : num = /(?=a)[a-z]+/"
         },
         "provenance": [
           "§4",
@@ -71,13 +71,13 @@
         "range": {
           "start": {
             "line": 6,
-            "column": 13,
-            "byteOffset": 78
+            "column": 1,
+            "byteOffset": 74
           },
           "end": {
             "line": 6,
             "column": 15,
-            "byteOffset": 80
+            "byteOffset": 88
           }
         },
         "data": {
@@ -98,18 +98,18 @@
       "range": {
         "start": {
           "line": 5,
-          "column": 11,
-          "byteOffset": 59
+          "column": 1,
+          "byteOffset": 49
         },
         "end": {
           "line": 5,
-          "column": 16,
-          "byteOffset": 64
+          "column": 25,
+          "byteOffset": 73
         }
       },
       "data": {
         "kind": "syntax",
-        "actual": "/\\d+/"
+        "actual": "is : num = /(?=a)[a-z]+/"
       },
       "provenance": [
         "§4",
@@ -124,13 +124,13 @@
       "range": {
         "start": {
           "line": 6,
-          "column": 13,
-          "byteOffset": 78
+          "column": 1,
+          "byteOffset": 74
         },
         "end": {
           "line": 6,
           "column": 15,
-          "byteOffset": 80
+          "byteOffset": 88
         }
       },
       "data": {

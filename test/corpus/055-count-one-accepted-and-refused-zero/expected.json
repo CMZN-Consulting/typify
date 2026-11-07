@@ -107,7 +107,8 @@
               "G",
               "K",
               "X"
-            ]
+            ],
+            "related": []
           }
         ]
       },
@@ -137,7 +138,8 @@
             "G",
             "K",
             "X"
-          ]
+          ],
+          "related": []
         }
       ],
       "provenance": [
@@ -178,7 +180,7 @@
               }
             },
             "data": {
-              "class": "count",
+              "class": "multiplicity",
               "token": "one"
             },
             "provenance": [
@@ -206,7 +208,7 @@
             }
           },
           "data": {
-            "class": "count",
+            "class": "multiplicity",
             "token": "one"
           },
           "provenance": [

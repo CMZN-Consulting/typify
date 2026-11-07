@@ -52,7 +52,7 @@
         },
         "data": {
           "kind": "body",
-          "actual": "EOF"
+          "actual": "declare : InnerLang"
         },
         "provenance": [
           "§3",
@@ -79,7 +79,7 @@
       },
       "data": {
         "kind": "body",
-        "actual": "EOF"
+        "actual": "declare : InnerLang"
       },
       "provenance": [
         "§3",

@@ -1,6 +1,6 @@
 {
   "case_id": "019-err-class-matches-control-wildcard",
-  "title": "Declaration error: class range explicitly names forbidden Cc control code points",
+  "title": "Global code-point intersection (D8, 05:09Z): '/[\\x00-\\x7f]+/' is legal at declaration time and refuses control character U+0000 in program with E_CLASS",
   "sections_covered": [
     "§4",
     "F",
@@ -20,6 +20,8 @@
     "typify",
     "check",
     "declarations.typify",
+    "IntersectedControlClass",
+    "program.typify",
     "--json"
   ],
   "exit_code": 1,
@@ -40,23 +42,23 @@
     "terms": [],
     "diagnostics": [
       {
-        "code": "E_DECLARATION",
-        "file": "declarations.typify",
+        "code": "E_CLASS",
+        "file": "program.typify",
         "range": {
           "start": {
-            "line": 5,
-            "column": 11,
-            "byteOffset": 62
+            "line": 1,
+            "column": 9,
+            "byteOffset": 8
           },
           "end": {
-            "line": 5,
-            "column": 27,
-            "byteOffset": 78
+            "line": 1,
+            "column": 16,
+            "byteOffset": 15
           }
         },
         "data": {
-          "kind": "syntax",
-          "actual": "/[\\x00-\\x7f]+/"
+          "class": "raw",
+          "token": "bad\u0000nul"
         },
         "provenance": [
           "§4",
@@ -69,23 +71,23 @@
   },
   "diagnostics": [
     {
-      "code": "E_DECLARATION",
-      "file": "declarations.typify",
+      "code": "E_CLASS",
+      "file": "program.typify",
       "range": {
         "start": {
-          "line": 5,
-          "column": 11,
-          "byteOffset": 62
+          "line": 1,
+          "column": 9,
+          "byteOffset": 8
         },
         "end": {
-          "line": 5,
-          "column": 27,
-          "byteOffset": 78
+          "line": 1,
+          "column": 16,
+          "byteOffset": 15
         }
       },
       "data": {
-        "kind": "syntax",
-        "actual": "/[\\x00-\\x7f]+/"
+        "class": "raw",
+        "token": "bad\u0000nul"
       },
       "provenance": [
         "§4",

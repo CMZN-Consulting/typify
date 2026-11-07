@@ -4,9 +4,11 @@ declare : BindMountForm
 version : 1
 is : seg = /[A-Za-z0-9._-]+/ except "." | ".."
 is : path = "/" | ("/" seg)+
+is : src = path
+is : dst = path
 is : mode = "ro" | "rw"
 term : bind-mount : path path mode
-form : bind : <path>:<path>:<mode>
-does : bind-mount <path> <path> <mode>
+form : bind : <src>:<dst>:<mode>
+does : bind-mount <src> <dst> <mode>
 example : bind : /srv/src:/mnt/dst:ro
 end!

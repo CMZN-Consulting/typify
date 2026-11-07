@@ -1,6 +1,6 @@
 {
   "case_id": "045-multislot-2-systemd-bind-paths",
-  "title": "Multi-slot form 2: Three-slot 'bind : <path>:<path>:<mode>' with ':' delimiters",
+  "title": "Multi-slot form 2: Three-slot 'bind : <src>:<dst>:<mode>' with ':' delimiters and distinct placeholder references (D4)",
   "sections_covered": [
     "§4",
     "§5",

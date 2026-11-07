@@ -45,13 +45,13 @@
         "range": {
           "start": {
             "line": 5,
-            "column": 14,
-            "byteOffset": 61
+            "column": 1,
+            "byteOffset": 48
           },
           "end": {
             "line": 5,
-            "column": 18,
-            "byteOffset": 65
+            "column": 22,
+            "byteOffset": 69
           }
         },
         "data": {
@@ -74,13 +74,13 @@
       "range": {
         "start": {
           "line": 5,
-          "column": 14,
-          "byteOffset": 61
+          "column": 1,
+          "byteOffset": 48
         },
         "end": {
           "line": 5,
-          "column": 18,
-          "byteOffset": 65
+          "column": 22,
+          "byteOffset": 69
         }
       },
       "data": {

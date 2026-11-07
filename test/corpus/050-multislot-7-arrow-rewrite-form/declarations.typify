@@ -3,10 +3,12 @@
 declare : ArrowTransition
 version : 1
 is : state = /[A-Z][A-Z0-9_]*/
+is : from_state = state
+is : to_state = state
 is : event = /[a-z_]+/
 is : guard = /[a-z0-9_]+/
 term : step : state event state guard
-form : <state> : <event> -> <state> [<guard>]
-does : step <state> <event> <state> <guard>
+form : <from_state> : <event> -> <to_state> [<guard>]
+does : step <from_state> <event> <to_state> <guard>
 example : IDLE : start -> RUNNING [ready]
 end!

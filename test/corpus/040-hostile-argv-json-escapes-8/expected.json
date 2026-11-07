@@ -70,7 +70,7 @@
     },
     {
       "class": "argv",
-      "token_repr": "'\"trailing\\\\\\\\\"'",
+      "token_repr": "'\"trailing\\\\\"'",
       "description": "dangling backslash before closing quote"
     },
     {
@@ -239,13 +239,13 @@
           },
           "end": {
             "line": 6,
-            "column": 20,
-            "byteOffset": 125
+            "column": 19,
+            "byteOffset": 124
           }
         },
         "data": {
           "class": "argv",
-          "token": "\"trailing\\\\\""
+          "token": "\"trailing\\\""
         },
         "provenance": [
           "§4",
@@ -263,12 +263,12 @@
           "start": {
             "line": 7,
             "column": 8,
-            "byteOffset": 133
+            "byteOffset": 132
           },
           "end": {
             "line": 7,
             "column": 16,
-            "byteOffset": 141
+            "byteOffset": 140
           }
         },
         "data": {
@@ -291,12 +291,12 @@
           "start": {
             "line": 8,
             "column": 8,
-            "byteOffset": 149
+            "byteOffset": 148
           },
           "end": {
             "line": 8,
             "column": 19,
-            "byteOffset": 160
+            "byteOffset": 159
           }
         },
         "data": {
@@ -466,13 +466,13 @@
         },
         "end": {
           "line": 6,
-          "column": 20,
-          "byteOffset": 125
+          "column": 19,
+          "byteOffset": 124
         }
       },
       "data": {
         "class": "argv",
-        "token": "\"trailing\\\\\""
+        "token": "\"trailing\\\""
       },
       "provenance": [
         "§4",
@@ -490,12 +490,12 @@
         "start": {
           "line": 7,
           "column": 8,
-          "byteOffset": 133
+          "byteOffset": 132
         },
         "end": {
           "line": 7,
           "column": 16,
-          "byteOffset": 141
+          "byteOffset": 140
         }
       },
       "data": {
@@ -518,12 +518,12 @@
         "start": {
           "line": 8,
           "column": 8,
-          "byteOffset": 149
+          "byteOffset": 148
         },
         "end": {
           "line": 8,
           "column": 19,
-          "byteOffset": 160
+          "byteOffset": 159
         }
       },
       "data": {

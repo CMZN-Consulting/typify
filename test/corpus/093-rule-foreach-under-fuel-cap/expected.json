@@ -115,7 +115,9 @@
             "line": 1
           }
         ],
-        "ensure": []
+        "ensure": [],
+        "status": "ok",
+        "skips": []
       },
       "plan": [
         [
@@ -217,17 +219,17 @@
         "diagnostics": [
           {
             "code": "E_RULE_FUEL",
-            "file": "exceed.typify",
+            "file": "declarations.typify",
             "range": {
               "start": {
-                "line": 1,
-                "column": 9,
-                "byteOffset": 8
+                "line": 15,
+                "column": 21,
+                "byteOffset": 333
               },
               "end": {
-                "line": 1,
-                "column": 32,
-                "byteOffset": 31
+                "line": 15,
+                "column": 61,
+                "byteOffset": 373
               }
             },
             "data": {
@@ -247,17 +249,17 @@
       "diagnostics": [
         {
           "code": "E_RULE_FUEL",
-          "file": "exceed.typify",
+          "file": "declarations.typify",
           "range": {
             "start": {
-              "line": 1,
-              "column": 9,
-              "byteOffset": 8
+              "line": 15,
+              "column": 21,
+              "byteOffset": 333
             },
             "end": {
-              "line": 1,
-              "column": 32,
-              "byteOffset": 31
+              "line": 15,
+              "column": 61,
+              "byteOffset": 373
             }
           },
           "data": {

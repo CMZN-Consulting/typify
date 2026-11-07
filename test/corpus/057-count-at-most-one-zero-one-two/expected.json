@@ -145,6 +145,18 @@
               "G",
               "K",
               "X"
+            ],
+            "related": [
+              {
+                "kind": "program",
+                "path": "two.typify",
+                "line": 1
+              },
+              {
+                "kind": "program",
+                "path": "two.typify",
+                "line": 2
+              }
             ]
           }
         ]
@@ -175,6 +187,18 @@
             "G",
             "K",
             "X"
+          ],
+          "related": [
+            {
+              "kind": "program",
+              "path": "two.typify",
+              "line": 1
+            },
+            {
+              "kind": "program",
+              "path": "two.typify",
+              "line": 2
+            }
           ]
         }
       ],

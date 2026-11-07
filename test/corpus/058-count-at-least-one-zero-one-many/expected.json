@@ -47,8 +47,8 @@
               },
               "end": {
                 "line": 1,
-                "column": 32,
-                "byteOffset": 31
+                "column": 1,
+                "byteOffset": 0
               }
             },
             "data": {
@@ -61,7 +61,8 @@
               "G",
               "K",
               "X"
-            ]
+            ],
+            "related": []
           }
         ]
       },
@@ -77,8 +78,8 @@
             },
             "end": {
               "line": 1,
-              "column": 32,
-              "byteOffset": 31
+              "column": 1,
+              "byteOffset": 0
             }
           },
           "data": {
@@ -91,7 +92,8 @@
             "G",
             "K",
             "X"
-          ]
+          ],
+          "related": []
         }
       ],
       "provenance": [

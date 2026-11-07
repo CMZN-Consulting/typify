@@ -1,10 +1,10 @@
 path : /srv/data/evil
 relpath : docs/readme
-days : 15
+days : 15
 label : lineoverwrite
 argv : "/bin/cmd"
 ident : node1
-layout : dated
+layout : dated
 path : /srv/data
 relpath : docs/
 days : 9

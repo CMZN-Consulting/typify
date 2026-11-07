@@ -24,7 +24,6 @@
     "typify",
     "tree",
     "declarations.typify",
-    "ProjectLayout",
     ".",
     "--json"
   ],
@@ -132,18 +131,7 @@
     {
       "code": "E_REQUIRED",
       "file": "declarations.typify",
-      "range": {
-        "start": {
-          "line": 45,
-          "column": 1,
-          "byteOffset": 824
-        },
-        "end": {
-          "line": 45,
-          "column": 42,
-          "byteOffset": 865
-        }
-      },
+      "range": null,
       "data": {
         "path": "services/api/app.typify"
       },

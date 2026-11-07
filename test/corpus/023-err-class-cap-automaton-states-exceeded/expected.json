@@ -44,8 +44,8 @@
         "range": {
           "start": {
             "line": 5,
-            "column": 16,
-            "byteOffset": 63
+            "column": 1,
+            "byteOffset": 48
           },
           "end": {
             "line": 5,
@@ -70,13 +70,13 @@
         "range": {
           "start": {
             "line": 6,
-            "column": 23,
-            "byteOffset": 90
+            "column": 1,
+            "byteOffset": 68
           },
           "end": {
             "line": 6,
-            "column": 30,
-            "byteOffset": 97
+            "column": 31,
+            "byteOffset": 98
           }
         },
         "data": {
@@ -96,8 +96,8 @@
         "range": {
           "start": {
             "line": 7,
-            "column": 15,
-            "byteOffset": 113
+            "column": 1,
+            "byteOffset": 99
           },
           "end": {
             "line": 7,
@@ -108,7 +108,7 @@
         "data": {
           "cap": "states",
           "limit": 4096,
-          "actual": 4097
+          "actual": 8192
         },
         "provenance": [
           "F",
@@ -125,8 +125,8 @@
       "range": {
         "start": {
           "line": 5,
-          "column": 16,
-          "byteOffset": 63
+          "column": 1,
+          "byteOffset": 48
         },
         "end": {
           "line": 5,
@@ -151,13 +151,13 @@
       "range": {
         "start": {
           "line": 6,
-          "column": 23,
-          "byteOffset": 90
+          "column": 1,
+          "byteOffset": 68
         },
         "end": {
           "line": 6,
-          "column": 30,
-          "byteOffset": 97
+          "column": 31,
+          "byteOffset": 98
         }
       },
       "data": {
@@ -177,8 +177,8 @@
       "range": {
         "start": {
           "line": 7,
-          "column": 15,
-          "byteOffset": 113
+          "column": 1,
+          "byteOffset": 99
         },
         "end": {
           "line": 7,
@@ -189,7 +189,7 @@
       "data": {
         "cap": "states",
         "limit": 4096,
-        "actual": 4097
+        "actual": 8192
       },
       "provenance": [
         "F",

@@ -2,10 +2,10 @@
 
 declare : CountAtLeastOne
 version : 1
-is : name = /[a-z]+/
-term : step : name
-form : step : <name>
-does : step <name>
+is : word = /[a-z]+/
+term : step : word
+form : step : <word>
+does : step <word>
 count : step = 1..*
 example : step : build
 end!

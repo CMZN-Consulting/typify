@@ -44,14 +44,14 @@
         "file": "declarations.typify",
         "range": {
           "start": {
-            "line": 16,
-            "column": 21,
-            "byteOffset": 288
+            "line": 20,
+            "column": 1,
+            "byteOffset": 367
           },
           "end": {
-            "line": 16,
+            "line": 20,
             "column": 29,
-            "byteOffset": 296
+            "byteOffset": 395
           }
         },
         "data": {
@@ -68,14 +68,14 @@
         "file": "declarations.typify",
         "range": {
           "start": {
-            "line": 16,
-            "column": 1,
-            "byteOffset": 268
+            "line": 20,
+            "column": 8,
+            "byteOffset": 374
           },
           "end": {
-            "line": 16,
-            "column": 29,
-            "byteOffset": 296
+            "line": 20,
+            "column": 17,
+            "byteOffset": 383
           }
         },
         "data": {
@@ -94,14 +94,14 @@
       "file": "declarations.typify",
       "range": {
         "start": {
-          "line": 16,
-          "column": 21,
-          "byteOffset": 288
+          "line": 20,
+          "column": 1,
+          "byteOffset": 367
         },
         "end": {
-          "line": 16,
+          "line": 20,
           "column": 29,
-          "byteOffset": 296
+          "byteOffset": 395
         }
       },
       "data": {
@@ -118,14 +118,14 @@
       "file": "declarations.typify",
       "range": {
         "start": {
-          "line": 16,
-          "column": 1,
-          "byteOffset": 268
+          "line": 20,
+          "column": 8,
+          "byteOffset": 374
         },
         "end": {
-          "line": 16,
-          "column": 29,
-          "byteOffset": 296
+          "line": 20,
+          "column": 17,
+          "byteOffset": 383
         }
       },
       "data": {

@@ -192,7 +192,38 @@
         "line": 1
       }
     ],
-    "ensure": []
+    "ensure": [],
+    "status": "ok",
+    "skips": [
+      {
+        "constructor": "emit-op",
+        "fact": "equal",
+        "args": [
+          "mounts",
+          "team"
+        ],
+        "reason": "if",
+        "origin": {
+          "kind": "program",
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "constructor": "emit-op",
+        "fact": "equal",
+        "args": [
+          "docs",
+          "team"
+        ],
+        "reason": "if",
+        "origin": {
+          "kind": "program",
+          "path": "program.typify",
+          "line": 1
+        }
+      }
+    ]
   },
   "plan": [
     [

@@ -2,14 +2,17 @@
 
 declare : DuplicateRule
 version : 1
-is : name = /[a-z]+/
-term : prim : name
-primitive!
+is : word = /[a-z]+/
+primitive : prim : word
 writes : prim : out = put 1
 cell : out = shadow
-term : action : name
-form : action : <name>
-does : action <name>
+term : action : word
+form : prim : <word>
+does : prim <word>
+example : prim : zero
+form : action : <word>
+does : action <word>
+example : action : one
 rule : action <x> -> prim <x>
 rule : action <x> -> prim <x> ; prim <x>
 end!

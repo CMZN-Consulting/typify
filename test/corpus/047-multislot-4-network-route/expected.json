@@ -1,6 +1,6 @@
 {
   "case_id": "047-multislot-4-network-route",
-  "title": "Multi-slot form 4: Four-slot network route 'route : <ipv4>/<prefix> via <ipv4> dev <iface>'",
+  "title": "Multi-slot form 4: Four-slot network route 'route : <net>/<cidr> via <gw> dev <iface>' (D4, D12)",
   "sections_covered": [
     "§4",
     "§5",

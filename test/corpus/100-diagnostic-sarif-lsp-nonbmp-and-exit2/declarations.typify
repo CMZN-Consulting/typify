@@ -2,10 +2,10 @@
 
 declare : UnicodeColAudit
 version : 1
-is : prefix = /[^=]+/
+is : tag_key = /[^=]+/
 is : num = /[0-9]+/
-term : pair : prefix num
-form : tag : <prefix>=<num>
-does : pair <prefix> <num>
+term : pair : tag_key num
+form : tag : <tag_key>=<num>
+does : pair <tag_key> <num>
 example : tag : rocket=42
 end!

@@ -4,15 +4,12 @@ declare : BadJoinConflictingPair
 version : 1
 is : key = /[a-z]+/
 is : mode = "ro" | "rw"
-term : set-mode : key mode
-primitive!
+primitive : set-mode : key mode
 writes : set-mode : perms = put 1
 cell : perms = join bad_modes
-join : bad_modes : "ro" "ro" = "ro"
 join : bad_modes : "ro" "rw" = "rw"
 join : bad_modes : "rw" "ro" = "ro"
-join : bad_modes : "rw" "rw" = "rw"
 form : mode : <key> <mode>
 does : set-mode <key> <mode>
-rule : (set-mode <k> <m>) -> (set-mode <k> <m>)
+example : mode : app ro
 end!

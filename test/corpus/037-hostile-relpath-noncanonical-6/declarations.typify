@@ -3,12 +3,12 @@
 declare : HostileAudit
 version : 1
 is : seg = /[A-Za-z0-9._-]+/ except "." | ".."
-is : path = canonical-path
+is : path = "/" | ("/" seg)+
 is : relpath = seg ("/" seg)*
 is : days = "0" | /[1-9][0-9]{0,3}/
 is : word = /[A-Za-z0-9._-]+/
 is : label = word (" " word)*
-is : char_tok = /[^"\\ ]/ | "\\\"" | "\\\\"
+is : char_tok = /[A-Za-z0-9._\/:=-]/ | "\\\"" | "\\\\"
 is : arg_tok = "\"" char_tok+ "\""
 is : argv = arg_tok (" " arg_tok)*
 is : ident = /[a-z][a-z0-9_-]*/

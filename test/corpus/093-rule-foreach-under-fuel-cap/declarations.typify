@@ -4,8 +4,7 @@ declare : BoundedForEach
 version : 1
 is : seg = /[a-z0-9_-]+/ except "." | ".."
 is : path = canonical-path
-term : reg-item : seg
-primitive!
+primitive : reg-item : seg
 writes : reg-item : items = put 1
 cell : items = shadow
 term : batch : path

@@ -148,24 +148,22 @@
     ],
     "ensure": [
       {
-        "constructor": "share",
-        "name": "child-visible",
-        "predicate": [
-          "visible",
-          "mounts",
-          "/mounts/alpha"
-        ],
-        "ok": false
+        "ensure": "child-visible",
+        "ok": false,
+        "origin": {
+          "kind": "program",
+          "path": "program.typify",
+          "line": 1
+        }
       },
       {
-        "constructor": "share",
-        "name": "child-visible",
-        "predicate": [
-          "visible",
-          "mounts",
-          "/mounts/beta"
-        ],
-        "ok": true
+        "ensure": "child-visible",
+        "ok": true,
+        "origin": {
+          "kind": "program",
+          "path": "program.typify",
+          "line": 2
+        }
       }
     ],
     "diagnostics": [
@@ -197,7 +195,9 @@
           "Y"
         ]
       }
-    ]
+    ],
+    "status": "ok",
+    "skips": []
   },
   "plan": [
     [
@@ -298,6 +298,26 @@
         "V",
         "Y"
       ]
+    }
+  ],
+  "ensure": [
+    {
+      "ensure": "child-visible",
+      "ok": false,
+      "origin": {
+        "kind": "program",
+        "path": "program.typify",
+        "line": 1
+      }
+    },
+    {
+      "ensure": "child-visible",
+      "ok": true,
+      "origin": {
+        "kind": "program",
+        "path": "program.typify",
+        "line": 2
+      }
     }
   ]
 }

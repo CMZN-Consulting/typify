@@ -51,8 +51,8 @@ jobs:
             -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CUDA=OFF -DGGML_BLAS=OFF
           cmake --build "$RUNNER_TEMP/decoder-build" --target test-gbnf-validator --parallel 4
           printf 'TYPIFY_GBNF_VALIDATOR=%s\n' "$RUNNER_TEMP/decoder-build/bin/test-gbnf-validator" >> "$GITHUB_ENV"
-      - name: Measure kernel checks with blind evaluation deferred
-        run: racket scripts/ci.rkt --defer-blind --output "${{ runner.temp }}/kernel-check.json"
+      - name: Measure stage one against the frozen v3 corpus
+        run: racket scripts/ci.rkt --output "${{ runner.temp }}/kernel-check.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

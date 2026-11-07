@@ -4,8 +4,7 @@ declare : BuiltinLibraryAll8
 version : 1
 is : seg = /[a-z0-9._-]+/ except "." | ".."
 is : path = canonical-path
-term : emit-op : path
-primitive!
+primitive : emit-op : path
 writes : emit-op : out = put 1
 cell : out = shadow
 term : exercise : path seg

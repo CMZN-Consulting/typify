@@ -37,14 +37,14 @@
             "file": "bad_declarations.typify",
             "range": {
               "start": {
-                "line": 7,
+                "line": 6,
                 "column": 1,
-                "byteOffset": 99
+                "byteOffset": 80
               },
               "end": {
-                "line": 7,
-                "column": 11,
-                "byteOffset": 109
+                "line": 6,
+                "column": 24,
+                "byteOffset": 103
               }
             },
             "data": {
@@ -65,14 +65,14 @@
           "file": "bad_declarations.typify",
           "range": {
             "start": {
-              "line": 7,
+              "line": 6,
               "column": 1,
-              "byteOffset": 99
+              "byteOffset": 80
             },
             "end": {
-              "line": 7,
-              "column": 11,
-              "byteOffset": 109
+              "line": 6,
+              "column": 24,
+              "byteOffset": 103
             }
           },
           "data": {
@@ -111,10 +111,13 @@
             "mask",
             "/mounts/work"
           ],
-          [
-            "spawn",
-            "/usr/bin/sync"
-          ]
+          {
+            "term": [
+              "spawn",
+              "/usr/bin/sync"
+            ],
+            "unchecked": true
+          }
         ],
         "state": {
           "mounts": [
@@ -152,17 +155,21 @@
             "line": 2
           }
         ],
-        "ensure": []
+        "ensure": [],
+        "skips": []
       },
       "plan": [
         [
           "mask",
           "/mounts/work"
         ],
-        [
-          "spawn",
-          "/usr/bin/sync"
-        ]
+        {
+          "term": [
+            "spawn",
+            "/usr/bin/sync"
+          ],
+          "unchecked": true
+        }
       ],
       "predicted_state": {
         "mounts": [

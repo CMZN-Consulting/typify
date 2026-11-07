@@ -7,6 +7,8 @@ term : wrap : path
 term : outer : path
 form : wrap : <path>
 does : wrap <path>
+example : wrap : /mounts
 form : nested : <path>
 does : outer (wrap <path>)
+example : nested : /mounts
 end!

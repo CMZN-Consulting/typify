@@ -2,7 +2,7 @@
 
 declare : BadHostRegex
 version : 1
-is : num = /\d+/
+is : num = /(?=a)[a-z]+/
 is : mode = rw
 term : item : num mode
 form : item : <num> <mode>

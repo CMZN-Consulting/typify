@@ -4,12 +4,10 @@ declare : FirstWriteWins
 version : 1
 is : key = /[a-z]+/
 is : val = /[a-z0-9]+/
-term : set-once : key val
-primitive!
+primitive : set-once : key val
 writes : set-once : reg = put 1
 cell : reg = first
 form : set : <key> = <val>
 does : set-once <key> <val>
 example : set : mode = alpha
-rule : set-once <k> <v> -> set-once <k> <v>
 end!

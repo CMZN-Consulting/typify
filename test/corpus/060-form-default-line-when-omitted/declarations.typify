@@ -3,16 +3,16 @@
 declare : DefaultFormLine
 version : 1
 is : mode = "ro" | "rw"
-is : name = /[a-z]+/
+is : word = /[a-z]+/
 term : access : mode
-term : target : name
+term : target : word
 form : access : <mode>
 does : access <mode>
 count : access = 0..1
 default : access : ro
 example : access : rw
-form : target : <name>
-does : target <name>
+form : target : <word>
+does : target <word>
 count : target = 1
 example : target : archive
 end!

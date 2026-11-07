@@ -45,43 +45,18 @@
         "file": "declarations.typify",
         "range": {
           "start": {
-            "line": 10,
+            "line": 14,
             "column": 8,
-            "byteOffset": 181
+            "byteOffset": 286
           },
           "end": {
-            "line": 10,
-            "column": 17,
-            "byteOffset": 190
+            "line": 14,
+            "column": 24,
+            "byteOffset": 302
           }
         },
         "data": {
           "constructor": "unhandled"
-        },
-        "provenance": [
-          "H",
-          "K",
-          "T"
-        ]
-      },
-      {
-        "code": "E_DECLARATION",
-        "file": "declarations.typify",
-        "range": {
-          "start": {
-            "line": 14,
-            "column": 1,
-            "byteOffset": 268
-          },
-          "end": {
-            "line": 14,
-            "column": 18,
-            "byteOffset": 285
-          }
-        },
-        "data": {
-          "kind": "conflict",
-          "actual": "conflicted"
         },
         "provenance": [
           "H",
@@ -97,43 +72,18 @@
       "file": "declarations.typify",
       "range": {
         "start": {
-          "line": 10,
+          "line": 14,
           "column": 8,
-          "byteOffset": 181
+          "byteOffset": 286
         },
         "end": {
-          "line": 10,
-          "column": 17,
-          "byteOffset": 190
+          "line": 14,
+          "column": 24,
+          "byteOffset": 302
         }
       },
       "data": {
         "constructor": "unhandled"
-      },
-      "provenance": [
-        "H",
-        "K",
-        "T"
-      ]
-    },
-    {
-      "code": "E_DECLARATION",
-      "file": "declarations.typify",
-      "range": {
-        "start": {
-          "line": 14,
-          "column": 1,
-          "byteOffset": 268
-        },
-        "end": {
-          "line": 14,
-          "column": 18,
-          "byteOffset": 285
-        }
-      },
-      "data": {
-        "kind": "conflict",
-        "actual": "conflicted"
       },
       "provenance": [
         "H",

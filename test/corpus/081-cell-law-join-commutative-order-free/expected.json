@@ -92,7 +92,9 @@
         "line": 2
       }
     ],
-    "ensure": []
+    "ensure": [],
+    "status": "ok",
+    "skips": []
   },
   "plan": [
     [

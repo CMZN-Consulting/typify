@@ -4,7 +4,7 @@ declare : SubtleOverlap
 version : 1
 is : left = "a" | "a=b"
 is : right = "b" | "b=c"
-term : split : left right
-form : split : <left>=<right>
-does : split <left> <right>
+term : divide : left right
+form : divide : <left>=<right>
+does : divide <left> <right>
 end!

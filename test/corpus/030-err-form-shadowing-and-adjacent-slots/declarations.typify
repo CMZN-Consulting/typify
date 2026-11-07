@@ -3,12 +3,13 @@
 declare : ShadowedForms
 version : 1
 is : alpha = /[a-z]+/
+is : beta = alpha
 is : alnum = /[a-z0-9]+/
-term : pair : alpha alpha
+term : pair : alpha beta
 term : first : alpha
 term : second : alnum
-form : pair : <alpha><alpha>
-does : pair <alpha> <alpha>
+form : pair : <alpha><beta>
+does : pair <alpha> <beta>
 form : pick : <alpha>
 does : first <alpha>
 form : pick : <alnum>

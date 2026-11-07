@@ -56,7 +56,7 @@
           }
         },
         "data": {
-          "class": "version",
+          "class": "number",
           "token": "zero"
         },
         "provenance": [
@@ -76,8 +76,8 @@
           },
           "end": {
             "line": 5,
-            "column": 57,
-            "byteOffset": 108
+            "column": 61,
+            "byteOffset": 112
           }
         },
         "data": {
@@ -108,7 +108,7 @@
         }
       },
       "data": {
-        "class": "version",
+        "class": "number",
         "token": "zero"
       },
       "provenance": [
@@ -128,8 +128,8 @@
         },
         "end": {
           "line": 5,
-          "column": 57,
-          "byteOffset": 108
+          "column": 61,
+          "byteOffset": 112
         }
       },
       "data": {

@@ -6,6 +6,8 @@ is : word = /[a-z]+/
 term : pair : word word
 form : one : <word>
 does : pair <word>
+example : one : alpha
 form : ghost : <word>
 does : undeclared-ctor <word>
+example : ghost : beta
 end!

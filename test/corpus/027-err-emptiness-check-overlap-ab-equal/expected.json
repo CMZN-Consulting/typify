@@ -47,17 +47,17 @@
         "range": {
           "start": {
             "line": 8,
-            "column": 16,
-            "byteOffset": 140
+            "column": 1,
+            "byteOffset": 126
           },
           "end": {
             "line": 8,
-            "column": 30,
-            "byteOffset": 154
+            "column": 31,
+            "byteOffset": 156
           }
         },
         "data": {
-          "form": "split : <left>=<right>",
+          "form": "divide : <left>=<right>",
           "class": "left",
           "token": "="
         },
@@ -78,17 +78,17 @@
       "range": {
         "start": {
           "line": 8,
-          "column": 16,
-          "byteOffset": 140
+          "column": 1,
+          "byteOffset": 126
         },
         "end": {
           "line": 8,
-          "column": 30,
-          "byteOffset": 154
+          "column": 31,
+          "byteOffset": 156
         }
       },
       "data": {
-        "form": "split : <left>=<right>",
+        "form": "divide : <left>=<right>",
         "class": "left",
         "token": "="
       },

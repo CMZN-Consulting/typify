@@ -1,6 +1,6 @@
 {
   "case_id": "076-err-ask-invalid-verb-not-echoed",
-  "title": "Question form error: '? : <subject>' with invalid verb token rejected at column 5 without echoing the invalid token",
+  "title": "Question form error: '? : <subject>' with invalid verb token '123bad!' rejected with E_QUESTION covering the line (D2, D5)",
   "sections_covered": [
     "§2",
     "§6",
@@ -51,8 +51,8 @@
         "range": {
           "start": {
             "line": 1,
-            "column": 5,
-            "byteOffset": 4
+            "column": 1,
+            "byteOffset": 0
           },
           "end": {
             "line": 1,
@@ -80,8 +80,8 @@
       "range": {
         "start": {
           "line": 1,
-          "column": 5,
-          "byteOffset": 4
+          "column": 1,
+          "byteOffset": 0
         },
         "end": {
           "line": 1,

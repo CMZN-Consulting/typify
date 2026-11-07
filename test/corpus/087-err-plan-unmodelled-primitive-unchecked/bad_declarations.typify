@@ -3,9 +3,8 @@
 declare : MissingWritesNoExternal
 version : 1
 is : cmd = /[a-z]+/
-term : spawn : cmd
-primitive!
+primitive : spawn : cmd
 form : spawn : <cmd>
 does : spawn <cmd>
-rule : (spawn <c>) -> (spawn <c>)
+example : spawn : sync
 end!

@@ -4,10 +4,12 @@ declare : NetRoute
 version : 1
 is : oct = /[0-9]{1,3}/
 is : ipv4 = oct "." oct "." oct "." oct
-is : prefix = /[0-9]{1,2}/
+is : net = ipv4
+is : gw = ipv4
+is : cidr = /[0-9]{1,2}/
 is : iface = /[a-z]+[0-9]+/
-term : route : ipv4 prefix ipv4 iface
-form : route : <ipv4>/<prefix> via <ipv4> dev <iface>
-does : route <ipv4> <prefix> <ipv4> <iface>
+term : route : ipv4 cidr ipv4 iface
+form : route : <net>/<cidr> via <gw> dev <iface>
+does : route <net> <cidr> <gw> <iface>
 example : route : 10.0.0.0/8 via 192.168.1.1 dev eth0
 end!

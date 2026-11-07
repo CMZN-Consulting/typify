@@ -103,16 +103,17 @@
     ],
     "ensure": [
       {
-        "constructor": "del-kv",
-        "name": "key-absent",
-        "predicate": [
-          "absent",
-          "store",
-          "temp"
-        ],
-        "ok": true
+        "ensure": "key-absent",
+        "ok": true,
+        "origin": {
+          "kind": "program",
+          "path": "program.typify",
+          "line": 3
+        }
       }
-    ]
+    ],
+    "status": "ok",
+    "skips": []
   },
   "plan": [
     [
@@ -157,14 +158,13 @@
   "modelled": "3 of 3",
   "ensure": [
     {
-      "constructor": "del-kv",
-      "name": "key-absent",
-      "predicate": [
-        "absent",
-        "store",
-        "temp"
-      ],
-      "ok": true
+      "ensure": "key-absent",
+      "ok": true,
+      "origin": {
+        "kind": "program",
+        "path": "program.typify",
+        "line": 3
+      }
     }
   ],
   "diagnostics": []

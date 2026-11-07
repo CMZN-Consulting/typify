@@ -62,7 +62,7 @@
           }
         },
         "data": {
-          "class": "word",
+          "class": "item",
           "token": " a "
         },
         "provenance": [
@@ -176,7 +176,7 @@
         }
       },
       "data": {
-        "class": "word",
+        "class": "item",
         "token": " a "
       },
       "provenance": [

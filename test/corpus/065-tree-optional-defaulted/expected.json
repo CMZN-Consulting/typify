@@ -24,7 +24,6 @@
     "typify",
     "tree",
     "declarations.typify",
-    "ProjectLayout",
     ".",
     "--json"
   ],
@@ -80,7 +79,7 @@
         {
           "kind": "default",
           "path": "declarations.typify",
-          "line": 10
+          "line": 13
         }
       ]
     },
@@ -145,7 +144,7 @@
         {
           "kind": "default",
           "path": "declarations.typify",
-          "line": 10
+          "line": 13
         }
       ]
     },

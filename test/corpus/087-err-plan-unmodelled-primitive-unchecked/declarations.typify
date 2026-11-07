@@ -3,12 +3,10 @@
 declare : ExternalPrimitivePlan
 version : 1
 is : path = canonical-path
-term : mask : path
-primitive!
+primitive : mask : path
 writes : mask : mounts = put 1
 cell : mounts = shadow stacking
-term : spawn : path
-primitive!
+primitive : spawn : path
 effect : spawn = external
 form : mask : <path>
 does : mask <path>
@@ -16,6 +14,4 @@ example : mask : /mounts/work
 form : spawn : <path>
 does : spawn <path>
 example : spawn : /usr/bin/sync
-rule : (mask <p>) -> (mask <p>)
-rule : (spawn <p>) -> (spawn <p>)
 end!

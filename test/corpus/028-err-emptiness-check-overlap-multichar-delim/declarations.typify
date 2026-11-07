@@ -3,8 +3,9 @@
 declare : MultiCharDelimOverlap
 version : 1
 is : phrase = /[a-z =]+/
+is : rhs = phrase
 is : tag = /[a-z]+/
-term : item : tag phrase
-form : item : <tag> : <phrase> = <phrase>
-does : item <tag> <phrase>
+term : item : tag phrase rhs
+form : item : <tag> : <phrase> = <rhs>
+does : item <tag> <phrase> <rhs>
 end!

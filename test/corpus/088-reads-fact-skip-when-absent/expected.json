@@ -89,7 +89,23 @@
         "line": 1
       }
     ],
-    "ensure": []
+    "ensure": [],
+    "status": "ok",
+    "skips": [
+      {
+        "constructor": "bind",
+        "fact": "exists",
+        "args": [
+          "/mounts/missing"
+        ],
+        "reason": "if",
+        "origin": {
+          "kind": "program",
+          "path": "program.typify",
+          "line": 2
+        }
+      }
+    ]
   },
   "plan": [
     [
@@ -124,5 +140,20 @@
   },
   "modelled": "1 of 1",
   "facts_hash": "sha256:6a81636b489e6c269f64a3fe47c37f616f8f0d1705d03cf0f541d71383b512b7",
-  "diagnostics": []
+  "diagnostics": [],
+  "skips": [
+    {
+      "constructor": "bind",
+      "fact": "exists",
+      "args": [
+        "/mounts/missing"
+      ],
+      "reason": "if",
+      "origin": {
+        "kind": "program",
+        "path": "program.typify",
+        "line": 2
+      }
+    }
+  ]
 }

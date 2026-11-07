@@ -4,13 +4,12 @@ declare : BadJoinIncompleteAndNonAssoc
 version : 1
 is : key = /[a-z]+/
 is : lvl = "low" | "mid" | "high"
-term : set-lvl : key lvl
-primitive!
+primitive : set-lvl : key lvl
 writes : set-lvl : cap_cell = put 1
 cell : cap_cell = join bad_lvl
 join : bad_lvl : "low" "mid" = "mid"
 join : bad_lvl : "mid" "high" = "low"
 form : lvl : <key> <lvl>
 does : set-lvl <key> <lvl>
-rule : set-lvl <k> <l> -> set-lvl <k> <l>
+example : lvl : app low
 end!

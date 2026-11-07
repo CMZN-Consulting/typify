@@ -61,12 +61,15 @@
     "programs": [
       {
         "path": "root.typify",
+        "language": "RootConfig",
         "status": "present",
         "plan": [],
-        "ensure": []
+        "ensure": [],
+        "skips": []
       },
       {
         "path": "services/api/mounts.typify",
+        "language": "ServiceMount",
         "status": "present",
         "plan": [
           [
@@ -75,7 +78,8 @@
             "/mounts/root/cache"
           ]
         ],
-        "ensure": []
+        "ensure": [],
+        "skips": []
       }
     ],
     "state": {
@@ -109,17 +113,23 @@
         "path": "services/api/mounts.typify",
         "line": 1
       }
-    ]
+    ],
+    "status": "ok",
+    "ensure": [],
+    "skips": []
   },
   "programs": [
     {
       "path": "root.typify",
+      "language": "RootConfig",
       "status": "present",
       "plan": [],
-      "ensure": []
+      "ensure": [],
+      "skips": []
     },
     {
       "path": "services/api/mounts.typify",
+      "language": "ServiceMount",
       "status": "present",
       "plan": [
         [
@@ -128,7 +138,8 @@
           "/mounts/root/cache"
         ]
       ],
-      "ensure": []
+      "ensure": [],
+      "skips": []
     }
   ],
   "predicted_state": {
@@ -176,12 +187,15 @@
         "programs": [
           {
             "path": "root.typify",
+            "language": "RootConfig",
             "status": "present",
             "plan": [],
-            "ensure": []
+            "ensure": [],
+            "skips": []
           },
           {
             "path": "services/api/mounts.typify",
+            "language": "ServiceMount",
             "status": "present",
             "plan": [
               [
@@ -190,7 +204,8 @@
                 "/mounts/root/cache"
               ]
             ],
-            "ensure": []
+            "ensure": [],
+            "skips": []
           }
         ],
         "state": {
@@ -224,7 +239,10 @@
             "path": "services/api/mounts.typify",
             "line": 1
           }
-        ]
+        ],
+        "status": "ok",
+        "ensure": [],
+        "skips": []
       },
       "diagnostics": [],
       "provenance": [

@@ -9,7 +9,8 @@
          racket/runtime-path
          racket/string
          "../src/diagnostics.rkt"
-         "../src/main.rkt")
+         "../src/main.rkt"
+         (only-in "test-decoder.rkt" parse-gbnf gbnf-accepts?))
 
 (provide run-blind-corpus
          blind-command-scope
@@ -20,11 +21,11 @@
 
 (define-runtime-path default-blind-root "corpus")
 
-(define archive-sha256 "6258ddc44d164f7997dec6f5a550f5d6e7513c492ecf4499f6fe760eb6e40854")
+(define archive-sha256 "20f058bff6e862f47e70c2b0d9eb7957b4e38eea223ddf04cd3349e6c3874481")
 
-(define tree-sha256 "d32aa63c03eacb5e2ea5257c82b1c6f523901d4da55b8cc211d05387532a1638")
+(define tree-sha256 "95a52646757781cc6508e1c8b7655212629352a37133e0e3e34cfba136f347d0")
 
-(define receipt-sha256 "13a770cf01d3209e13f6cf8786e68b661656955855f1fdb3061974ae935b766b")
+(define receipt-sha256 "e78af96f9ec8b23dc8a73eca8229034c6f4953a484ebe4eefa290cb7fe701335")
 
 (define missing (gensym 'missing))
 
@@ -454,6 +455,7 @@
        (bound bound)
        (modelled modelled)
        (ensure ensure)
+       (skips skips)
        (facts_hash facts)
        (programs programs))))
    (when (hash-has-key? expected (car mapping))
@@ -461,6 +463,70 @@
       (hash-ref expected (car mapping))
       (if (eq? (cadr mapping) 'self) json-output (field json-output (cadr mapping)))
       (list (symbol->string (car mapping))))))
+  (when (hash-has-key? expected 'gbnf_assertions)
+    (define assertions (hash-ref expected 'gbnf_assertions))
+    (define path '("gbnf_assertions"))
+    (define source (field actual 'stdout_gbnf))
+    (cond
+     ((not (hash? assertions)) (difference path assertions missing "invalid-gbnf-assertions"))
+     (else
+      (for
+       ((key (in-list (sort (hash-keys assertions) symbol<?)))
+        #:unless
+        (memq key '(required_nonterminals accepts_lines rejects_lines schematic_note)))
+       (difference
+        (append path (list (symbol->string key)))
+        (hash-ref assertions key)
+        missing
+        "unsupported-gbnf-assertion"))
+      (cond
+       ((not (string? source)) (difference path assertions source "missing-gbnf-output"))
+       (else
+        (with-handlers
+         ((exn:fail?
+           (lambda (failure)
+             (difference
+              path
+              assertions
+              (hash 'source source 'error (exn-message failure))
+              "gbnf-parse-error"))))
+         (define grammar (parse-gbnf source))
+         (define names
+           (for/list
+            ((line (in-list (string-split source "\n" #:trim? #f)))
+             #:do
+             ((define header (regexp-match #px"^([A-Za-z0-9-]+)[ \t]*::=" (string-trim line))))
+             #:when
+             header)
+            (cadr header)))
+         (for
+          ((key '(required_nonterminals accepts_lines rejects_lines))
+           #:when
+           (hash-has-key? assertions key))
+          (define probes (hash-ref assertions key))
+          (cond
+           ((not (and (list? probes) (andmap string? probes)))
+            (difference
+             (append path (list (symbol->string key)))
+             probes
+             missing
+             "invalid-gbnf-assertions"))
+           (else
+            (for
+             ((probe (in-list probes)) (index (in-naturals)))
+             (define probe-path (append path (list (symbol->string key) index)))
+             (cond
+              ((eq? key 'required_nonterminals)
+               (unless (member probe names)
+                 (difference probe-path probe missing "missing-nonterminal")))
+              (else
+               (define accepted? (gbnf-accepts? grammar probe))
+               (unless (equal? accepted? (eq? key 'accepts_lines))
+                 (difference
+                  probe-path
+                  probe
+                  (hash 'line probe 'accepted accepted?)
+                  (if accepted? "gbnf-line-accepted" "gbnf-line-refused")))))))))))))))
   (for
    ((key '(lsp_range_utf16_zero_based sarif_projection)) #:when (hash-has-key? expected key))
    (difference
@@ -697,7 +763,7 @@
     'lists
     "ordered"
     'gbnf
-    "exact-text"
+    "Exact text when stdout_gbnf is specified; independent structural assertions when gbnf_assertions is specified"
     'unexpected-bound
     "mismatch"
     'semantic-provenance-key
@@ -947,6 +1013,58 @@
      (hash 'diagnostics (list (hash 'code "E_DECLARATION" 'data (hash 'kind "effect"))))))
    2)
   (check (expected-stage (hash 'expected (hash 'diagnostics (list (hash 'code "E_CLASS"))))) 1)
+  (define grammar-source
+    "root ::= tag \" \" label\ntag ::= \"one\" | \"two\"\nlabel ::= \"small\"\n")
+  (define grammar-assertions
+    (hash
+     'required_nonterminals
+     '("root" "tag" "label")
+     'accepts_lines
+     '("one small" "two small")
+     'rejects_lines
+     '("three small" "one large")
+     'schematic_note
+     "Grammar spelling is separate from the asserted language."))
+  (define (grammar-differences assertions (output (hash 'stdout_gbnf grammar-source)))
+    (compare-observation (hash 'gbnf_assertions assertions) output))
+  (define (reasons differences) (map (lambda (item) (hash-ref item 'reason)) differences))
+  (check (grammar-differences grammar-assertions) '())
+  (check
+   (reasons (grammar-differences (hash 'required_nonterminals '("missing"))))
+   '("missing-nonterminal"))
+  (check
+   (reasons (grammar-differences (hash 'accepts_lines '("one large"))))
+   '("gbnf-line-refused"))
+  (check
+   (reasons (grammar-differences (hash 'rejects_lines '("one small"))))
+   '("gbnf-line-accepted"))
+  (check
+   (reasons (grammar-differences grammar-assertions (hash 'stdout_gbnf "root ::= undeclared\n")))
+   '("gbnf-parse-error"))
+  (check (reasons (grammar-differences grammar-assertions (hash))) '("missing-gbnf-output"))
+  (check (reasons (grammar-differences "not an assertion object")) '("invalid-gbnf-assertions"))
+  (check
+   (reasons (grammar-differences (hash 'accepts_lines "not a list")))
+   '("invalid-gbnf-assertions"))
+  (check
+   (reasons (grammar-differences (hash 'unknown_assertion '("one small"))))
+   '("unsupported-gbnf-assertion"))
+  (define skips
+    (list
+     (hash
+      'constructor
+      "step"
+      'fact
+      "exists"
+      'args
+      '("/sample")
+      'reason
+      "read"
+      'origin
+      (hash 'kind "program" 'path "input.typify" 'line 1))))
+  (check (compare-observation (hash 'skips skips) (hash 'stdout_json (hash 'skips skips))) '())
+  (check (pair? (compare-observation (hash 'skips skips) (hash 'stdout_json (hash 'skips '())))) #t)
+  (check (pair? (compare-observation (hash 'skips '()) (hash 'stdout_json (hash)))) #t)
   (hash 'suite "blind-comparison" 'checks checks 'status "passed"))
 
 (module+ test-support (provide compare-observation missing missing-json))
