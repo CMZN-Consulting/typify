@@ -2,27 +2,73 @@ name: ci
 
 on:
   push:
+    branches: [main, v1]
   pull_request:
 
 permissions:
   contents: read
 
+env:
+  TYPIFY_GBNF_VALIDATOR_REVISION: fd27b2034905f8dadd8bd6d2cc44595f4929d391
+
 jobs:
-  check:
-    runs-on: ubuntu-latest
+  kernel:
+    name: Kernel checks
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - name: Read Bun version from @types/bun
-        id: bun-version
-        run: |
-          version=$(jq -er '.devDependencies["@types/bun"]' package.json)
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          bun-version: ${{ steps.bun-version.outputs.version }}
-      - run: bun install --frozen-lockfile
-      - run: bun run format:check
-      - run: bun run typecheck
-      - run: bun test
-      - run: bun run check
+          persist-credentials: false
+      - name: Install verified Racket 9.3 CS
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://download.racket-lang.org/releases/9.3/installers/racket-9.3-x86_64-linux-buster.sh \
+            --output "$RUNNER_TEMP/racket-installer.sh"
+          printf '%s  %s\n' \
+            30dc59d9b5af083eacf793253d35782c5231e8bfb7a7331fe32ccd9a41fd792f \
+            "$RUNNER_TEMP/racket-installer.sh" | sha256sum --check --strict
+          sh "$RUNNER_TEMP/racket-installer.sh" --create-dir --in-place --dest "$RUNNER_TEMP/racket"
+          printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
+      - name: Link source package without fetching dependencies
+        run: raco pkg install --scope user --no-setup --deps fail --name typify --link ./src
+      - name: Build pinned independent grammar validator
+        shell: bash
+        env:
+          GIT_LFS_SKIP_SMUDGE: "1"
+        run: |
+          git init "$RUNNER_TEMP/decoder-source"
+          git -C "$RUNNER_TEMP/decoder-source" remote add origin https://github.com/ggml-org/llama.cpp.git
+          git -C "$RUNNER_TEMP/decoder-source" fetch --depth 1 origin "$TYPIFY_GBNF_VALIDATOR_REVISION"
+          git -C "$RUNNER_TEMP/decoder-source" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/decoder-source" rev-parse HEAD)" = "$TYPIFY_GBNF_VALIDATOR_REVISION"
+          cmake -S "$RUNNER_TEMP/decoder-source" -B "$RUNNER_TEMP/decoder-build" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+            -DLLAMA_BUILD_COMMON=ON -DLLAMA_BUILD_TESTS=ON -DLLAMA_BUILD_APP=OFF \
+            -DLLAMA_BUILD_TOOLS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF \
+            -DLLAMA_BUILD_UI=OFF -DLLAMA_CONNECT=OFF -DLLAMA_OPENSSL=OFF \
+            -DGGML_NATIVE=OFF -DGGML_OPENMP=OFF -DGGML_CUDA=OFF -DGGML_BLAS=OFF
+          cmake --build "$RUNNER_TEMP/decoder-build" --target test-gbnf-validator --parallel 4
+          printf 'TYPIFY_GBNF_VALIDATOR=%s\n' "$RUNNER_TEMP/decoder-build/bin/test-gbnf-validator" >> "$GITHUB_ENV"
+      - name: Measure kernel checks and stage one evidence
+        run: racket scripts/ci.rkt --output "${{ runner.temp }}/kernel-check.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: kernel-check
+          path: ${{ runner.temp }}/kernel-check.json
+          if-no-files-found: error
+          retention-days: 30
+
+  stage1:
+    name: Stage one acceptance
+    needs: kernel
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: kernel-check
+      - name: Require every registered stage one gate
+        run: jq --exit-status '.stage1.pass == true' kernel-check.json

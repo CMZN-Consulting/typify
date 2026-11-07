@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "purpose": "Internal differential cases, not the independently authored blind verdict corpus.",
+  "scope": "Restricted shapes borrowed from five documented line-oriented formats. The bounded classes are test dialects, not implementations of the complete external standards. Generated mutations test agreement about Typify acceptance, not external-format compliance.",
+  "provenance": "Examples and restrictions authored independently of the emitted grammar and its matcher from the official syntax references listed per family.",
+  "generation": {
+    "single-character-replacements": ["a", ":", "=", " ", "😀"],
+    "delimiter-insertions": [":", "=", "->", "/", ";"]
+  },
+  "families": [
+    {
+      "id": "http-field",
+      "language": "HttpField",
+      "reference": {
+        "url": "https://www.rfc-editor.org/rfc/rfc9112.html#section-5",
+        "section": "RFC 9112 section 5, Field Syntax",
+        "syntax": "field-name colon optional-whitespace field-value optional-whitespace"
+      },
+      "restriction": "Alphabetic/hyphen field names and bounded alphabetic, space and hyphen values. The Typify kernel's colon trimming is not an HTTP message parser.",
+      "classes": [["field", "/[A-Za-z][A-Za-z-]{0,15}/"], ["value", "/[A-Za-z][A-Za-z -]{0,23}/"]],
+      "production": "<field> : <value>",
+      "slots": ["field", "value"],
+      "examples": ["Example-Field: sample", "Sample: plain value"],
+      "refusals": ["Example-Field", "Example-Field: 123"]
+    },
+    {
+      "id": "systemd-bind-paths",
+      "language": "BindPaths",
+      "reference": {
+        "url": "https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#BindPaths=",
+        "section": "systemd.exec, BindPaths= and BindReadOnlyPaths=",
+        "syntax": "BindPaths=source:destination"
+      },
+      "restriction": "One source/destination pair, bounded absolute ASCII paths, no options or expansion.",
+      "classes": [["source", "/[/][a-z/]{1,23}/"], ["destination", "/[/][a-z/]{1,23}/"]],
+      "production": "BindPaths=<source>:<destination>",
+      "slots": ["source", "destination"],
+      "examples": ["BindPaths=/srv/source:/run/target", "BindPaths=/data/one:/data/two"],
+      "refusals": ["BindPaths=relative:/run/target", "BindPaths=/srv/source:"]
+    },
+    {
+      "id": "openssh-remote-forward",
+      "language": "RemoteForward",
+      "reference": {
+        "url": "https://man.openbsd.org/ssh_config.5#RemoteForward",
+        "section": "OpenSSH ssh_config(5), RemoteForward",
+        "syntax": "RemoteForward bind-address:port host:hostport"
+      },
+      "restriction": "An explicit dotted IPv4 listening address, numeric ports and a bounded alphabetic destination name; no forwarding is executed.",
+      "classes": [["address", "/[0-9.]{1,15}/"], ["listen", "/[0-9]{1,5}/"], ["host", "/[a-z][a-z.]{0,23}/"], ["target", "/[0-9]{1,5}/"]],
+      "production": "RemoteForward <address>:<listen> <host>:<target>",
+      "slots": ["address", "listen", "host", "target"],
+      "examples": ["RemoteForward 127.0.0.1:8080 example.test:80", "RemoteForward 127.0.0.1:9000 service.test:443"],
+      "refusals": ["RemoteForward 127.0.0.1:port example.test:80", "RemoteForward 127.0.0.1:8080 example.test:"]
+    },
+    {
+      "id": "apt-one-line-source",
+      "language": "AptSource",
+      "reference": {
+        "url": "https://manpages.debian.org/trixie/apt/sources.list.5.en.html#ONE-LINE-STYLE_FORMAT",
+        "section": "Debian apt sources.list(5), ONE-LINE-STYLE FORMAT and THE DEB AND DEB-SRC TYPES",
+        "syntax": "deb [options] uri suite component"
+      },
+      "restriction": "One arch option, fixed https scheme, bounded host/repository names, one suite and one component; no source is contacted.",
+      "classes": [["arch", "amd64 | arm64"], ["host", "/[a-z][a-z.]{0,23}/"], ["repo", "/[a-z][a-z-]{0,15}/"], ["suite", "stable | testing"], ["component", "main | contrib"]],
+      "production": "deb [arch=<arch>] https://<host>/<repo> <suite> <component>",
+      "slots": ["arch", "host", "repo", "suite", "component"],
+      "examples": ["deb [arch=amd64] https://mirror.test/archive stable main", "deb [arch=arm64] https://packages.test/repo testing contrib"],
+      "refusals": ["deb [arch=unknown] https://mirror.test/archive stable main", "deb [arch=amd64] https://mirror.test/archive stable"]
+    },
+    {
+      "id": "passwd-record",
+      "language": "AccountRecord",
+      "reference": {
+        "url": "https://github.com/shadow-maint/shadow/blob/master/man/passwd.5.xml",
+        "section": "shadow-utils passwd(5), DESCRIPTION, seven colon-separated fields",
+        "syntax": "name:password:UID:GID:GECOS:directory:shell"
+      },
+      "restriction": "Synthetic account records with an x marker, bounded decimal IDs, display labels, synthetic /srv directories and two shell names. No host account data is read or written.",
+      "classes": [["account", "/[a-z][a-z0-9_-]{0,11}/"], ["password", "x"], ["uid", "/[0-9]{1,5}/"], ["gid", "/[0-9]{1,5}/"], ["label", "/[A-Za-z][A-Za-z ]{0,15}/"], ["directory", "/[/]srv[/][a-z]{1,12}/"], ["shell", "/[/]bin[/](sh|bash)/"]],
+      "production": "<account>:<password>:<uid>:<gid>:<label>:<directory>:<shell>",
+      "slots": ["account", "password", "uid", "gid", "label", "directory", "shell"],
+      "examples": ["sample:x:1000:1000:Sample User:/srv/sample:/bin/sh", "guest:x:2000:2000:Guest:/srv/guest:/bin/bash"],
+      "refusals": ["sample:x:uid:1000:Sample:/srv/sample:/bin/sh", "sample:x:1000:1000:Sample:/srv/sample"]
+    }
+  ]
+}

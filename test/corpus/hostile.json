@@ -1,0 +1,682 @@
+{
+  "provenance": {
+    "kind": "internal",
+    "sourceArtifactLabel": "regular-core-falsifier",
+    "sourceSha256": "f7ee1ef3fabcdbdd54ebfdb9971164ae44684e13a972374cef940023cbc7fa52",
+    "extraction": "literal ALL and FOR assignments; source code never executed",
+    "translation": "seven ASCII consumer classes translated into the regular core; segment and quoted are helpers",
+    "blind": false
+  },
+  "caps": {
+    "states": 32768,
+    "repetition": 256,
+    "reference-depth": 32,
+    "token-length": 128
+  },
+  "consumerClasses": [
+    "path",
+    "vault",
+    "days",
+    "label",
+    "identity",
+    "argv",
+    "layout"
+  ],
+  "classes": {
+    "segment": "/([A-Za-z0-9_+@-][A-Za-z0-9._+@-]* | \".\" [A-Za-z0-9_+@-][A-Za-z0-9._+@-]* | \"..\" [A-Za-z0-9._+@-]+)/",
+    "quoted": "/\"\\\"\" ([\\u0020-\\u0021\\u0023-\\u005B\\u005D-\\u007E] | \"\\\\\" [\\\"\\\\/] | \"\\\\u00\" ([2-6][0-9a-fA-F] | \"7\" [0-9a-eA-E]))* \"\\\"\"/",
+    "path": "/(\"/\" <segment>)+/",
+    "vault": "/<segment> (\"/\" <segment>)*/",
+    "days": "/[1-9][0-9]*/",
+    "label": "/[\\u0021-\\u007E] ([\\u0020-\\u007E]* [\\u0021-\\u007E])?/",
+    "identity": "/[A-Z][A-Z0-9]*/",
+    "argv": "/\"[\" \" \"? <quoted> (\",\" \" \"? <quoted>)* \" \"? \"]\"/",
+    "layout": "tiled | even-horizontal | even-vertical"
+  },
+  "cases": [
+    {
+      "class": "path",
+      "token": "/a\u0000b",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "\u001b[2J",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "ab\r",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "ab\n",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "a\u202eb",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "a\u2028b",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "a\u200bb",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "p\u0430th",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "e\u0301",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "\ufeffa",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "x\u007f",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "/a/../b",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "a//b",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "/a/",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "../x",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "./x",
+      "accepts": false
+    },
+    {
+      "class": "path",
+      "token": "x/y",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "/a\u0000b",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "\u001b[2J",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "ab\r",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "ab\n",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "a\u202eb",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "a\u2028b",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "a\u200bb",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "p\u0430th",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "e\u0301",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "\ufeffa",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "x\u007f",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "/a/b",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "a/../b",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "a//b",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "a/",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "../x",
+      "accepts": false
+    },
+    {
+      "class": "vault",
+      "token": "./x",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "/a\u0000b",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "\u001b[2J",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "ab\r",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "ab\n",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "a\u202eb",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "a\u2028b",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "a\u200bb",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "p\u0430th",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "e\u0301",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "\ufeffa",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "x\u007f",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "0",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "-1",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": " 1",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "1e3",
+      "accepts": false
+    },
+    {
+      "class": "days",
+      "token": "01",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "/a\u0000b",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "\u001b[2J",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "ab\r",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "ab\n",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "a\u202eb",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "a\u2028b",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "a\u200bb",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "p\u0430th",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "e\u0301",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "\ufeffa",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "x\u007f",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": " a",
+      "accepts": false
+    },
+    {
+      "class": "label",
+      "token": "a ",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "/a\u0000b",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "\u001b[2J",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "ab\r",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "ab\n",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "a\u202eb",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "a\u2028b",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "a\u200bb",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "p\u0430th",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "e\u0301",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "\ufeffa",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "x\u007f",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "pr",
+      "accepts": false
+    },
+    {
+      "class": "identity",
+      "token": "P R",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "/a\u0000b",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "\u001b[2J",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "ab\r",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "ab\n",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "a\u202eb",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "a\u2028b",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "a\u200bb",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "p\u0430th",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "e\u0301",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "\ufeffa",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "x\u007f",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[\"a\n\"]",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[\"a\\\"]",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[\"a\",]",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[]x",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[\"\\u0000\"]",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[\"\\u202e\"]",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[\"a\\u001b[2J\"]",
+      "accepts": false
+    },
+    {
+      "class": "argv",
+      "token": "[\"\\n\"]",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "/a\u0000b",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "\u001b[2J",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "ab\r",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "ab\n",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "a\u202eb",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "a\u2028b",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "a\u200bb",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "p\u0430th",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "e\u0301",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "\ufeffa",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "x\u007f",
+      "accepts": false
+    },
+    {
+      "class": "layout",
+      "token": "tiled ",
+      "accepts": false
+    }
+  ],
+  "delimiterCases": [
+    {
+      "class": "/[^=]+/",
+      "literal": "=",
+      "suffixClass": "/[^=]+/",
+      "unsafe": false
+    },
+    {
+      "class": "/[^:]+/",
+      "literal": "=",
+      "suffixClass": "/[^=]+/",
+      "unsafe": true
+    },
+    {
+      "class": "/[ab]+/",
+      "literal": "=",
+      "suffixClass": "/[ab]+/",
+      "unsafe": false
+    },
+    {
+      "class": "/[ab=]+/",
+      "literal": "=",
+      "suffixClass": "/[ab]+/",
+      "unsafe": true
+    },
+    {
+      "class": "/b*a?/",
+      "literal": "aa",
+      "suffixClass": "/[ab]*/",
+      "unsafe": true
+    },
+    {
+      "class": "/b*/",
+      "literal": "aa",
+      "suffixClass": "/[ab]*/",
+      "unsafe": false
+    },
+    {
+      "class": "/[ab]*b/",
+      "literal": "ab",
+      "suffixClass": "/[ab]+/",
+      "unsafe": true
+    },
+    {
+      "class": "/a*/",
+      "literal": "b",
+      "suffixClass": "/[ab]+/",
+      "unsafe": false
+    },
+    {
+      "class": "/[ab]+/",
+      "literal": "aa",
+      "suffixClass": "/a+/",
+      "unsafe": true
+    },
+    {
+      "class": "/[^a]*/",
+      "literal": "a",
+      "suffixClass": "/[ab]*/",
+      "unsafe": false
+    }
+  ],
+  "positiveControls": [
+    {
+      "class": "path",
+      "token": "/a/b",
+      "accepts": true
+    },
+    {
+      "class": "path",
+      "token": "/.config/a",
+      "accepts": true
+    },
+    {
+      "class": "vault",
+      "token": "a/b",
+      "accepts": true
+    },
+    {
+      "class": "days",
+      "token": "12",
+      "accepts": true
+    },
+    {
+      "class": "label",
+      "token": "Market Research",
+      "accepts": true
+    },
+    {
+      "class": "identity",
+      "token": "A1",
+      "accepts": true
+    },
+    {
+      "class": "argv",
+      "token": "[\"a\", \"b\"]",
+      "accepts": true
+    },
+    {
+      "class": "argv",
+      "token": "[\"\\u0020\"]",
+      "accepts": true
+    },
+    {
+      "class": "layout",
+      "token": "even-horizontal",
+      "accepts": true
+    }
+  ]
+}
