@@ -630,7 +630,7 @@
   (check (hash-ref retained 'report) result)
   (check (hash-ref retained 'native-errors) (list (hash 'id "b" 'error native-error)))
   (check (hash-ref retained 'clean) #f)
-  (check (string->jsexpr (canonical-json retained)) retained)
+  (check (canonical-json (string->jsexpr (canonical-json retained))) (canonical-json retained))
   (check
    (hash-ref (hash-ref (cadr (hash-ref retained 'attempt-prefix)) 'observation) 'stderr)
    "native refusal\n")

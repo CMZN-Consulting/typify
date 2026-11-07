@@ -257,7 +257,7 @@
      (check (hash-ref failed-library 'exit) 1 "library refusal keeps its exit status")
      (check
       (hash-ref failed-library-json 'bound)
-      (hash 'c 1 'n 1 'limit 1)
+      (hasheq 'c 1 'n 1 'limit 1)
       "a failed standalone plan preserves its declaration and input bound")
      (check
       (map (lambda (item) (hash-ref item 'code)) (hash-ref failed-library-json 'diagnostics))
@@ -268,7 +268,7 @@
      (define failed-tree (execute (list "plan" declarations (path->string root) "--json")))
      (check
       (hash-ref (string->jsexpr (hash-ref failed-tree 'stdout)) 'bound)
-      (hash 'c 1 'n 1 'limit 1)
+      (hasheq 'c 1 'n 1 'limit 1)
       "a failed root plan retains bounds from the already-read tree")
      (write-declaration
       (string-join
@@ -288,7 +288,7 @@
      (define failed-fuel-json (string->jsexpr (hash-ref failed-fuel 'stdout)))
      (check
       (hash-ref failed-fuel-json 'bound)
-      (hash 'c 2 'n 1 'limit 2)
+      (hasheq 'c 2 'n 1 'limit 2)
       "a fuel refusal retains its independently known static bound")
      (check
       (map (lambda (item) (hash-ref item 'code)) (hash-ref failed-fuel-json 'diagnostics))
