@@ -82,6 +82,7 @@
           "value": [],
           "masked": true,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 2
           }
@@ -95,6 +96,7 @@
           ],
           "masked": true,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 1
           }
@@ -108,6 +110,7 @@
           ],
           "masked": false,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 2
           }
@@ -123,46 +126,24 @@
     "facts": "sha256:ace21817f1488a1aa84ebb15135860bb3b8f6fd17b87a92db3ee220c49a3217c",
     "origins": [
       {
-        "step": 1,
-        "primitive": [
-          "mask",
-          "/mounts"
-        ],
-        "file": "program.typify",
-        "line": 1,
-        "rule_line": 19
+        "kind": "program",
+        "path": "program.typify",
+        "line": 1
       },
       {
-        "step": 2,
-        "primitive": [
-          "bind",
-          "/mounts/alpha",
-          "rw"
-        ],
-        "file": "program.typify",
-        "line": 1,
-        "rule_line": 19
+        "kind": "program",
+        "path": "program.typify",
+        "line": 1
       },
       {
-        "step": 3,
-        "primitive": [
-          "mask",
-          "/mounts"
-        ],
-        "file": "program.typify",
-        "line": 2,
-        "rule_line": 19
+        "kind": "program",
+        "path": "program.typify",
+        "line": 2
       },
       {
-        "step": 4,
-        "primitive": [
-          "bind",
-          "/mounts/beta",
-          "ro"
-        ],
-        "file": "program.typify",
-        "line": 2,
-        "rule_line": 19
+        "kind": "program",
+        "path": "program.typify",
+        "line": 2
       }
     ],
     "ensure": [
@@ -171,6 +152,7 @@
         "name": "child-visible",
         "predicate": [
           "visible",
+          "mounts",
           "/mounts/alpha"
         ],
         "ok": false
@@ -180,6 +162,7 @@
         "name": "child-visible",
         "predicate": [
           "visible",
+          "mounts",
           "/mounts/beta"
         ],
         "ok": true
@@ -245,6 +228,7 @@
         "value": [],
         "masked": true,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 2
         }
@@ -258,6 +242,7 @@
         ],
         "masked": true,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 1
         }
@@ -271,6 +256,7 @@
         ],
         "masked": false,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 2
         }

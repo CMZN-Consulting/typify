@@ -79,7 +79,7 @@
           }
         },
         "data": {
-          "kind": "orphan",
+          "kind": "syntax",
           "actual": "form : orphan : <word>"
         },
         "provenance": [
@@ -132,7 +132,7 @@
         }
       },
       "data": {
-        "kind": "orphan",
+        "kind": "syntax",
         "actual": "form : orphan : <word>"
       },
       "provenance": [

@@ -71,25 +71,14 @@
     "facts": "sha256:bf7464ac2df3654c31728c04ca3d224396e8c4a2eeed375268f4f2279fde8d87",
     "origins": [
       {
-        "step": 1,
-        "primitive": [
-          "mask",
-          "/mounts"
-        ],
-        "file": "program.typify",
-        "line": 1,
-        "rule_line": 19
+        "kind": "program",
+        "path": "program.typify",
+        "line": 1
       },
       {
-        "step": 2,
-        "primitive": [
-          "bind",
-          "/mounts/research",
-          "rw"
-        ],
-        "file": "program.typify",
-        "line": 1,
-        "rule_line": 19
+        "kind": "program",
+        "path": "program.typify",
+        "line": 1
       }
     ],
     "ensure": [],

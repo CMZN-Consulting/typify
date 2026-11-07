@@ -40,7 +40,7 @@
     "terms": [],
     "diagnostics": [
       {
-        "code": "E_CLASS",
+        "code": "E_DECLARATION",
         "file": "declarations.typify",
         "range": {
           "start": {
@@ -55,8 +55,8 @@
           }
         },
         "data": {
-          "class": "tricky",
-          "token": "/[a-z\\u200d\\u202e\\u00a0]+/"
+          "kind": "syntax",
+          "actual": "/[a-z\\u200d\\u202e\\u00a0]+/"
         },
         "provenance": [
           "§4",
@@ -69,7 +69,7 @@
   },
   "diagnostics": [
     {
-      "code": "E_CLASS",
+      "code": "E_DECLARATION",
       "file": "declarations.typify",
       "range": {
         "start": {
@@ -84,8 +84,8 @@
         }
       },
       "data": {
-        "class": "tricky",
-        "token": "/[a-z\\u200d\\u202e\\u00a0]+/"
+        "kind": "syntax",
+        "actual": "/[a-z\\u200d\\u202e\\u00a0]+/"
       },
       "provenance": [
         "§4",

@@ -17,5 +17,5 @@ form : share : <path> <mode>
 does : share <path> <mode>
 example : share : /mounts/research rw
 rule : share <p> <m> -> mask (parent <p>) ; bind <p> <m>
-ensure : share : child-visible = (visible <p>)
+ensure : share : child-visible = (visible mounts <1>)
 end!

@@ -8,9 +8,7 @@ term : grant-mode : path mode
 primitive!
 writes : grant-mode : perms = put 1
 cell : perms = join modes
-join : modes : "ro" "ro" = "ro"
 join : modes : "ro" "rw" = "rw"
-join : modes : "rw" "rw" = "rw"
 form : grant : <path> <mode>
 does : grant-mode <path> <mode>
 example : grant : /mounts/shared ro

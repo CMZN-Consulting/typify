@@ -70,6 +70,7 @@
           ],
           "masked": false,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 2
           }
@@ -85,36 +86,19 @@
     "facts": "none",
     "origins": [
       {
-        "step": 1,
-        "primitive": [
-          "put-kv",
-          "temp",
-          "v1"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 1,
-        "rule_line": 22
+        "line": 1
       },
       {
-        "step": 2,
-        "primitive": [
-          "put-kv",
-          "keep",
-          "v2"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 2,
-        "rule_line": 22
+        "line": 2
       },
       {
-        "step": 3,
-        "primitive": [
-          "del-kv",
-          "temp"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 3,
-        "rule_line": 23
+        "line": 3
       }
     ],
     "ensure": [
@@ -123,6 +107,7 @@
         "name": "key-absent",
         "predicate": [
           "absent",
+          "store",
           "temp"
         ],
         "ok": true
@@ -156,6 +141,7 @@
         ],
         "masked": false,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 2
         }
@@ -175,6 +161,7 @@
       "name": "key-absent",
       "predicate": [
         "absent",
+        "store",
         "temp"
       ],
       "ok": true

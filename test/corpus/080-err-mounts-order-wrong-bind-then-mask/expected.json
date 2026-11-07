@@ -78,6 +78,7 @@
           "value": [],
           "masked": true,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 1
           }
@@ -91,6 +92,7 @@
           ],
           "masked": true,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 1
           }
@@ -106,25 +108,14 @@
     "facts": "sha256:befe70ac7027bdc26e07749e764b92241116eb8216e9e5a72d657ff8bf6c307d",
     "origins": [
       {
-        "step": 1,
-        "primitive": [
-          "bind",
-          "/mounts/research",
-          "rw"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 1,
-        "rule_line": 19
+        "line": 1
       },
       {
-        "step": 2,
-        "primitive": [
-          "mask",
-          "/mounts"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 1,
-        "rule_line": 19
+        "line": 1
       }
     ],
     "ensure": [
@@ -133,6 +124,7 @@
         "name": "child-visible",
         "predicate": [
           "visible",
+          "mounts",
           "/mounts/research"
         ],
         "ok": false
@@ -189,6 +181,7 @@
         "value": [],
         "masked": true,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 1
         }
@@ -202,6 +195,7 @@
         ],
         "masked": true,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 1
         }
@@ -221,6 +215,7 @@
       "name": "child-visible",
       "predicate": [
         "visible",
+        "mounts",
         "/mounts/research"
       ],
       "ok": false

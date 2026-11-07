@@ -13,6 +13,6 @@ form : alpha : <name>
 does : alpha <name>
 form : beta : <name>
 does : beta <name>
-rule : (alpha <x>) -> (beta <x>)
-rule : (beta <x>) -> (alpha <x>)
+rule : alpha <x> -> beta <x>
+rule : beta <x> -> alpha <x>
 end!

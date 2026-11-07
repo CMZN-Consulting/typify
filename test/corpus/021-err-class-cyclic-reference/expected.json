@@ -40,7 +40,7 @@
     "terms": [],
     "diagnostics": [
       {
-        "code": "E_CLASS_UNDECLARED",
+        "code": "E_DECLARATION",
         "file": "declarations.typify",
         "range": {
           "start": {
@@ -55,7 +55,8 @@
           }
         },
         "data": {
-          "class": "beta"
+          "kind": "class-cycle",
+          "actual": "alpha"
         },
         "provenance": [
           "§4",
@@ -68,7 +69,7 @@
   },
   "diagnostics": [
     {
-      "code": "E_CLASS_UNDECLARED",
+      "code": "E_DECLARATION",
       "file": "declarations.typify",
       "range": {
         "start": {
@@ -83,7 +84,8 @@
         }
       },
       "data": {
-        "class": "beta"
+        "kind": "class-cycle",
+        "actual": "alpha"
       },
       "provenance": [
         "§4",

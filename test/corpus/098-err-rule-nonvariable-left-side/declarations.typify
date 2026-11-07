@@ -10,5 +10,6 @@ cell : out = shadow
 term : action : name
 form : action : <name>
 does : action <name>
-rule : (action "literal") -> (prim "literal")
+rule : action "literal" -> prim "literal"
+rule : action <x> <y> -> prim <x>
 end!

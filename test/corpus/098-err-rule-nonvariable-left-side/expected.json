@@ -45,18 +45,42 @@
         "range": {
           "start": {
             "line": 13,
-            "column": 16,
-            "byteOffset": 229
+            "column": 15,
+            "byteOffset": 228
           },
           "end": {
             "line": 13,
-            "column": 25,
-            "byteOffset": 238
+            "column": 24,
+            "byteOffset": 237
           }
         },
         "data": {
-          "kind": "capture",
-          "actual": "\"literal\""
+          "kind": "syntax",
+          "actual": "rule : action \"literal\" -> prim \"literal\""
+        },
+        "provenance": [
+          "H",
+          "K"
+        ]
+      },
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 14,
+            "column": 8,
+            "byteOffset": 263
+          },
+          "end": {
+            "line": 14,
+            "column": 22,
+            "byteOffset": 277
+          }
+        },
+        "data": {
+          "kind": "arity",
+          "actual": "action <x> <y>"
         },
         "provenance": [
           "H",
@@ -72,18 +96,42 @@
       "range": {
         "start": {
           "line": 13,
-          "column": 16,
-          "byteOffset": 229
+          "column": 15,
+          "byteOffset": 228
         },
         "end": {
           "line": 13,
-          "column": 25,
-          "byteOffset": 238
+          "column": 24,
+          "byteOffset": 237
         }
       },
       "data": {
-        "kind": "capture",
-        "actual": "\"literal\""
+        "kind": "syntax",
+        "actual": "rule : action \"literal\" -> prim \"literal\""
+      },
+      "provenance": [
+        "H",
+        "K"
+      ]
+    },
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 8,
+          "byteOffset": 263
+        },
+        "end": {
+          "line": 14,
+          "column": 22,
+          "byteOffset": 277
+        }
+      },
+      "data": {
+        "kind": "arity",
+        "actual": "action <x> <y>"
       },
       "provenance": [
         "H",

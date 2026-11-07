@@ -1,6 +1,6 @@
 #lang typify
 
-declare : MissingConstructorAction
+declare : MissingAndConflictingConstructor
 version : 1
 is : name = /[a-z]+/
 term : prim-op : name
@@ -8,9 +8,15 @@ primitive!
 writes : prim-op : log = put 1
 cell : log = shadow
 term : unhandled : name
+term : conflicted : name
+primitive!
+writes : conflicted : log = put 1
+fact : conflicted
 form : prim : <name>
 does : prim-op <name>
 form : unhandled : <name>
 does : unhandled <name>
-rule : (prim-op <n>) -> (prim-op <n>)
+form : conflicted : <name>
+does : conflicted <name>
+rule : prim-op <n> -> prim-op <n>
 end!

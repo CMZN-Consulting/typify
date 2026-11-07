@@ -40,18 +40,42 @@
     "terms": [],
     "diagnostics": [
       {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 16,
+            "column": 21,
+            "byteOffset": 288
+          },
+          "end": {
+            "line": 16,
+            "column": 29,
+            "byteOffset": 296
+          }
+        },
+        "data": {
+          "kind": "stratification",
+          "actual": "beta"
+        },
+        "provenance": [
+          "H",
+          "K"
+        ]
+      },
+      {
         "code": "E_RULE_CYCLE",
         "file": "declarations.typify",
         "range": {
           "start": {
             "line": 16,
-            "column": 23,
-            "byteOffset": 290
+            "column": 1,
+            "byteOffset": 268
           },
           "end": {
             "line": 16,
-            "column": 33,
-            "byteOffset": 300
+            "column": 29,
+            "byteOffset": 296
           }
         },
         "data": {
@@ -66,18 +90,42 @@
   },
   "diagnostics": [
     {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 16,
+          "column": 21,
+          "byteOffset": 288
+        },
+        "end": {
+          "line": 16,
+          "column": 29,
+          "byteOffset": 296
+        }
+      },
+      "data": {
+        "kind": "stratification",
+        "actual": "beta"
+      },
+      "provenance": [
+        "H",
+        "K"
+      ]
+    },
+    {
       "code": "E_RULE_CYCLE",
       "file": "declarations.typify",
       "range": {
         "start": {
           "line": 16,
-          "column": 23,
-          "byteOffset": 290
+          "column": 1,
+          "byteOffset": 268
         },
         "end": {
           "line": 16,
-          "column": 33,
-          "byteOffset": 300
+          "column": 29,
+          "byteOffset": 296
         }
       },
       "data": {

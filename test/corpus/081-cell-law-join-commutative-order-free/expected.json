@@ -66,6 +66,7 @@
           ],
           "masked": false,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 2
           }
@@ -81,26 +82,14 @@
     "facts": "none",
     "origins": [
       {
-        "step": 1,
-        "primitive": [
-          "grant-mode",
-          "/mounts/shared",
-          "rw"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 1,
-        "rule_line": 17
+        "line": 1
       },
       {
-        "step": 2,
-        "primitive": [
-          "grant-mode",
-          "/mounts/shared",
-          "ro"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 2,
-        "rule_line": 17
+        "line": 2
       }
     ],
     "ensure": []
@@ -128,6 +117,7 @@
         ],
         "masked": false,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 2
         }

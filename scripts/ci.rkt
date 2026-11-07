@@ -141,7 +141,8 @@
        (zero? failures)
        (case name
          ((blind-verdict)
-          (and (eq? (field evidence 'blind) #t)
+          (and (eq? (field evidence 'complete) #t)
+               (eq? (field evidence 'blind) #t)
                (eq? (field evidence 'independent) #t)
                (text? (field evidence 'corpus))
                (text? (field evidence 'provenance))))

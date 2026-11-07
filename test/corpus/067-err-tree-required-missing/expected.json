@@ -44,6 +44,16 @@
   ],
   "stdout_json": [
     {
+      "path": "services/api/app.typify",
+      "language": "App",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "missing",
+      "terms": [],
+      "origins": []
+    },
+    {
       "path": "services/api/config.typify",
       "language": "Config",
       "placeholders": {
@@ -58,15 +68,24 @@
       ],
       "origins": [
         {
-          "term": [
-            "access",
-            "rw"
-          ],
-          "file": "services/api/config.typify",
+          "kind": "program",
+          "path": "services/api/config.typify",
           "line": 1
         }
       ]
     },
+    {
+      "path": "services/api/notes.typify",
+      "language": "Notes",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "absent-empty",
+      "terms": [],
+      "origins": []
+    }
+  ],
+  "tree_entries": [
     {
       "path": "services/api/app.typify",
       "language": "App",
@@ -76,9 +95,7 @@
       "status": "missing",
       "terms": [],
       "origins": []
-    }
-  ],
-  "tree_entries": [
+    },
     {
       "path": "services/api/config.typify",
       "language": "Config",
@@ -94,22 +111,19 @@
       ],
       "origins": [
         {
-          "term": [
-            "access",
-            "rw"
-          ],
-          "file": "services/api/config.typify",
+          "kind": "program",
+          "path": "services/api/config.typify",
           "line": 1
         }
       ]
     },
     {
-      "path": "services/api/app.typify",
-      "language": "App",
+      "path": "services/api/notes.typify",
+      "language": "Notes",
       "placeholders": {
         "service": "api"
       },
-      "status": "missing",
+      "status": "absent-empty",
       "terms": [],
       "origins": []
     }
@@ -120,14 +134,14 @@
       "file": "declarations.typify",
       "range": {
         "start": {
-          "line": 46,
+          "line": 45,
           "column": 1,
-          "byteOffset": 846
+          "byteOffset": 824
         },
         "end": {
-          "line": 46,
+          "line": 45,
           "column": 42,
-          "byteOffset": 887
+          "byteOffset": 865
         }
       },
       "data": {

@@ -45,30 +45,6 @@
   ],
   "stdout_json": [
     {
-      "path": "services/api/config.typify",
-      "language": "Config",
-      "placeholders": {
-        "service": "api"
-      },
-      "status": "present",
-      "terms": [
-        [
-          "access",
-          "rw"
-        ]
-      ],
-      "origins": [
-        {
-          "term": [
-            "access",
-            "rw"
-          ],
-          "file": "services/api/config.typify",
-          "line": 1
-        }
-      ]
-    },
-    {
       "path": "services/api/app.typify",
       "language": "App",
       "placeholders": {
@@ -83,11 +59,29 @@
       ],
       "origins": [
         {
-          "term": [
-            "run",
-            "worker"
-          ],
-          "file": "services/api/app.typify",
+          "kind": "program",
+          "path": "services/api/app.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/config.typify",
+      "language": "Config",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "access",
+          "rw"
+        ]
+      ],
+      "origins": [
+        {
+          "kind": "program",
+          "path": "services/api/config.typify",
           "line": 1
         }
       ]
@@ -107,11 +101,8 @@
       ],
       "origins": [
         {
-          "term": [
-            "memo",
-            "ready"
-          ],
-          "file": "services/api/notes.typify",
+          "kind": "program",
+          "path": "services/api/notes.typify",
           "line": 1
         }
       ]
@@ -119,30 +110,6 @@
   ],
   "tree_entries": [
     {
-      "path": "services/api/config.typify",
-      "language": "Config",
-      "placeholders": {
-        "service": "api"
-      },
-      "status": "present",
-      "terms": [
-        [
-          "access",
-          "rw"
-        ]
-      ],
-      "origins": [
-        {
-          "term": [
-            "access",
-            "rw"
-          ],
-          "file": "services/api/config.typify",
-          "line": 1
-        }
-      ]
-    },
-    {
       "path": "services/api/app.typify",
       "language": "App",
       "placeholders": {
@@ -157,11 +124,29 @@
       ],
       "origins": [
         {
-          "term": [
-            "run",
-            "worker"
-          ],
-          "file": "services/api/app.typify",
+          "kind": "program",
+          "path": "services/api/app.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/config.typify",
+      "language": "Config",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "access",
+          "rw"
+        ]
+      ],
+      "origins": [
+        {
+          "kind": "program",
+          "path": "services/api/config.typify",
           "line": 1
         }
       ]
@@ -181,11 +166,8 @@
       ],
       "origins": [
         {
-          "term": [
-            "memo",
-            "ready"
-          ],
-          "file": "services/api/notes.typify",
+          "kind": "program",
+          "path": "services/api/notes.typify",
           "line": 1
         }
       ]

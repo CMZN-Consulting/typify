@@ -359,6 +359,7 @@
    ((model (in-list public-models)))
    (check (model-data (read-declarations (emit-declarations model))) (model-data model)))
   (define blind (run-blind-corpus))
+  (define scoped-blind (blind-command-scope blind '("check" "emit")))
   (define-values (blind-coverage blind-models) (measure-blind-declarations))
   (define custody-verified?
     (and (eq? (hash-ref blind 'available #f) #t)
@@ -374,7 +375,7 @@
   (define declaration-witnesses
     (measure-witnesses
      (append (map cons '("catalog" "flags" "mounts" "meta") public-models) blind-models)))
-  (define blind-failures (hash-ref blind 'failures 1))
+  (define blind-failures (hash-ref scoped-blind 'failures 1))
   (define law-failures
     (+
      (hash-ref blind-declarations 'failures)
@@ -402,19 +403,21 @@
    (if (zero? failures) "passed" "failed")
    'blind-baseline-failures
    blind-failures
+   'blind-full-baseline
+   blind
    'blind-declaration-coverage
    blind-declarations
    'gates
    (hash
     'blind-verdict
     (hash-set*
-     blind
+     scoped-blind
      'total
-     (hash-ref blind 'case-total 0)
+     (hash-ref scoped-blind 'case-total 0)
      'failures
-     (hash-ref blind 'case-failures 1)
+     (hash-ref scoped-blind 'case-failures 1)
      'invocations
-     (hash-ref blind 'total 0)
+     (hash-ref scoped-blind 'total 0)
      'invocation-failures
      blind-failures)
     'structural-round-trip

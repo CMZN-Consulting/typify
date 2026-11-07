@@ -1,26 +1,15 @@
-# Typify v1 Blind Verdict Corpus — MANIFEST
+# Typify v1 Blind Verdict Corpus (v2) — MANIFEST
 
-This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `06:36:15Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+**Corpus Revision**: `v2` (updated for the `06:46:35Z`, `06:54:15Z`, `07:01:08Z`, and `07:33:42Z` corrections to `typify-v1-definition-2026-11-07.md`).
 
-## Coverage Summary by Requirement
+This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `07:33:42Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
 
-- **Kernel line shapes & body grammar (`§2`, `§3`, `04:19Z`)**: Cases `001`–`012`, `039`
-- **Classes, notation, regular core (`.` and `/[^=]+/` global intersection), forbidden code points, caps (`states` vs `length` counter), and product-automaton delimiter emptiness (`§4`, `F`, `J`, `R`, `03:56Z`, `04:44Z`, `05:09Z`)**: Cases `013`–`030`
-- **Hostile `(token, class)` pairs (107 Storm 07 Gauss pairs + 8 non-canonical path spellings against `canonical-path`) (`§4`, `F`, `Q`, `R`, `U`, `03:56Z`, `04:19Z`, `05:09Z`)**: Cases `031`–`043`
-- **Multi-slot forms with delimiter insertions (7 distinct forms) (`§4`, `§5`, `F`, `J`, `R`)**: Cases `044`–`050`
-- **First-order terms, nested library calls vs rejected nested user constructors, arity, and example validation (`§5`, `I`, `K`, `R`, `T`, `04:19Z`)**: Cases `051`–`054`
-- **Counts (`1`, `0..1`, `1..*`, `*`), withdrawn count words, `default` term ordering (`06:00Z`, `06:05Z`), `restricts!`, and `order : strict` vs free (`§4`, `G`, `K`, `X`)**: Cases `055`–`063`
-- **Trees of programs (`present`, `defaulted`, `absent-empty`, `missing`, `guarded`, `sees`) (`§7`, `G`, `K`, `V`, `X`, `Y`)**: Cases `064`–`068`
-- **Question form (`? : <word>`) four answer shapes, `accepts` only when `near` is empty, and `ask --json` (`§6`, `§14`, `I`, `S`, `Y`, `05:09Z`)**: Cases `069`–`078`
-- **`Mounts` example in both orders (`mask (parent <p>) ; bind <p> <m>` accepted; `bind <p> <m> ; mask (parent <p>)` refused by `ensure : share : child-visible`) with `is : path = canonical-path` (`B`, `H`, `U`, `V`, `W`, `Y`, `05:09Z`, `06:00Z`, `06:32Z`)**: Cases `079`–`080`
-- **State model (one list per cell in key order with `key`, `value`, `masked`, `origin`), cells (`shadow stacking`, `shadow`, `first`, `join <table>` with unordered pairs listed once), `delete <width>`, `stage`, `effect : ... = external`, `reads`, `ensure`, all 8 library functions/predicates (`parent`, `join`, `split`, `ancestors`, `concat`, `prefix`, `suffix`, `equal`), `each`/`fuel`, `fact`, `scope`, `context`, `guard`, root `plan --json` with `facts.json`, and rule stratification (`E`, `H`, `I`, `K`, `Q`, `T`, `U`, `V`, `W`, `Y`, `Z`, `06:00Z`–`06:36Z`)**: Cases `081`–`098`
-- **Grammar emission (`emit` JSON with `comment`, `caps`, qualified `classes`, `forms` and `--gbnf`) and all 28 diagnostic codes of the closed v1 registry (`E_LINE_SHAPE` through `E_DECLARATION`) with exact compared `code`, `file`, `range`, and `data` keys (`§8`, `§9`, `J`, `K`, `Y`, `06:00Z`–`06:36Z`)**: Cases `003`–`013`, `016`–`028`, `030`–`043`, `051`–`058`, `061`–`062`, `067`–`068`, `076`, `080`, `084`–`087`, `089`–`090`, `092`–`093`, `095`–`100`
+## Cases Changed in `v2` (`06:46Z`, `06:54Z`, `07:01Z`, and `07:33Z` Corrections)
 
-## Sections of the Definition Not Covered by Executable Corpus Cases
-
-- **`§1` (What Typify is / design goals)** and **`§12` (Why the language is small)**: introductory/architectural prose whose normative rules are tested through `§2`–`§9`, `§14`, and `A`–`Z`.
-- **`§10` (Repository layout)** and **`§11` (The wiki)** / **`M`, `N`, `O` (Package layout, sixteen-page wiki, README, and frozen 0.5 / Lean oracles)**: repository structure, CI workflow, and documentation requirements rather than language/CLI inputs.
-- **`§13` (The first languages)** and **`D` (Separation of engine and desk)**: project/release packaging requirements.
+- **Declaration structure & `E_DECLARATION` 12 kinds (`007`–`011`, `018`–`022`, `052`–`053`, `068`, `087`, `095`, `096`, `098`)**: Updated to cover all 12 `E_DECLARATION` kinds (`header`, `body`, `duplicate`, `orphan`, `arity`, `capture`, `syntax`, `class-cycle`, `stratification`, `reference`, `conflict`, `effect`) with the payload conventions of `06:54Z` and `07:33Z`.
+- **Shadowing, arity, and strict order payloads (`030`, `053`, `062`)**: Updated `E_FORM_SHADOW` in `030` (`form` = later shadowed form, `actual` = earlier shadowing form), `E_TERM_CLASS` `arity` in `053` (`class` = signature `"word word"`, `actual` = `1`), and `E_ORDER` in `062` (`expected` = `1`, `actual` = `0`, zero-based form ordinals).
+- **Unified `origin` objects (`064`–`067`, `079`–`083`, `087`–`091`, `093`–`094`)**: Updated every term/state origin to `{"kind": "program", "path": ..., "line": n}` or `{"kind": "default", "path": ..., "line": n}` (`07:01Z`).
+- **Positional `ensure` bindings (`<1>`..`<n>`), cell-named state predicates `(visible <cell> <key>)` / `(absent <cell> <key>)`, complete `join` tables, and `E_CONTEXT` (`079`–`081`, `083`, `085`, `087`, `089`–`090`, `094`)**: Updated `Mounts` (`079`, `080`, `089`, `090`) to `ensure : share : child-visible = (visible mounts <1>)`, `083` to `ensure : del-kv : key-absent = (absent store <1>)`, `081` to list unordered distinct pairs once, `085` to test `E_JOIN_LAW` with `expected: "complete"`, `087` to use `E_DECLARATION` kind `effect`, and `094` to test `E_CONTEXT` (`07:01Z`, `07:33Z`).
 
 ## Case Index (`001`–`100`)
 
@@ -110,7 +99,7 @@ This corpus contains **100** blind test cases (`001`–`100`) derived strictly f
 | `082-cell-law-first-keeps-initial` | `accepted` | `H`, `R`, `T`, `U`, `Y` | Cell law 'cell : reg = first' (Amendment U): first write to a key wins and subsequent write to same key leaves state unchanged |
 | `083-cell-write-delete-stage-reset` | `accepted` | `H`, `I`, `R`, `T`, `U`, `V`, `Y` | Cell write 'writes : del-kv : store = delete 1' with 'stage : del-kv = 1' removes key and satisfies (absent <k>) |
 | `084-err-cell-join-table-not-commutative` | `refused` | `H`, `K`, `Q`, `R`, `U`, `Y` | Declaration error (05:28Z U): unordered pair {"ro", "rw"} listed twice in join table with conflicting results rejected |
-| `085-err-cell-join-table-not-associative-or-idempotent` | `refused` | `H`, `K`, `Q`, `R`, `U`, `Y` | Declaration error (05:28Z U): finite join table violating idempotence and associativity over listed unordered pairs rejected |
+| `085-err-cell-join-table-not-associative-or-idempotent` | `refused` | `H`, `K`, `Q`, `R`, `U`, `Y` | Declaration error (07:33Z U): join table over 'low' | 'mid' | 'high' missing unordered pair '"low" "high"' rejected with E_JOIN_LAW (expected: 'complete') |
 | `086-err-cell-shadow-noncanonical-key-class` | `refused` | `H`, `K`, `Q`, `R`, `U`, `Y` | Declaration error (05:09Z U): 'cell : mounts = shadow stacking' keyed by class 'raw_path' not a subset of built-in 'canonical-path' rejected |
 | `087-err-plan-unmodelled-primitive-unchecked` | `refused` / `unchecked` | `H`, `K`, `R`, `T`, `U`, `Y` | Primitive without writes rejected unless 'effect : <primitive> = external' is declared; external primitive makes plan report modelled '1 of 2' and 'unchecked' (Amendment U, Y) |
 | `088-reads-fact-skip-when-absent` | `accepted` | `H`, `I`, `Q`, `R`, `T`, `U`, `V`, `W`, `Y` | Fact precondition 'reads : bind : exists = skip' and optional '(if (exists <p>) ...)' (Amendments U, V, W): absent path skipped cleanly |

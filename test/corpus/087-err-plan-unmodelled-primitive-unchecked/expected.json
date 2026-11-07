@@ -48,7 +48,7 @@
               }
             },
             "data": {
-              "kind": "body",
+              "kind": "effect",
               "actual": "spawn"
             },
             "provenance": [
@@ -76,7 +76,7 @@
             }
           },
           "data": {
-            "kind": "body",
+            "kind": "effect",
             "actual": "spawn"
           },
           "provenance": [
@@ -125,6 +125,7 @@
               "value": [],
               "masked": true,
               "origin": {
+                "kind": "program",
                 "path": "program.typify",
                 "line": 1
               }
@@ -141,27 +142,14 @@
         "facts": "none",
         "origins": [
           {
-            "step": 1,
-            "primitive": [
-              "mask",
-              "/mounts/work"
-            ],
-            "file": "program.typify",
-            "line": 1,
-            "rule_line": 19,
-            "modelled": true
+            "kind": "program",
+            "path": "program.typify",
+            "line": 1
           },
           {
-            "step": 2,
-            "primitive": [
-              "spawn",
-              "/usr/bin/sync"
-            ],
-            "file": "program.typify",
-            "line": 2,
-            "rule_line": 20,
-            "modelled": false,
-            "effect": "external"
+            "kind": "program",
+            "path": "program.typify",
+            "line": 2
           }
         ],
         "ensure": []
@@ -185,6 +173,7 @@
             "value": [],
             "masked": true,
             "origin": {
+              "kind": "program",
               "path": "program.typify",
               "line": 1
             }

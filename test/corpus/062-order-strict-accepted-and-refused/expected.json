@@ -112,8 +112,8 @@
             },
             "data": {
               "form": "header : <word>",
-              "expected": "item : <word>",
-              "actual": "header : start"
+              "expected": 1,
+              "actual": 0
             },
             "provenance": [
               "G",
@@ -141,8 +141,8 @@
           },
           "data": {
             "form": "header : <word>",
-            "expected": "item : <word>",
-            "actual": "header : start"
+            "expected": 1,
+            "actual": 0
           },
           "provenance": [
             "G",

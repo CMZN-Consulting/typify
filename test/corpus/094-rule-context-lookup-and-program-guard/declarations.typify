@@ -20,12 +20,12 @@ term : bind : path path
 primitive!
 writes : bind : mounts = put 1
 cell : mounts = shadow stacking
-term : mount-rel : seg
-guard : mount-rel = (exists (context base-dir))
-form : mount-rel : <seg>
-does : mount-rel <seg>
-example : mount-rel : cache
-rule : (mount-rel <s>) -> (bind (join (context base-dir) <s>) (join (context base-dir) <s>))
+term : mount-rel : path seg
+guard : mount-rel = exists
+form : mount-rel : <path> <seg>
+does : mount-rel <path> <seg>
+example : mount-rel : /mounts/root cache
+rule : mount-rel <g> <s> -> bind (join (context base-dir) <s>) (join (context base-dir) <s>)
 end!
 
 declare : RootTreePlan

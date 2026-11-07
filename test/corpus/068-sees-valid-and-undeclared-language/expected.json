@@ -39,7 +39,7 @@
     "terms": [],
     "diagnostics": [
       {
-        "code": "E_CLASS_UNDECLARED",
+        "code": "E_DECLARATION",
         "file": "declarations.typify",
         "range": {
           "start": {
@@ -54,7 +54,8 @@
           }
         },
         "data": {
-          "class": "NonExistentLang"
+          "kind": "reference",
+          "actual": "NonExistentLang"
         },
         "provenance": [
           "§3",
@@ -66,7 +67,7 @@
   },
   "diagnostics": [
     {
-      "code": "E_CLASS_UNDECLARED",
+      "code": "E_DECLARATION",
       "file": "declarations.typify",
       "range": {
         "start": {
@@ -81,7 +82,8 @@
         }
       },
       "data": {
-        "class": "NonExistentLang"
+        "kind": "reference",
+        "actual": "NonExistentLang"
       },
       "provenance": [
         "§3",

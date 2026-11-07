@@ -41,7 +41,6 @@ term : svc-notes : service
 form : services/<service>/config.typify : Config
 does : svc-config <service>
 count : svc-config = 0..1
-default : access : ro
 example : services/api/config.typify : Config
 form : services/<service>/app.typify : App
 does : svc-app <service>

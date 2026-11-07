@@ -21,5 +21,5 @@ does : del-kv <key>
 example : clear : session
 rule : put-kv <k> <v> -> put-kv <k> <v>
 rule : del-kv <k> -> del-kv <k>
-ensure : del-kv : key-absent = (absent <k>)
+ensure : del-kv : key-absent = (absent store <1>)
 end!

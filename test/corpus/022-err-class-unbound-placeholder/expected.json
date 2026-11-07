@@ -39,7 +39,7 @@
     "terms": [],
     "diagnostics": [
       {
-        "code": "E_DECLARATION",
+        "code": "E_CLASS_UNDECLARED",
         "file": "declarations.typify",
         "range": {
           "start": {
@@ -54,8 +54,7 @@
           }
         },
         "data": {
-          "kind": "capture",
-          "actual": "<unknown>"
+          "class": "unknown"
         },
         "provenance": [
           "§4",
@@ -79,7 +78,7 @@
         },
         "data": {
           "kind": "capture",
-          "actual": "<other>"
+          "actual": "other"
         },
         "provenance": [
           "§5",
@@ -90,7 +89,7 @@
   },
   "diagnostics": [
     {
-      "code": "E_DECLARATION",
+      "code": "E_CLASS_UNDECLARED",
       "file": "declarations.typify",
       "range": {
         "start": {
@@ -105,8 +104,7 @@
         }
       },
       "data": {
-        "kind": "capture",
-        "actual": "<unknown>"
+        "class": "unknown"
       },
       "provenance": [
         "§4",
@@ -130,7 +128,7 @@
       },
       "data": {
         "kind": "capture",
-        "actual": "<other>"
+        "actual": "other"
       },
       "provenance": [
         "§5",

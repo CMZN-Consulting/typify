@@ -60,6 +60,7 @@
           ],
           "masked": false,
           "origin": {
+            "kind": "program",
             "path": "program.typify",
             "line": 1
           }
@@ -75,26 +76,14 @@
     "facts": "none",
     "origins": [
       {
-        "step": 1,
-        "primitive": [
-          "set-once",
-          "mode",
-          "initial"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 1,
-        "rule_line": 14
+        "line": 1
       },
       {
-        "step": 2,
-        "primitive": [
-          "set-once",
-          "mode",
-          "later"
-        ],
+        "kind": "program",
         "path": "program.typify",
-        "line": 2,
-        "rule_line": 14
+        "line": 2
       }
     ],
     "ensure": []
@@ -122,6 +111,7 @@
         ],
         "masked": false,
         "origin": {
+          "kind": "program",
           "path": "program.typify",
           "line": 1
         }

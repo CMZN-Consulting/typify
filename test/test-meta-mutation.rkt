@@ -375,7 +375,8 @@
   (define classes (current-meta-classes))
   (define baseline (map evaluate-oracle internal-oracles))
   (define baseline-failures (count (lambda (result) (not (hash-ref result 'pass))) baseline))
-  (define blind-baseline (blind-oracle))
+  (define blind-full-baseline (blind-oracle))
+  (define blind-baseline (blind-command-scope blind-full-baseline '("check" "emit")))
   (define blind-baseline-results (field blind-baseline 'results '()))
   (define blind-baseline-shape?
     (and (for/and
@@ -566,6 +567,8 @@
    (hasheq 'meta-mutation gate)
    'baseline
    baseline
+   'blind-full-baseline
+   blind-full-baseline
    'blind-baseline
    blind-baseline
    'operator-set

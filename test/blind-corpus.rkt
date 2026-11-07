@@ -12,6 +12,7 @@
          "../src/main.rkt")
 
 (provide run-blind-corpus
+         blind-command-scope
          blind-case-inventory
          blind-declaration-inputs
          default-blind-root
@@ -19,11 +20,11 @@
 
 (define-runtime-path default-blind-root "corpus")
 
-(define archive-sha256 "d99be06a4db5fc6db6e5f5c45bc21823e58c0089e261e9543d251aab63970b32")
+(define archive-sha256 "6258ddc44d164f7997dec6f5a550f5d6e7513c492ecf4499f6fe760eb6e40854")
 
-(define tree-sha256 "24b365be1f587dcb143a3bd341e3ca9f2b2c23c94b5d6a7506e4bc163a213394")
+(define tree-sha256 "d32aa63c03eacb5e2ea5257c82b1c6f523901d4da55b8cc211d05387532a1638")
 
-(define receipt-sha256 "cbf7715ee195d2e8cfea45c80fe052bec868a0d213571b7511de3729932dc5c4")
+(define receipt-sha256 "13a770cf01d3209e13f6cf8786e68b661656955855f1fdb3061974ae935b766b")
 
 (define missing (gensym 'missing))
 
@@ -558,6 +559,9 @@
        subcase
        'pass
        passed?
+       'command
+       (let ((invocation (hash-ref expected 'invocation '())))
+         (if (>= (length invocation) 2) (cadr invocation) "unknown"))
        'kind
        (if infrastructure "infrastructure" "compared")
        'expected
@@ -668,6 +672,50 @@
    (reverse results)
    'mismatches
    all-differences))
+
+(define (blind-command-scope observed commands)
+  (define results
+    (filter
+     (lambda (result) (member (hash-ref result 'command "unknown") commands))
+     (hash-ref observed 'results '())))
+  (define ids (map (lambda (result) (hash-ref result 'id)) results))
+  (define cases (remove-duplicates (map (lambda (result) (hash-ref result 'case-id)) results)))
+  (define failures (count (lambda (result) (not (hash-ref result 'pass))) results))
+  (define complete? (hash-ref observed 'complete #f))
+  (hash-set*
+   observed
+   'scope
+   commands
+   'full-invocations
+   (hash-ref observed 'total 0)
+   'full-case-total
+   (hash-ref observed 'case-total 0)
+   'total
+   (length results)
+   'attempted
+   (length results)
+   'requested
+   (length results)
+   'failures
+   failures
+   'case-total
+   (length cases)
+   'case-failures
+   (for/sum
+    ((case-id (in-list cases)))
+    (if (for/and
+         ((result (in-list results)) #:when (equal? (hash-ref result 'case-id) case-id))
+         (hash-ref result 'pass))
+      0
+      1))
+   'complete
+   complete?
+   'results
+   results
+   'mismatches
+   (filter
+    (lambda (difference) (member (hash-ref difference 'id) ids))
+    (hash-ref observed 'mismatches '()))))
 
 (define (run-tests)
   (define checks 0)
@@ -798,6 +846,31 @@
      (hash 'stdout_json (hash 'provenance "a"))
      (hash 'stdout_json (hash 'provenance "b"))))
    #t)
+  (define scoped
+    (blind-command-scope
+     (hash
+      'complete
+      #t
+      'total
+      3
+      'case-total
+      2
+      'results
+      (list
+       (hash 'id "a/check" 'case-id "a" 'command "check" 'pass #t)
+       (hash 'id "a/ask" 'case-id "a" 'command "ask" 'pass #f)
+       (hash 'id "b/emit" 'case-id "b" 'command "emit" 'pass #f))
+      'mismatches
+      (list (hash 'id "a/ask") (hash 'id "b/emit")))
+     '("check" "emit")))
+  (check (hash-ref scoped 'total) 2)
+  (check (hash-ref scoped 'case-total) 2)
+  (check (hash-ref scoped 'case-failures) 1)
+  (check (hash-ref scoped 'failures) 1)
+  (check (map (lambda (item) (hash-ref item 'id)) (hash-ref scoped 'results)) '("a/check" "b/emit"))
+  (check (hash-ref scoped 'mismatches) (list (hash 'id "b/emit")))
+  (check (hash-ref scoped 'full-invocations) 3)
+  (check (hash-ref scoped 'complete) #t)
   (hash 'suite "blind-comparison" 'checks checks 'status "passed"))
 
 (module+ test-support (provide compare-observation missing missing-json))

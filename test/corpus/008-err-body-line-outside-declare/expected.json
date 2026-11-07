@@ -54,7 +54,7 @@
         },
         "data": {
           "kind": "body",
-          "actual": "is : stray = /[a-z]+/"
+          "actual": "EOF"
         },
         "provenance": [
           "§3",
@@ -81,7 +81,7 @@
       },
       "data": {
         "kind": "body",
-        "actual": "is : stray = /[a-z]+/"
+        "actual": "EOF"
       },
       "provenance": [
         "§3",
