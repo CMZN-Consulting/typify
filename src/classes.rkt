@@ -17,6 +17,8 @@
          class->gbnf-rules
          class-work-bound
          class-check-bound
+         class-count-bounds
+         class-check-count-bounds
          class-error-message
          default-class-caps
          unicode-version
@@ -46,6 +48,17 @@
 
 (define bounded-class-cache (make-weak-hasheq))
 
+(define official-machines (make-weak-hasheq))
+
+(define count-bounds-cache (make-weak-hasheq))
+
+(define (register-machine! machine)
+  (when (and
+         (immutable? (automaton-accepting machine))
+         (immutable? (automaton-transitions machine)))
+    (hash-set! official-machines machine #t))
+  machine)
+
 (define (bounded? machine) (hash-ref bounded-machines machine #f))
 
 (define (mark-bounded! machine) (hash-set! bounded-machines machine #t) machine)
@@ -72,6 +85,15 @@
    (else (class-work-bound left))))
 
 (define (class-count-bounds class)
+  (define machine (compiled-class-machine class))
+  (if (and (hash-ref official-machines machine #f)
+           (immutable? (automaton-accepting machine))
+           (immutable? (automaton-transitions machine))
+           (immutable? (compiled-class-caps class)))
+    (hash-ref! count-bounds-cache class (lambda () (uncached-class-count-bounds class)))
+    (uncached-class-count-bounds class)))
+
+(define (uncached-class-count-bounds class)
   (define machine (compiled-class-machine class))
   (define rows (automaton-transitions machine))
   (define embedded? (bounded? machine))
@@ -151,13 +173,14 @@
      (for/list
       ((transition (in-list row)))
       (cons (edge-ranges transition) (edge-target transition))))))
-  (automaton
-   start
-   accepting
-   (vector->immutable-vector
-    (for/vector
-     ((row (in-vector transitions)))
-     (for/list ((transition (in-list row))) (edge (car transition) (cdr transition)))))))
+  (register-machine!
+   (automaton
+    start
+    accepting
+    (vector->immutable-vector
+     (for/vector
+      ((row (in-vector transitions)))
+      (for/list ((transition (in-list row))) (edge (car transition) (cdr transition))))))))
 
 (define scalar-intervals '((0 . 55295) (57344 . 1114111)))
 
@@ -333,18 +356,15 @@
   (define (slash!)
     (take!)
     (define begin at)
-    (let loop ((range? #f) (quoted? #f) (escaped? #f))
+    (let loop ((escaped? #f))
       (unless (peek) (syntax-error "unclosed slash pattern"))
       (define value (take!))
       (cond
-       (escaped? (loop range? quoted? #f))
-       ((char=? value #\\) (loop range? quoted? #t))
-       ((and (not range?) (char=? value #\")) (loop range? (not quoted?) #f))
-       ((and (not quoted?) (char=? value #\[)) (loop #t quoted? #f))
-       ((and (not quoted?) (char=? value #\])) (loop #f quoted? #f))
-       ((and (not range?) (not quoted?) (char=? value #\/))
+       (escaped? (loop #f))
+       ((char=? value #\\) (loop #t))
+       ((char=? value #\/)
         (parse-pattern (substring source begin (sub1 at)) known caps #:pattern? #t))
-       (else (loop range? quoted? #f)))))
+       (else (loop #f)))))
   (define (number!)
     (define begin at)
     (let loop () (when (and (peek) (char<=? #\0 (peek) #\9)) (take!) (loop)))
@@ -679,10 +699,11 @@
          ((transition (in-list (outgoing key))))
          (edge (edge-ranges transition) (intern! (edge-target transition))))))
       (loop (cdr front)))))
-  (automaton
-   start
-   (vector->immutable-vector (build-vector next (lambda (index) (hash-ref acceptance index))))
-   (vector->immutable-vector (build-vector next (lambda (index) (hash-ref transitions index))))))
+  (register-machine!
+   (automaton
+    start
+    (vector->immutable-vector (build-vector next (lambda (index) (hash-ref acceptance index))))
+    (vector->immutable-vector (build-vector next (lambda (index) (hash-ref transitions index)))))))
 
 (define (determinize start end epsilon transitions caps)
   (define closures (make-hash))
@@ -808,6 +829,21 @@
          (edge (edge-ranges transition) (cons (edge-target transition) (add1 (cdr key)))))))
     caps)))
 
+(define (canonical-path-pattern)
+  (define component
+    (list
+     'except
+     (list 'repeat (list 'characters (subtract-intervals scalar-intervals '((47 . 47)))) 1 #f)
+     '("." "..")))
+  (rx-alternation
+   (list
+    (list 'text "/")
+    (rx-sequence
+     (list
+      (list 'text "/")
+      component
+      (list 'repeat (rx-sequence (list (list 'text "/") component)) 0 #f))))))
+
 (define (compile-classes sources #:caps (raw-caps (hash)))
   (unless (hash? sources) (fail "class-source" "classes must be a map"))
   (define caps (normalize-caps raw-caps))
@@ -817,10 +853,16 @@
      (((name source) (in-hash sources)))
      (unless (or (string? name) (symbol? name)) (fail "class-name" "class name must be text"))
      (values (if (symbol? name) (symbol->string name) name) source)))
-  (when (hash-has-key? raw "letter")
-    (fail "class-reserved" "the built-in letter class cannot be redeclared"))
-  (define known (list->set (cons "letter" (hash-keys raw))))
-  (define trees (make-hash (list (cons "letter" (list 'characters unicode-letter-intervals)))))
+  (for
+   ((name (in-list '("letter" "canonical-path"))))
+   (when (hash-has-key? raw name)
+     (fail "class-reserved" "a built-in class cannot be redeclared" (hash 'class name))))
+  (define known (list->set (append '("letter" "canonical-path") (hash-keys raw))))
+  (define trees
+    (make-hash
+     (list
+      (cons "letter" (list 'characters unicode-letter-intervals))
+      (cons "canonical-path" (canonical-path-pattern)))))
   (define exclusions (make-hash))
   (for
    ((name (in-list (sort (hash-keys raw) string<?))))
@@ -872,7 +914,7 @@
       "class-state-cap"
       "minimal pattern automaton exceeds the declared state cap"
       (hash 'cap (caps-ref caps 'states) 'states controls 'phase "minimal-pattern")))
-   (values name (compiled-class name (hash-ref raw name "letter") machine caps alphabet))))
+   (values name (compiled-class name (hash-ref raw name name) machine caps alphabet))))
 
 (define (class-accepts? class text)
   (and (string? text)

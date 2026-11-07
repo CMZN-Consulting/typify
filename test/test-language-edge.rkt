@@ -49,9 +49,9 @@
   (define (oracle language)
     (hash-ref! compiled language (lambda () (parse-gbnf (language->gbnf language)))))
   (define (line-check language text expected)
-    (define observed (verdict text language))
+    (define observed (line-accepts? text language))
     (define decoded (gbnf-accepts? (oracle language) text))
-    (check (hash-ref observed 'accepted) expected (hash 'input text 'source "reader"))
+    (check observed expected (hash 'input text 'source "reader formation"))
     (check decoded expected (hash 'input text 'source "independent emitted-grammar matcher")))
   (define (reject-declaration lines code)
     (check
@@ -70,6 +70,23 @@
   (line-check colon-language "# ignored:otherwise-invalid" #t)
   (line-check colon-language "" #t)
   (line-check colon-language " \t " #t)
+  (for
+   ((text '("alpha:yes\n" "alpha:yes\r" "alpha:yes\nalpha:yes")))
+   (line-check colon-language text #f))
+  (define hash-tag-language
+    (body
+     '("comment : //"
+       "is : word = /[a-z]+/"
+       "primitive : output : word"
+       "form : #tag : <word>"
+       "does : output <word>")))
+  (line-check hash-tag-language "#tag:a" #t)
+  (line-check hash-tag-language "#tag:123" #f)
+  (line-check hash-tag-language "// ignored:otherwise-invalid" #t)
+  (check
+   (hash-ref (verdict "#tag:a" hash-tag-language) 'terms)
+   '(("output" "a"))
+   "hash-prefixed form survives a different program comment prefix")
   (define arrow-right-language
     (body
      '("is : text = /.*/"
@@ -123,6 +140,91 @@
    (hash-ref (verdict "item:[ x ]" disjoint-language) 'terms)
    '(("spaced" "x"))
    "spaced literal boundary")
+  (define recorded-bounds (declaration-check-bounds disjoint-language))
+  (check (hash-ref recorded-bounds 'recorded) #t "successful checks have recorded bounds")
+  (check (immutable? recorded-bounds) #t "check metadata is immutable")
+  (check
+   (hash-ref (declaration->jsexpr disjoint-language) 'checks)
+   recorded-bounds
+   "declaration JSON includes the recorded bounds")
+  (check
+   (length (hash-ref recorded-bounds 'signature-inclusions))
+   2
+   "both successful form argument inclusions are recorded")
+  (check
+   (length (hash-ref recorded-bounds 'delimiters))
+   2
+   "both successful trailing delimiters are recorded")
+  (check
+   (length (hash-ref recorded-bounds 'overlaps))
+   1
+   "only the actual same-shape overlap pair is recorded")
+  (check
+   (map (lambda (entry) (hash-ref entry 'ordinal)) (hash-ref recorded-bounds 'forms))
+   '(0 1)
+   "form bounds retain declaration order")
+  (define class-names
+    (map (lambda (entry) (hash-ref entry 'name)) (hash-ref recorded-bounds 'classes)))
+  (check class-names (sort class-names string<?) "class bounds have stable name order")
+  (for*
+   ((kind '(signature-inclusions delimiters overlaps))
+    (entry (in-list (hash-ref recorded-bounds kind))))
+   (check
+    (exact-positive-integer? (hash-ref (hash-ref entry 'bounds) 'states-upper-bound))
+    #t
+    (hash 'check kind 'claim "derived state upper bound")))
+  (define text-bounds
+    (hash-ref
+     (for/first
+      ((entry (in-list (hash-ref (declaration-check-bounds colon-language) 'classes)))
+       #:when
+       (equal? (hash-ref entry 'name) "text"))
+      entry)
+     'bounds))
+  (check
+   (hash-ref text-bounds 'pattern-control-states)
+   1
+   "wildcard compact pattern has one control independent of its length counter")
+  (check
+   (hash-ref text-bounds 'length-counter-positions)
+   33
+   "length counter is reported independently")
+  (check
+   (hash-ref text-bounds 'bounded-states-upper-bound)
+   33
+   "derived product is not the control-state cap")
+  (define first-form (car (language-forms disjoint-language)))
+  (define-values (first-left first-right) (form-automata disjoint-language first-form))
+  (define-values (again-left again-right) (form-automata disjoint-language first-form))
+  (check (eq? first-left again-left) #t "left field automaton is reused by body and form identity")
+  (check
+   (eq? first-right again-right)
+   #t
+   "right field automaton is reused by body and form identity")
+  (define repeated-body
+    (hash-ref (read-declarations (emit-declarations (hash "Edge" disjoint-language))) "Edge"))
+  (define-values
+   (repeated-left repeated-right)
+   (form-automata repeated-body (car (language-forms repeated-body))))
+  (check
+   (eq? first-left repeated-left)
+   #f
+   "separately read bodies do not share cached left automata")
+  (check
+   (eq? first-right repeated-right)
+   #f
+   "separately read bodies do not share cached right automata")
+  (check
+   (declaration-check-bounds repeated-body)
+   recorded-bounds
+   "recorded bounds survive structural declaration round trip")
+  (check
+   (hash-ref
+    (declaration-check-bounds (struct-copy language disjoint-language (version "2")))
+    'recorded)
+   #f
+   "a manually constructed body does not inherit a checked declaration receipt")
+  (reject-declaration '("is : word = /[a-z]+/" "primitive : output : <word>") "E_CLASS_REFERENCE")
   (reject-declaration
    '("is : a = \"x\" | \"y\""
      "is : b = \"y\" | \"z\""
@@ -218,7 +320,7 @@
    "missing-a"
    "first declared invalid constructor wins")
   (define path-lines
-    '("is : path = /[/].*/"
+    '("is : path = /\\/.*/"
       "primitive : output : path"
       "form : go : <path>"
       "does : output (parent <path>)"))
@@ -232,7 +334,7 @@
   (define contract-comparisons 0)
   (define contract-failures 0)
   (define not-admitted 0)
-  (define (contract-case id lines input obligation)
+  (define (contract-case id lines input expected-code obligation)
     (define admitted
       (with-handlers
        ((exn:fail:typify?
@@ -243,9 +345,15 @@
     (define result
       (if (hash-ref admitted 'admitted)
         (let* ((language (hash-ref admitted 'body))
-               (reader-result (verdict input language))
+               (semantic-result (verdict input language))
+               (formation-result (line-accepts? input language))
                (grammar-result (gbnf-accepts? (oracle language) input))
-               (same? (equal? (hash-ref reader-result 'accepted) grammar-result)))
+               (same? (equal? formation-result grammar-result)))
+          (check formation-result #t (hash 'probe id 'judgment "formation"))
+          (check
+           (hash-ref semantic-result 'code "accepted")
+           expected-code
+           (hash 'probe id 'judgment "semantic refusal"))
           (set! contract-comparisons (add1 contract-comparisons))
           (unless same? (set! contract-failures (add1 contract-failures)))
           (hash
@@ -257,8 +365,12 @@
            input
            'admitted
            #t
-           'reader
-           reader-result
+           'formation-accepts
+           formation-result
+           'semantic
+           semantic-result
+           'expected-semantic-code
+           expected-code
            'emitted-grammar-accepts
            grammar-result
            'agrees
@@ -283,6 +395,7 @@
    "partial-library-parent-root"
    path-lines
    "go:/"
+   "E_LIBRARY_PARENT"
    "A formation-valid capture reaches the specified parent-root error")
   (contract-case
    "total-library-result-class"
@@ -291,6 +404,7 @@
      "form : calculate!"
      "does : output (concat a b)")
    "calculate!"
+   "E_TERM_CLASS"
    "A formation-valid line computes a string outside the receiving signature class")
   (contract-case
    "program-count-one-empty"
@@ -300,6 +414,7 @@
      "does : output <word>"
      "count : output = 1")
    ""
+   "E_PROGRAM_COUNT"
    "An ignored empty line cannot satisfy a whole-program count requirement")
   (define contextual-language
     (body
@@ -313,8 +428,8 @@
     (hash
      'id
      "count-at-most-one-composition"
-     'individual-reader-acceptance
-     (map (lambda (input) (hash-ref (verdict input contextual-language) 'accepted)) component-lines)
+     'individual-formation-acceptance
+     (map (lambda (input) (line-accepts? input contextual-language)) component-lines)
      'individual-emitted-acceptance
      (map (lambda (input) (gbnf-accepts? (oracle contextual-language) input)) component-lines)
      'joined-reader
@@ -330,7 +445,7 @@
      'not-admitted
      not-admitted
      'scope
-     "Literal equality of emitted single-line grammar membership and check-program acceptance"
+     "Equality of emitted single-line grammar membership and reader formation; semantic refusals checked separately"
      'status
      (cond
       ((zero? contract-comparisons) "pending")

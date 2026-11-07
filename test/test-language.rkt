@@ -11,8 +11,6 @@
 
 (provide run-tests run-blind-corpus)
 
-(define-runtime-path blind-path "corpus/blind.json")
-
 (define-runtime-path import-path "corpus/import.json")
 
 (define catalog
@@ -25,19 +23,9 @@
    "example : item : book = Algebra\ncount : item = 1..*\nend!\n"))
 
 (define (run-blind-corpus)
-  (if (and (file-exists? blind-path) (file-exists? import-path))
+  (if (file-exists? import-path)
     (error 'blind-corpus "The imported corpus requires its declared case schema")
-    (hash
-     'available
-     #f
-     'total
-     0
-     'failures
-     1
-     'corpus
-     "test/corpus/blind.json"
-     'provenance
-     "not-imported")))
+    (hash 'available #f 'total 0 'failures 1 'corpus "test/corpus/" 'provenance "not-imported")))
 
 (define (run-tests)
   (define checks 0)
@@ -152,6 +140,19 @@
    (declaration->jsexpr (hash-ref repeated "Catalog") #:origins? #f)
    (declaration->jsexpr body #:origins? #f))
   (check (emit-declarations repeated) emitted)
+  (define mounts-source
+    (string-append
+     "#lang typify\ndeclare : Mounts\n"
+     "is : mode = \"rw\" | \"ro\"\nis : path = canonical-path\n"
+     "term : vault : path mode\nform : vault : <path>\ndoes : vault <path> rw\n"
+     "example : vault : /vaults/research\nend!\n"))
+  (define mounts (read-declarations mounts-source))
+  (check
+   (hash-ref (check-program "vault : /vaults/research" (hash-ref mounts "Mounts")) 'terms)
+   '(("vault" "/vaults/research" "rw")))
+  (reject
+   (lambda () (check-program "vault : /vaults/../research" (hash-ref mounts "Mounts")))
+   "E_PROGRAM_FORM")
   (define meta (meta-language))
   (define meta-checked (check-program (meta-source) meta #:file "typify.typify"))
   (define normalized (normalize-terms meta (hash-ref meta-checked 'terms)))
@@ -165,6 +166,14 @@
   (check
    (declaration->jsexpr (hash-ref through-meta "Catalog") #:origins? #f)
    (declaration->jsexpr body #:origins? #f))
+  (define public-models (list declarations (hash "Flags" flags) mounts (hash "Typify" meta)))
+  (define (model-data model)
+    (for/hash
+     (((name item) (in-hash model)))
+     (values name (declaration->jsexpr item #:origins? #f))))
+  (for
+   ((model (in-list public-models)))
+   (check (model-data (read-declarations (emit-declarations model))) (model-data model)))
   (define blind (run-blind-corpus))
   (hash
    'suite
@@ -177,10 +186,32 @@
    (hash
     'blind-verdict
     (hash-set* blind 'blind #f 'independent #f)
+    'structural-round-trip
+    (hash
+     'total
+     (length public-models)
+     'failures
+     0
+     'public-declarations
+     (length public-models)
+     'blind-declarations
+     0
+     'complete
+     #f
+     'status
+     "public-passed-blind-pending")
     'byte-smoke
     (hash 'total 1 'failures 0)
     'worked-example-classes
-    (hash 'total 4 'failures 0 'host-predicates 0)
+    (hash
+     'total
+     4
+     'failures
+     0
+     'host-predicates
+     0
+     'classes
+     '("Catalog.category" "Catalog.title" "Mounts.mode" "Mounts.path"))
     'meta-selfcheck
     (hash
      'total

@@ -46,6 +46,12 @@
     (checks "(\"a\" except \"a\") | \"b\"" '("b") '("a"))
     (checks "/ab*/" '("a" "ab" "abbb") '("" "abab")))
    (test-case
+    "the first unescaped slash closes a pattern in every context"
+    (checks "/[a\\/]+/" '("/" "a/a") '("b"))
+    (checks "/\"a\\/b\"/" '("a/b") '("ab"))
+    (check-exn (error-code "class-syntax") (lambda () (one "/[a/]+/")))
+    (check-exn (error-code "class-syntax") (lambda () (one "/\"a/b\"/"))))
+   (test-case
     "regular operators and code-point escapes"
     (checks "/[a-c]{2,3}/" '("aa" "abc" "ccc") '("a" "abcd" "dd"))
     (checks "/(\"ab\" | \"cd\")+/" '("ab" "cdab") '("a" "abcdx" ""))
@@ -79,6 +85,10 @@
      (lambda () (compile-classes (hash "letter" "\"a\"") #:caps small-caps))))
    (test-case
     "Unicode letters are pinned, multiple scripts and non-BMP included"
+    (define single (one "letter"))
+    (check-true (class-accepts? single "A"))
+    (check-false (class-accepts? single ""))
+    (check-false (class-accepts? single "AA"))
     (define letters (one "letter+"))
     (for
      ((text (in-list (list "Arbor" "İstanbul" "Ελλάδα" "東京" "अकर" (string (integer->char 66560))))))
@@ -90,6 +100,30 @@
     (check-equal?
      unicode-source-sha256
      "d62e5bab70ca74f099343f71224fa051cb1fdd61a1ab45c0488c44cfc0b6102e"))
+   (test-case
+    "canonical absolute paths keep component and global safety constraints"
+    (define path (one "canonical-path"))
+    (check-true (class-accepts? path "/"))
+    (check-false (class-accepts? path "/a/"))
+    (for
+     ((text (in-list '("/a" "/a/b" "/.config" "/..cache" "/..." "/東京" "/a b" "/a\\b"))))
+     (check-true (class-accepts? path text) text))
+    (for
+     ((text (in-list '("" "." ".." "relative" "a/b" "//" "/a//b" "/./a" "/a/../b" "/a/." "/a/.."))))
+     (check-false (class-accepts? path text) text))
+    (for
+     ((point (in-list '(0 10 160 8205 8232 8233))))
+     (check-false (class-accepts? path (string-append "/a" (string (integer->char point))))))
+    (check-exn
+     (error-code "class-reserved")
+     (lambda () (compile-classes (hash "canonical-path" "\"other\"") #:caps small-caps)))
+    (define narrower (one "/\\/a[0-9]+/"))
+    (check-false (class-difference-witness narrower path))
+    (define broad (one "/\\/.*/"))
+    (define counterexample (class-difference-witness broad path))
+    (check-true (string? counterexample))
+    (check-true (class-accepts? broad counterexample))
+    (check-false (class-accepts? path counterexample)))
    (test-case
     "the class alphabet excludes unsafe categories, ordinary space remains"
     (define any (one "/.*/"))

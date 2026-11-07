@@ -14,11 +14,13 @@
          (struct-out constructor)
          read-declarations
          check-program
+         line-accepts?
          emit-declarations
          declaration->jsexpr
          normalize-terms
          meta-language
          declaration-bound
+         declaration-check-bounds
          form-automata)
 
 (struct constructor (name signature primitive? fact? rule span ordinal) #:transparent)
@@ -51,12 +53,7 @@
 
 (define (fail code message span (data (hash))) (raise-typify code message #:span span #:data data))
 
-(define (trim-angle word)
-  (if (and (> (string-length word) 2) (string-prefix? word "<") (string-suffix? word ">"))
-    (substring word 1 (sub1 (string-length word)))
-    word))
-
-(define (words text) (map trim-angle (string-split text)))
+(define (words text) (string-split text))
 
 (define (class-run thunk span)
   (with-handlers
@@ -76,7 +73,7 @@
 (define current-reader-meta (make-parameter #f))
 
 (define (parts production span)
-  (define record (car (read-lines production #:file (src-span-file span))))
+  (define record (car (read-lines production #:file (src-span-file span) #:comment-prefix "")))
   (when (memq (line-record-kind record) '(blank comment unclassified))
     (fail "E_FORM" "A form must have a bang, colon or arrow shape" span))
   (values
@@ -217,6 +214,18 @@
 (define (ordered-constructors constructors)
   (sort (hash-values constructors) < #:key constructor-ordinal))
 
+(struct declaration-automata (fields whole checks) #:transparent)
+
+(define declaration-automata-cache (make-weak-hasheq))
+
+(define check-bounds-scope
+  "Recorded successful signature inclusion, delimiter and form overlap checks; automaton size and product-state upper bounds, not CPU steps or elapsed time")
+
+(define (declaration-check-bounds body)
+  (define cached (hash-ref declaration-automata-cache body #f))
+  (or (and cached (declaration-automata-checks cached))
+      (hash 'recorded #f 'scope check-bounds-scope)))
+
 (define (field-automaton classes candidate right?)
   (define template (if right? (form-right candidate) (form-left candidate)))
   (and template
@@ -249,9 +258,13 @@
            restricted))))
 
 (define (form-automata body candidate)
-  (values
-   (field-automaton (language-classes body) candidate #f)
-   (field-automaton (language-classes body) candidate #t)))
+  (define cached (hash-ref declaration-automata-cache body #f))
+  (define fields (and cached (hash-ref (declaration-automata-fields cached) candidate #f)))
+  (if fields
+    (values (car fields) (cdr fields))
+    (values
+     (field-automaton (language-classes body) candidate #f)
+     (field-automaton (language-classes body) candidate #t))))
 
 (define (read-declarations text #:file (file "<input>") #:meta (meta #f))
   (parameterize ((current-reader-meta meta)) (read-declarations/internal text file)))
@@ -329,6 +342,11 @@
   (define sees '())
   (define notes '())
   (define current-form #f)
+  (define signature-checks '())
+  (define delimiter-checks '())
+  (define overlap-checks '())
+  (define (record-signature! site entry)
+    (set! signature-checks (cons (hash-set entry 'site site) signature-checks)))
   (define (property! key value row)
     (when (hash-has-key? properties key)
       (fail
@@ -358,7 +376,7 @@
    (case kind
      ((class)
       (define key (capture-value row "name"))
-      (when (or (equal? key "letter") (hash-has-key? sources key))
+      (when (or (member key '("letter" "canonical-path")) (hash-has-key? sources key))
         (fail "E_CLASS_DUPLICATE" "The class is declared twice or reserved" span (hash 'name key)))
       (set! sources (hash-set sources key (capture-value row "value"))))
      ((cap)
@@ -553,7 +571,10 @@
         ((name (in-list (car (constructor-rule item))))
          (class-name (in-list (constructor-signature item))))
         (values name (hash-ref classes class-name)))
-       (constructor-ordinal item)))))
+       (constructor-ordinal item)
+       #:record-check
+       (lambda (entry)
+         (record-signature! (hash 'kind "rewrite" 'ordinal (constructor-ordinal item)) entry))))))
   (for
    ((pending (in-list pending-forms)) (index (in-naturals)))
    (define span (hash-ref pending 'span))
@@ -576,13 +597,26 @@
     (for
      ((a (in-list side)) (b (in-list (append (cdr side) (list #f)))))
      (when (and (slot? a) (string? b) (positive? (string-length b)))
-       (define witness (class-delimiter-witness (hash-ref classes (slot-name a)) b))
+       (define class (hash-ref classes (slot-name a)))
+       (define witness (class-delimiter-witness class b))
        (when witness
          (fail
           "E_DELIMITER_AMBIGUOUS"
           "A placeholder can contain its following delimiter"
           (slot-span a)
-          (hash 'delimiter b 'witness witness))))))
+          (hash 'delimiter b 'witness witness)))
+       (set! delimiter-checks
+         (cons
+          (hash
+           'form
+           index
+           'capture
+           (slot-name a)
+           'delimiter
+           b
+           'bounds
+           (class-check-count-bounds class #:literal b))
+          delimiter-checks)))))
    (define meaning (hash-ref pending 'meaning))
    (unless (and
             (hash-has-key? constructors (term-constructor meaning))
@@ -595,7 +629,9 @@
     (for/hash
      ((part (in-list slots)))
      (values (slot-name part) (hash-ref classes (slot-name part))))
-    #f)
+    #f
+    #:record-check
+    (lambda (entry) (record-signature! (hash 'kind "form" 'ordinal index) entry)))
    (set! forms
      (append
       forms
@@ -646,37 +682,51 @@
      caps
      rows
      opening))
+  (define fields
+    (for/hasheq
+     ((candidate (in-list forms)))
+     (values
+      candidate
+      (cons (field-automaton classes candidate #f) (field-automaton classes candidate #t)))))
   (define (form-language candidate)
+    (define pair (hash-ref fields candidate))
     (class-sequence
      (append
-      (list (field-automaton classes candidate #f))
+      (list (car pair))
       (case (form-kind candidate)
         ((colon) (list " : "))
         ((arrow) (list " -> "))
         ((bang) (list "!")))
-      (if (eq? (form-kind candidate) 'bang) '() (list (field-automaton classes candidate #t))))
+      (if (eq? (form-kind candidate) 'bang) '() (list (cdr pair))))
      #:name
      "form"))
   (define machines
-    (for/hash
-     ((candidate (in-list forms)))
-     (values (form-ordinal candidate) (form-language candidate))))
+    (for/hasheq ((candidate (in-list forms))) (values candidate (form-language candidate))))
   (for*
    ((earlier (in-list forms))
     (later (in-list forms))
     #:when
     (and (< (form-ordinal earlier) (form-ordinal later))
          (eq? (form-kind earlier) (form-kind later))))
-   (define witness
-     (class-overlap-witness
-      (hash-ref machines (form-ordinal earlier))
-      (hash-ref machines (form-ordinal later))))
+   (define left-machine (hash-ref machines earlier))
+   (define right-machine (hash-ref machines later))
+   (define witness (class-overlap-witness left-machine right-machine))
    (when witness
      (fail
       "E_FORM_OVERLAP"
       "Two forms accept the same line"
       (form-span later)
-      (hash 'earlier (form-source earlier) 'later (form-source later) 'witness witness))))
+      (hash 'earlier (form-source earlier) 'later (form-source later) 'witness witness)))
+   (set! overlap-checks
+     (cons
+      (hash
+       'earlier
+       (form-ordinal earlier)
+       'later
+       (form-ordinal later)
+       'bounds
+       (class-check-count-bounds left-machine right-machine))
+      overlap-checks)))
   (for*
    ((candidate (in-list forms))
     (pair (in-list (append (form-examples candidate) (form-defaults candidate)))))
@@ -695,9 +745,46 @@
    (unless (and hit (= (form-ordinal (car hit)) (form-ordinal candidate)))
      (fail "E_EXAMPLE_DISPATCH" "An example does not reach its intended form" (cdr pair)))
    (term-value (form-meaning candidate) (cdr hit) body))
+  (define checks
+    (hash
+     'recorded
+     #t
+     'scope
+     check-bounds-scope
+     'classes
+     (for/list
+      ((key (in-list (sort (hash-keys classes) string<?))))
+      (hash 'name key 'bounds (class-count-bounds (hash-ref classes key))))
+     'forms
+     (for/list
+      ((candidate (in-list forms)))
+      (define pair (hash-ref fields candidate))
+      (hash
+       'ordinal
+       (form-ordinal candidate)
+       'left
+       (class-count-bounds (car pair))
+       'right
+       (if (cdr pair) (class-count-bounds (cdr pair)) 'null)
+       'whole
+       (class-count-bounds (hash-ref machines candidate))))
+     'signature-inclusions
+     (reverse signature-checks)
+     'delimiters
+     (reverse delimiter-checks)
+     'overlaps
+     (reverse overlap-checks)))
+  (hash-set! declaration-automata-cache body (declaration-automata fields machines checks))
   body)
 
-(define (validate-term! expression constructors classes captures upper)
+(define (validate-term!
+         expression
+         constructors
+         classes
+         captures
+         upper
+         #:record-check
+         (record-check void))
   (define name (term-constructor expression))
   (define args (term-arguments expression))
   (define item (hash-ref constructors name #f))
@@ -740,12 +827,14 @@
         "A string-class position cannot receive a list-valued library call"
         (term-span argument)
         (hash 'constructor (term-constructor argument))))
-     (validate-term! argument constructors classes captures upper))
+     (validate-term! argument constructors classes captures upper #:record-check record-check))
     ((literal? argument) (void))
     (else (fail "E_TERM" "The term contains an invalid argument" (term-span expression)))))
   (when item
     (for
-     ((argument (in-list args)) (class-name (in-list (constructor-signature item))))
+     ((argument (in-list args))
+      (class-name (in-list (constructor-signature item)))
+      (index (in-naturals)))
      (when (and
             (literal? argument)
             (not (class-accepts? (hash-ref classes class-name) (literal-value argument))))
@@ -755,16 +844,27 @@
         (literal-span argument)
         (hash 'class class-name 'value (literal-value argument))))
      (when (and (capture? argument) (hash? captures))
-       (define witness
-         (class-difference-witness
-          (hash-ref captures (capture-name argument))
-          (hash-ref classes class-name)))
+       (define source-class (hash-ref captures (capture-name argument)))
+       (define target-class (hash-ref classes class-name))
+       (define witness (class-difference-witness source-class target-class))
        (when witness
          (fail
           "E_TERM_CLASS"
           "The capture class is not contained in the receiving argument class"
           (capture-span argument)
-          (hash 'capture (capture-name argument) 'class class-name 'witness witness)))))))
+          (hash 'capture (capture-name argument) 'class class-name 'witness witness)))
+       (record-check
+        (hash
+         'constructor
+         name
+         'argument
+         index
+         'capture
+         (capture-name argument)
+         'class
+         class-name
+         'bounds
+         (class-check-count-bounds source-class target-class)))))))
 
 (define (find-form body record)
   (for/or
@@ -772,6 +872,13 @@
    (define captures
      (form-captures (form-kind candidate) (form-left candidate) (form-right candidate) record))
    (and captures (captures-fit? captures (language-classes body)) (cons candidate captures))))
+
+(define (line-accepts? text body)
+  (and (not (regexp-match? #rx"[\r\n]" text))
+       (let ((record (car (read-lines text #:comment-prefix (language-comment body)))))
+         (if (memq (line-record-kind record) '(blank comment))
+           #t
+           (and (find-form body record) #t)))))
 
 (define (term-value expression captures body)
   (define (evaluate item)
@@ -1030,6 +1137,8 @@
     (language-notes body)
     'caps
     (language-caps body)
+    'checks
+    (declaration-check-bounds body)
     'declarations
     (for/list
      ((row (in-list (language-rows body))))

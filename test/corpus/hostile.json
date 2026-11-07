@@ -6,7 +6,8 @@
     "extraction": "literal ALL and FOR assignments; source code never executed",
     "translation": "seven ASCII consumer classes translated into quoted literals, slash patterns and bare references; segment and quoted are helpers",
     "blind": false,
-    "classNotation": "quoted literals, slash patterns, bare references and weakest except"
+    "classNotation": "quoted literals, slash patterns, bare references and weakest except",
+    "patternDelimiter": "first unescaped slash; literal slashes inside patterns are escaped"
   },
   "caps": {
     "states": 32768,
@@ -25,7 +26,7 @@
   ],
   "classes": {
     "segment": "/([A-Za-z0-9_+@-][A-Za-z0-9._+@-]* | \".\" [A-Za-z0-9_+@-][A-Za-z0-9._+@-]* | \"..\" [A-Za-z0-9._+@-]+)/",
-    "quoted": "/\"\\\"\" ([\\u0020-\\u0021\\u0023-\\u005B\\u005D-\\u007E] | \"\\\\\" [\\\"\\\\/] | \"\\\\u00\" ([2-6][0-9a-fA-F] | \"7\" [0-9a-eA-E]))* \"\\\"\"/",
+    "quoted": "/\"\\\"\" ([\\u0020-\\u0021\\u0023-\\u005B\\u005D-\\u007E] | \"\\\\\" [\\\"\\\\\\/] | \"\\\\u00\" ([2-6][0-9a-fA-F] | \"7\" [0-9a-eA-E]))* \"\\\"\"/",
     "path": "(\"/\" segment)+",
     "vault": "segment (\"/\" segment)*",
     "days": "/[1-9][0-9]*/",

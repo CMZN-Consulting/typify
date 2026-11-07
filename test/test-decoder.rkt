@@ -434,8 +434,7 @@
        (set! total (add1 total))
        (when (member 'delimiter-insertion (hash-ref cases text))
          (set! delimiter-count (add1 delimiter-count)))
-       (define reader-accepts?
-         (with-handlers ((exn:fail:typify? (lambda (_) #f))) (check-program text body) #t))
+       (define reader-accepts? (line-accepts? text body))
        (define oracle-accepts? (gbnf-accepts? oracle text))
        (define context (hash 'family (hash-ref family 'id) 'input text))
        (check! oracle-accepts? reader-accepts? context)

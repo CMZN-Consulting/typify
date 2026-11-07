@@ -22,6 +22,7 @@
     "test/test-language.rkt"
     "test/test-language-edge.rkt"
     "test/test-decoder.rkt"
+    "test/test-import-corpus.rkt"
     "test/test-meta-mutation.rkt"))
 
 (define gate-names
@@ -138,6 +139,10 @@
                (natural? (field evidence 'outside-formats))
                (>= (field evidence 'outside-formats) 5)
                (positive? (field evidence 'delimiter-insertions))))
+         ((structural-round-trip)
+          (and (eq? (field evidence 'complete) #t)
+               (positive? (field evidence 'public-declarations))
+               (positive? (field evidence 'blind-declarations))))
          ((meta-mutation)
           (define seeded (field evidence 'seeded))
           (define killed (field evidence 'killed))
@@ -224,11 +229,39 @@
     'dependencies
     dependencies)))
 
-(define (run-kernel-check (given-root (current-directory)))
+(define (run-kernel-check (given-root (current-directory)) #:checkpoint (checkpoint #f))
   (unless (equal? (getenv "GITHUB_ACTIONS") "true")
     (error 'ci "the full suite runs on GitHub Actions only"))
   (define root (simplify-path (path->complete-path given-root)))
-  (define tests (for/list ((name test-modules)) (run-test root name)))
+  (define completed '())
+  (define (save-progress phase)
+    (when checkpoint
+      (call-with-output-file
+       checkpoint
+       (lambda (output)
+         (write-json
+          (json-safe
+           (hasheq
+            'schema
+            "typify-ci-v1"
+            'phase
+            phase
+            'kernel
+            (hasheq 'pass #f 'tests completed)
+            'stage1
+            (hasheq 'pass #f 'status "measurement-incomplete")))
+          output)
+         (newline output))
+       #:exists
+       'truncate/replace)))
+  (define tests
+    (for/list
+     ((name test-modules))
+     (save-progress name)
+     (define result (run-test root name))
+     (set! completed (append completed (list result)))
+     (save-progress "between-suites")
+     result))
   (define formatting (format-repository root))
   (define publication (check-repository root))
   (define package (package-metadata root))
@@ -295,7 +328,7 @@
          (hasheq 'pass #f 'error (exn-message error))
          'stage1
          (hasheq 'pass #f 'status "kernel-unavailable")))))
-    (run-kernel-check)))
+    (run-kernel-check #:checkpoint (and (pair? arguments) (cadr arguments)))))
  (when (pair? arguments)
    (call-with-output-file
     (cadr arguments)

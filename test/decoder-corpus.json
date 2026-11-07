@@ -32,7 +32,7 @@
         "syntax": "BindPaths=source:destination"
       },
       "restriction": "One source/destination pair, bounded absolute ASCII paths, no options or expansion.",
-      "classes": [["source", "/[/][a-z/]{1,23}/"], ["destination", "/[/][a-z/]{1,23}/"]],
+      "classes": [["source", "/\\/[a-z\\/]{1,23}/"], ["destination", "/\\/[a-z\\/]{1,23}/"]],
       "production": "BindPaths=<source>:<destination>",
       "slots": ["source", "destination"],
       "examples": ["BindPaths=/srv/source:/run/target", "BindPaths=/data/one:/data/two"],
@@ -77,7 +77,7 @@
         "syntax": "name:password:UID:GID:GECOS:directory:shell"
       },
       "restriction": "Synthetic account records with an x marker, bounded decimal IDs, display labels, synthetic /srv directories and two shell names. No host account data is read or written.",
-      "classes": [["account", "/[a-z][a-z0-9_-]{0,11}/"], ["password", "\"x\""], ["uid", "/[0-9]{1,5}/"], ["gid", "uid"], ["label", "/[A-Za-z][A-Za-z ]{0,15}/"], ["directory", "/[/]srv[/][a-z]{1,12}/"], ["shell", "/[/]bin[/](sh|bash)/"]],
+      "classes": [["account", "/[a-z][a-z0-9_-]{0,11}/"], ["password", "\"x\""], ["uid", "/[0-9]{1,5}/"], ["gid", "uid"], ["label", "/[A-Za-z][A-Za-z ]{0,15}/"], ["directory", "/\\/srv\\/[a-z]{1,12}/"], ["shell", "/\\/bin\\/(sh|bash)/"]],
       "production": "<account>:<password>:<uid>:<gid>:<label>:<directory>:<shell>",
       "slots": ["account", "password", "uid", "gid", "label", "directory", "shell"],
       "examples": ["sample:x:1000:1000:Sample User:/srv/sample:/bin/sh", "guest:x:2000:2000:Guest:/srv/guest:/bin/bash"],
