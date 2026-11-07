@@ -1,8 +1,15 @@
-# Typify v1 Blind Verdict Corpus (v3) — MANIFEST
+# Typify v1 Blind Verdict Corpus (v4) — MANIFEST
 
-**Corpus Revision**: `v3` (updated for the `07:44:34Z`, `07:47:16Z`, `07:51:56Z`, `07:53:58Z`, `07:55:24Z` `D1`–`D13`, `08:08:33Z`, `08:14:24Z`, and `08:47:08Z` corrections to `typify-v1-definition-2026-11-07.md`).
+**Corpus Revision**: `v4` (updated for the `10:52:45Z` `D14`–`D19` corrections to `typify-v1-definition-2026-11-07.md` and reconciling `039`, `097`, and `099`).
 
-This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `08:47:08Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `10:52:45Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+
+## Cases Changed in `v4` (`10:52:45Z` Corrections `D14`–`D19` & Corpus Reconciliations)
+
+- **`039-hostile-label-edge-spaces-2`**: Reconciled `declarations.typify` with the invocation (`UntrimmedCaptureAudit`) and `program.typify` (`item : [ a ]` and `label : (...)`) by declaring `UntrimmedCaptureAudit` with classes `item` and `label` and forms `form : item : [<item>]` and `form : label : (<label>)`.
+- **`097-err-rule-duplicate-for-constructor`**: Updated `E_RULE_DUPLICATE`'s `data.rule` field to carry the production after the `rule :` introducer (`"action <x> -> prim <x> ; prim <x>"`) per `D15`.
+- **`099-emit-json-and-gbnf-catalog`**: Updated `gbnf_assertions.required_nonterminals` in `expected.json` to `["root"]` only, keeping the root and membership assertions and removing non-root rule names per `06:05Z` (`J`) and `10:52:45Z`.
+- **Verified across `001`–`100` against `D14`–`D19`**: Confirmed all other cases (`003`–`010`, `012`, `018`, `021`, `022`, `024`, `031`–`034`, `051`–`054`, `061`, `062`, `076`, `096`, `098`) already match `D14` (recovery without cascades), `D15` (payload equations for `actual`, `form`, and `rule`), `D16` (one diagnostic per cycle at its earliest declaring line), `D17` (depth counted from 0), `D18` (use-site arity as `E_TERM_CLASS` and rule LHS arity as `E_DECLARATION`), and `D19` (quoted literals in terms decoded as R decodes them).
 
 ## Cases Changed in `v3` (`07:44Z`–`08:47Z` Corrections & Decisions `D1`–`D13`)
 

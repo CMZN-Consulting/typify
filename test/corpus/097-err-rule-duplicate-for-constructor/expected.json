@@ -56,7 +56,7 @@
         },
         "data": {
           "constructor": "action",
-          "rule": "rule : action <x> -> prim <x> ; prim <x>"
+          "rule": "action <x> -> prim <x> ; prim <x>"
         },
         "provenance": [
           "H",
@@ -83,7 +83,7 @@
       },
       "data": {
         "constructor": "action",
-        "rule": "rule : action <x> -> prim <x> ; prim <x>"
+        "rule": "action <x> -> prim <x> ; prim <x>"
       },
       "provenance": [
         "H",

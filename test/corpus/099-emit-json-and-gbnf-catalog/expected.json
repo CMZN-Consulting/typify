@@ -92,9 +92,7 @@
       "gbnf_assertions": {
         "schematic_note": "Under 06:05Z J, the 4-line GBNF sample in 06:00Z is schematic; the emitter preserves the refused code points of F, the caps, and exact line formation (including the reserved '?' line), so exact GBNF bytes are not fixed by the definition.",
         "required_nonterminals": [
-          "root",
-          "category",
-          "title"
+          "root"
         ],
         "accepts_lines": [
           "item : journal = Market Research",
