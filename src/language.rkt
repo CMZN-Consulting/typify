@@ -246,7 +246,18 @@
    (parts/internal production span)))
 
 (define (parts/internal production span)
-  (define record (car (read-lines production #:file (src-span-file span) #:comment-prefix "")))
+  (define classified (car (read-lines production #:file (src-span-file span) #:comment-prefix "")))
+  (define record
+    (if (and (eq? (line-record-kind classified) 'unclassified)
+             (string-suffix? production "!")
+             (not (regexp-match? #rx"[:\r\n]|->" production))
+             (regexp-match? #rx"<" production))
+      (struct-copy
+       line-record
+       classified
+       (kind 'bang)
+       (left (substring production 0 (sub1 (string-length production)))))
+      classified))
   (when (memq (line-record-kind record) '(blank comment unclassified))
     (declaration-fail "syntax" production "A form must have a bang, colon or arrow shape" span))
   (values
@@ -317,6 +328,16 @@
       (hash 'kind "result" 'constructor name 'class class-name 'actual value)))))
 
 (define (meta-row record)
+  (when (and
+         (not (current-reader-meta))
+         (eq? (line-record-kind record) 'colon)
+         (member (line-record-left record) '("term" "primitive"))
+         (regexp-match? #px"^[^:]+:[ \t]*$" (line-record-right record)))
+    (declaration-fail
+     "syntax"
+     (line-record-raw record)
+     "A nullary constructor has no trailing colon"
+     (line-record-span record)))
   (define-values
    (classified-hit class-failure)
    (if (current-reader-meta)
@@ -1073,7 +1094,7 @@
        (for
         ((side (in-list (filter values (list left right)))))
         (for
-         ((a (in-list side)) (b (in-list (append (cdr side) (list #f)))))
+         ((a (in-list side)) (b (in-list (if (pair? side) (append (cdr side) (list #f)) '()))))
          (when (and (slot? a) (string? b) (positive? (string-length b)))
            (define class (hash-ref classes (slot-name a)))
            (define witness (class-delimiter-witness class b))

@@ -198,6 +198,14 @@
       (thunk)
       "accepted")
      code))
+  (define (reject-all thunk codes)
+    (check
+     (with-handlers
+      ((exn:fail:typify?
+        (lambda (error) (map diagnostic-code (exn:fail:typify-diagnostics error)))))
+      (thunk)
+      '("accepted"))
+     codes))
   (define declarations (read-declarations catalog #:file "catalog-language.typify"))
   (define body (hash-ref declarations "Catalog"))
   (define result (check-program "item : journal = Market Research" body))
@@ -211,8 +219,10 @@
   (check
    (hash-ref (car (hash-ref (declaration->jsexpr body) 'forms)) 'examples)
    '("item : book = Algebra"))
-  (reject (lambda () (check-program "item : pamphlet = Algebra" body)) "E_CLASS")
-  (reject (lambda () (check-program "item : book = a=b" body)) "E_CLASS")
+  (reject-all
+   (lambda () (check-program "item : pamphlet = Algebra" body))
+   '("E_PROGRAM_COUNT" "E_CLASS"))
+  (reject-all (lambda () (check-program "item : book = a=b" body)) '("E_PROGRAM_COUNT" "E_CLASS"))
   (reject (lambda () (check-program "" body)) "E_PROGRAM_COUNT")
   (reject
    (lambda () (read-declarations (string-replace catalog "#lang typify" "typify : 1")))

@@ -33,12 +33,14 @@
       (error 'test-bounds "~a: expected ~s; received ~s" context expected actual)))
   (define (request arguments) (call-with-values (lambda () (run-command arguments)) list))
   (define (reject arguments code)
+    (define expected (if (list? code) code (list code)))
     (define observed
       (with-handlers
-       ((exn:fail:typify? (lambda (error) (diagnostic-code (exn:fail:typify-diagnostic error)))))
+       ((exn:fail:typify?
+         (lambda (error) (map diagnostic-code (exn:fail:typify-diagnostics error)))))
        (request arguments)
        "accepted"))
-    (check observed code (format "native refusal for ~s" arguments)))
+    (check observed expected (format "native refusal for ~s" arguments)))
   (define executable
     (or (find-executable-path "racket") (error 'test-bounds "Racket executable is unavailable")))
   (define (execute arguments)
@@ -136,7 +138,9 @@
      (reject (list "emit" "Typify" "--unknown") "E_USAGE")
      (reject (list "check" declaration-path "--unknown") "E_USAGE")
      (reject (list "check" declaration-path "--gbnf") "E_USAGE")
-     (reject (list "check" declaration-path "Zeta" invalid-path "--bounds") "E_CLASS")
+     (reject
+      (list "check" declaration-path "Zeta" invalid-path "--bounds")
+      '("E_PROGRAM_COUNT" "E_CLASS"))
      (reject (list "check" declaration-path "Missing" program-path "--bounds") "E_USAGE")
      (define usage (execute (list "emit" "Typify" "--bounds" "--json")))
      (check (hash-ref usage 'exit) 2 "bounds on emit has the usage exit status")

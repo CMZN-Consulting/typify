@@ -90,7 +90,13 @@
         'passed
         0
         'failed
-        1
+        0
+        'contract
+        #f
+        'aborted
+        #t
+        'abort-reason
+        "suite-raised"
         'error
         (exn-message error)
         'detail
@@ -123,13 +129,17 @@
     'pass
     (and valid? (zero? failed))
     'count
-    (if (natural? count) count 0)
+    (if valid? count 0)
     'passed
-    (if (natural? passed) passed 0)
+    (if valid? passed 0)
     'failed
-    (if valid? failed 1)
+    (if valid? failed 0)
     'contract
     valid?
+    'aborted
+    (not valid?)
+    'abort-reason
+    (if valid? 'null "invalid-result-contract")
     'result
     result
     'stdout
@@ -336,6 +346,8 @@
          (hash-ref publication 'pass)
          (hash-ref package 'pass)
          (andmap (lambda (test) (hash-ref test 'pass)) tests)))
+  (define aborted-suites
+    (for/list ((test (in-list tests)) #:when (field test 'aborted #f)) (hash-ref test 'name)))
   (json-safe
    (hasheq
     'schema
@@ -363,7 +375,11 @@
      'passed
      (apply + (map (lambda (test) (hash-ref test 'passed)) tests))
      'failed
-     (apply + (map (lambda (test) (hash-ref test 'failed)) tests)))
+     (apply + (map (lambda (test) (hash-ref test 'failed)) tests))
+     'aborted-suite-count
+     (length aborted-suites)
+     'aborted-suites
+     aborted-suites)
     'stage1
     (hasheq
      'pass

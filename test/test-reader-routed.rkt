@@ -37,10 +37,48 @@
     (define diagnostics (native-errors rows))
     (define selected
       (for/first ((item (in-list diagnostics)) #:when (equal? (diagnostic-code item) code)) item))
-    (check (and selected (diagnostic-code selected)) code "a native refusal exists")
+    (check
+     (and selected (diagnostic-code selected))
+     code
+     (hash 'rows rows 'observed-codes (map diagnostic-code diagnostics)))
     (check (diagnostic-data-projection code (diagnostic-data selected)) data "refusal data")
     selected)
   (define simple (body basic-rows))
+  (define dynamic-bang
+    (body
+     '("is : text = /.*/" "primitive : output : text" "form : <text>!" "does : output <text>")))
+  (check
+   (hash-ref (check-program "123-name!" dynamic-bang) 'terms)
+   '(("output" "123-name"))
+   "a declared bang production may contain a placeholder")
+  (define-values
+   (dynamic-left dynamic-right)
+   (form-automata dynamic-bang (car (language-forms dynamic-bang))))
+  (for
+   ((verb (in-list '("abc" "123-name"))))
+   (check (class-accepts? dynamic-left verb) #t "emitted dynamic bang accepts verb words")
+   (check
+    (line-accepts? (string-append verb "!") dynamic-bang)
+    #t
+    "dynamic bang reader accepts verb words"))
+  (for
+   ((verb (in-list '("_bad" "two words" "-bad" ""))))
+   (check (class-accepts? dynamic-left verb) #f "emitted dynamic bang rejects invalid words")
+   (check
+    (line-accepts? (string-append verb "!") dynamic-bang)
+    #f
+    "dynamic bang reader rejects invalid words"))
+  (define empty-argument (body '("primitive : clear" "form : clear :" "does : clear")))
+  (check
+   (hash-ref (check-program "clear :" empty-argument) 'terms)
+   '(("clear"))
+   "an empty colon argument is a legal form")
+  (check (line-accepts? "clear :" empty-argument) #t "formation accepts an empty colon argument")
+  (define-values
+   (empty-left empty-right)
+   (form-automata empty-argument (car (language-forms empty-argument))))
+  (check (class-accepts? empty-left "clear") #t "emitted empty-argument verb")
+  (check (class-accepts? empty-right "") #t "emitted empty-argument field")
   (check
    (hash-ref (check-program "? : item\nitem : [a]\n? : 123-name\n" simple) 'terms)
    '(("output" "a"))

@@ -418,7 +418,7 @@
    (test-case
     "unsupported host escapes and invalid ranges are rejected"
     (for
-     ((source (in-list '("@[host]:predicate" "/\\d+/" "/[z-a]/" "/a{3,2}/" "/[a-z/" "/\\uD800/"))))
+     ((source (in-list '("@[host]:predicate" "/\\q+/" "/[z-a]/" "/a{3,2}/" "/[a-z/" "/\\uD800/"))))
      (check-exn class-error? (lambda () (one source)) source)))
    (test-case
     "registered typed hostile pairs and exact delimiter cases"

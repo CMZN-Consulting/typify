@@ -17,9 +17,9 @@
         "syntax": "field-name colon optional-whitespace field-value optional-whitespace"
       },
       "restriction": "Alphabetic/hyphen field names and bounded alphabetic, space and hyphen values. The Typify kernel's colon trimming is not an HTTP message parser.",
-      "classes": [["field", "/[A-Za-z][A-Za-z-]{0,15}/"], ["value", "/[A-Za-z][A-Za-z -]{0,23}/"]],
-      "production": "<field> : <value>",
-      "slots": ["field", "value"],
+      "classes": [["field", "/[A-Za-z][A-Za-z-]{0,15}/"], ["field-content", "/[A-Za-z][A-Za-z -]{0,23}/"]],
+      "production": "<field> : <field-content>",
+      "slots": ["field", "field-content"],
       "examples": ["Example-Field: sample", "Sample: plain value"],
       "refusals": ["Example-Field", "Example-Field: 123"]
     },

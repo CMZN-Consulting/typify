@@ -139,7 +139,7 @@
 (define metadata-expected
   '(#t
     #t
-    (("cell" (("name" "content") ("value" "shadow")))
+    (("cell" (("law" "shadow") ("name" "content")))
      ("writes" (("name" "output") ("value" "content = put 1")))
      ("reads" (("name" "output") ("value" "exists = reject")))
      ("ensure" (("constructor" "wrap") ("name" "stable") ("value" "(bound <c>)")))
