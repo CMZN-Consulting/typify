@@ -983,6 +983,9 @@
   (append transitions (if (null? missing) '() (list (edge missing #f)))))
 
 (define (class-difference-witness left right)
+  (if (and (compiled-class? left) (eq? left right)) #f (class-difference-search left right)))
+
+(define (class-difference-search left right)
   (define a (bounded-class-machine left))
   (define b (bounded-class-machine right))
   (search-witness

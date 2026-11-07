@@ -170,6 +170,7 @@
     "overlap and difference are exact products with concrete witnesses"
     (define left (one "/[a-c]+/"))
     (define right (one "/[c-e]+/"))
+    (check-false (class-difference-witness left left))
     (define overlap (class-overlap-witness left right))
     (check-true (string? overlap))
     (check-true (class-accepts? left overlap))
