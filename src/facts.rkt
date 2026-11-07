@@ -14,6 +14,9 @@
 
 (define fact-path-class (delay (hash-ref (compile-classes (hash)) "canonical-path")))
 
+(define (canonical-fact-path? value)
+  (and (string? value) (class-accepts? (force fact-path-class) value)))
+
 (define (portable path)
   (define raw (if (path? path) (path->string path) path))
   (define text (if (eq? (system-type 'os) 'windows) (string-replace raw "\\" "/") raw))
@@ -31,11 +34,12 @@
    (hash 'path path)))
 
 (define (validate-facts data #:path (path "<facts>"))
-  (define (canonical? value) (and (string? value) (class-accepts? (force fact-path-class) value)))
   (unless (and
            (hash? data)
            (equal? (hash-ref data 'collector #f) "typify 1.0")
-           (canonical? (hash-ref data 'root #f))
+           (canonical-fact-path? (hash-ref data 'root #f))
+           (or (not (hash-has-key? data 'omitted))
+               (exact-positive-integer? (hash-ref data 'omitted)))
            (list? (hash-ref data 'facts #f)))
     (facts-error path))
   (define seen (make-hash))
@@ -46,7 +50,7 @@
             (member (hash-ref item 'fact #f) fact-names)
             (list? (hash-ref item 'args #f))
             (= (length (hash-ref item 'args)) 1)
-            (andmap canonical? (hash-ref item 'args))
+            (andmap canonical-fact-path? (hash-ref item 'args))
             (or (not (hash-has-key? item 'value))
                 (boolean? (hash-ref item 'value))
                 (string? (hash-ref item 'value)))
@@ -104,7 +108,14 @@
 
 (define (collect-facts given-root)
   (define root (simplify-path (path->complete-path given-root) #f))
+  (unless (canonical-fact-path? (portable root))
+    (raise-typify
+     "E_USAGE"
+     "The normalized facts root must be a canonical path"
+     #:data
+     (hash 'actual (if (path? given-root) (path->string given-root) given-root))))
   (define entries '())
+  (define omitted 0)
   (define (file-error path)
     (raise-typify
      "E_FILE"
@@ -123,11 +134,14 @@
      (when type
        (define link? (or (link-exists? path) (memq type '(link directory-link))))
        (define metadata (file-or-directory-stat path #t))
-       (add! "exists" path)
-       (when link? (add! "symlink" path (path->string (resolve-path path)) #t))
-       (when (and (eq? type 'directory) (not link?)) (add! "directory" path))
-       (add! "mode" path (octal-mode (hash-ref metadata 'mode)) #t)
-       (add! "owner" path (number->string (hash-ref metadata 'user-id)) #t)
+       (cond
+        ((canonical-fact-path? (portable path))
+         (add! "exists" path)
+         (when link? (add! "symlink" path (path->string (resolve-path path)) #t))
+         (when (and (eq? type 'directory) (not link?)) (add! "directory" path))
+         (add! "mode" path (octal-mode (hash-ref metadata 'mode)) #t)
+         (add! "owner" path (number->string (hash-ref metadata 'user-id)) #t))
+        (else (set! omitted (add1 omitted))))
        (when (and (eq? type 'directory) (not link?))
          (when (link-exists? path) (file-error path))
          (for
@@ -136,7 +150,8 @@
   (unless (file-or-directory-type root #f) (file-error root))
   (walk root)
   (define ordered (sort entries string<? #:key canonical-json))
+  (define data (hash 'collector "typify 1.0" 'root (portable root) 'facts ordered))
   (validate-facts
-   (hash 'collector "typify 1.0" 'root (portable root) 'facts ordered)
+   (if (positive? omitted) (hash-set data 'omitted omitted) data)
    #:path
    (portable root)))

@@ -1,8 +1,13 @@
-# Typify v1 Blind Verdict Corpus (v7) — MANIFEST
+# Typify v1 Blind Verdict Corpus (v8) — MANIFEST
 
-**Corpus Revision**: `v7` (updated for the `14:17:06Z` and `14:28:59Z` corrections to `typify-v1-definition-2026-11-07.md`).
+**Corpus Revision**: `v8` (updated for the `15:38:57Z`, `15:45:11Z`, and `15:48:46Z` corrections to `typify-v1-definition-2026-11-07.md`).
 
-This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `14:28:59Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `15:48:46Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+
+## Cases Changed in `v8` (`15:38:57Z` & `15:45:11Z` Corrections)
+
+- **`064-tree-present-and-slots`**, **`065-tree-optional-defaulted`**, **`066-tree-optional-absent-empty`**, and **`067-err-tree-required-missing`** (`declarations.typify`): Split `sees : Config Notes` into two lines (`sees : Config` and `sees : Notes`) per `15:38:57Z` item 1 (a `sees` line names one body; several bodies take several lines).
+- **`094-rule-context-lookup-and-program-guard`** (`declarations.typify`, `expected.json`): Carried template placeholder `<svc>` of `file : services/<svc>/mounts.typify` through `ServiceMount`'s primitive, rule, and partitioned put (`primitive : bind : svc path path`, `writes : bind : mounts = put 2`, `rule : mount-rel <g> <s> -> bind <svc> (join (context base-dir) <s>) (join (context base-dir) <s>)`) and updated `expected.json`'s `plan` (`["bind", "api", "/mounts/root/cache", "/mounts/root/cache"]`) and `state.mounts` key (`["api", "/mounts/root/cache"]`) per `13:33:53Z` item 1, `15:38:57Z` item 3, and `15:45:11Z` item 4.
 
 ## Cases Changed in `v7` (`14:17:06Z` & `14:28:59Z` Corrections)
 

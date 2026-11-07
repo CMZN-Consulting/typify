@@ -20,13 +20,13 @@ sees : RootConfig
 is : svc = /[a-z][a-z0-9-]*/
 is : seg = /[a-z0-9._-]+/ except "." | ".."
 is : path = "/" | ("/" seg)+
-primitive : bind : path path
-writes : bind : mounts = put 1
+primitive : bind : svc path path
+writes : bind : mounts = put 2
 cell : mounts = shadow stacking
 term : mount-rel : path seg
 guard : mount-rel = exists
 form : mount-rel : <path> <seg>
 does : mount-rel <path> <seg>
 example : mount-rel : /mounts/root cache
-rule : mount-rel <g> <s> -> bind (join (context base-dir) <s>) (join (context base-dir) <s>)
+rule : mount-rel <g> <s> -> bind <svc> (join (context base-dir) <s>) (join (context base-dir) <s>)
 end!

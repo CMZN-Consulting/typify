@@ -75,6 +75,7 @@
         "plan": [
           [
             "bind",
+            "api",
             "/mounts/root/cache",
             "/mounts/root/cache"
           ]
@@ -88,6 +89,7 @@
       "mounts": [
         {
           "key": [
+            "api",
             "/mounts/root/cache"
           ],
           "value": [
@@ -137,6 +139,7 @@
       "plan": [
         [
           "bind",
+          "api",
           "/mounts/root/cache",
           "/mounts/root/cache"
         ]
@@ -150,6 +153,7 @@
     "mounts": [
       {
         "key": [
+          "api",
           "/mounts/root/cache"
         ],
         "value": [
@@ -205,6 +209,7 @@
             "plan": [
               [
                 "bind",
+                "api",
                 "/mounts/root/cache",
                 "/mounts/root/cache"
               ]
@@ -218,6 +223,7 @@
           "mounts": [
             {
               "key": [
+                "api",
                 "/mounts/root/cache"
               ],
               "value": [

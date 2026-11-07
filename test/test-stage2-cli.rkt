@@ -240,6 +240,60 @@
        (hash-ref (diagnostic-data mismatch) 'actual)
        program
        "a template mismatch names the path as given"))
+     (define library-failure
+       (string-join
+        '("#lang typify"
+          "declare : Failure"
+          "primitive : output : canonical-path"
+          "effect : output = external"
+          "form : parent : <canonical-path>"
+          "does : output (parent <canonical-path>)"
+          "end!")
+        "\n"))
+     (write-declaration library-failure)
+     (write-program "parent : /")
+     (define failed-library (execute (list "plan" declarations "Failure" program "--json")))
+     (define failed-library-json (string->jsexpr (hash-ref failed-library 'stdout)))
+     (check (hash-ref failed-library 'exit) 1 "library refusal keeps its exit status")
+     (check
+      (hash-ref failed-library-json 'bound)
+      (hash 'c 1 'n 1 'limit 1)
+      "a failed standalone plan preserves its declaration and input bound")
+     (check
+      (map (lambda (item) (hash-ref item 'code)) (hash-ref failed-library-json 'diagnostics))
+      '("E_LIBRARY_PARENT")
+      "bound retention preserves the native library diagnostic")
+     (write-declaration
+      (string-replace library-failure "declare : Failure" "declare : Failure\nfile : data.typify"))
+     (define failed-tree (execute (list "plan" declarations (path->string root) "--json")))
+     (check
+      (hash-ref (string->jsexpr (hash-ref failed-tree 'stdout)) 'bound)
+      (hash 'c 1 'n 1 'limit 1)
+      "a failed root plan retains bounds from the already-read tree")
+     (write-declaration
+      (string-join
+       '("#lang typify"
+         "declare : FuelFailure"
+         "primitive : output : canonical-path"
+         "effect : output = external"
+         "term : walk : canonical-path"
+         "fuel : walk = 2"
+         "rule : walk <p> -> (each <a> in (ancestors <p>) (output <a>))"
+         "form : walk : <canonical-path>"
+         "does : walk <canonical-path>"
+         "end!")
+       "\n"))
+     (write-program "walk : /a/b/c")
+     (define failed-fuel (execute (list "plan" declarations "FuelFailure" program "--json")))
+     (define failed-fuel-json (string->jsexpr (hash-ref failed-fuel 'stdout)))
+     (check
+      (hash-ref failed-fuel-json 'bound)
+      (hash 'c 2 'n 1 'limit 2)
+      "a fuel refusal retains its independently known static bound")
+     (check
+      (map (lambda (item) (hash-ref item 'code)) (hash-ref failed-fuel-json 'diagnostics))
+      '("E_RULE_FUEL")
+      "bound retention preserves fuel refusal")
      (write-declaration
       (string-join
        '("#lang typify"
@@ -273,6 +327,10 @@
        "every implemented command refuses ambiguous lookups before opening its input"))
      (define refused-root (execute (list "plan" declarations absent "--json")))
      (define refused-root-json (string->jsexpr (hash-ref refused-root 'stdout)))
+     (check
+      (hash-ref refused-root-json 'bound)
+      'null
+      "a declaration error has null bounds rather than a stale earlier invocation bound")
      (check (hash-has-key? refused-root-json 'skips) #f "a failed root plan has no top-level skips")
      (check
       (hash-has-key? refused-root-json 'recorded)

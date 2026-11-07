@@ -766,6 +766,10 @@
     (expression-arity-fail expression "string string"))
   (when (and (equal? name "clean") (not (= (length args) 2)))
     (expression-arity-fail expression "canonical-path string"))
+  (when (and
+         (member name '("exists" "directory" "symlink" "mode" "owner"))
+         (not (= (length args) 1)))
+    (expression-arity-fail expression "canonical-path"))
   (when (member name state-predicate-names)
     (unless (and
              (pair? args)
@@ -2195,14 +2199,14 @@
       (length args))))
   (define model (current-partition-model))
   (define write (and model (hash-ref (compiled-model-writes model) name #f)))
-  (when (and
-         write
-         (model-cell-stacking? (hash-ref (compiled-model-cells model) (model-write-cell write))))
+  (when write
     (define partitions (length (current-template-names)))
-    (unless (if
-             (eq? (model-write-operation write) 'put)
-             (= (model-write-width write) (add1 partitions))
-             (<= (model-write-width write) (add1 partitions)))
+    (when (and
+           (model-cell-stacking? (hash-ref (compiled-model-cells model) (model-write-cell write)))
+           (not
+            (if (eq? (model-write-operation write) 'put)
+              (= (model-write-width write) (add1 partitions))
+              (<= (model-write-width write) (add1 partitions)))))
       (declaration-fail
        "partition"
        (term-source expression)
@@ -2672,14 +2676,9 @@
                        (if (constructor-primitive? item)
                          (if write (model-write-width write) 0)
                          (min 1 (length arguments))))
-                      (partitioned?
-                       (and write
-                            (positive? width)
-                            (pair? (language-template-names body))
-                            (model-cell-stacking?
-                             (hash-ref (compiled-model-cells model) (model-write-cell write))))))
+                      (partition-width (if write (length (language-template-names body)) 0)))
                  (for/list
-                  ((index (in-list (if partitioned? (list (sub1 width)) (range width)))))
+                  ((index (in-range partition-width width)))
                   (receive index (list-ref arguments index))))
                (for/list
                 ((argument (in-list (term-arguments guard))))
@@ -2798,6 +2797,12 @@
   (define ensures '())
   (define skips '())
   (define normal-forms '())
+  (define (suppressed-constructor expression)
+    (define args (term-arguments expression))
+    (cond
+     ((equal? (term-constructor expression) "if") (suppressed-constructor (cadr args)))
+     ((equal? (term-constructor expression) "each") (suppressed-constructor (cadddr args)))
+     (else (term-constructor expression))))
   (define (expression-value expression bindings origin #:sort (sort "value"))
     (evaluate-rule-expression
      body
@@ -2840,7 +2845,17 @@
         (expand-effect (cadr args) bindings carrier fuel origin scope scope-constructor)
         (set! skips
           (cons
-           (hash 'constructor carrier 'fact fact-name 'args fact-args 'reason "if" 'origin origin)
+           (hash
+            'constructor
+            (suppressed-constructor (cadr args))
+            'fact
+            fact-name
+            'args
+            fact-args
+            'reason
+            "if"
+            'origin
+            origin)
            skips))))
      ((equal? name "each")
       (define observed #f)

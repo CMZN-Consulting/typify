@@ -224,7 +224,7 @@
      ((text '("a" "a/b" ".hidden" "a..b" "α/β")))
      (check-true (class-accepts? relative text) text))
     (for
-     ((text '("" "/" "/a" "a/" "a//b" "." ".." "a/./b" "a/../b")))
+     ((text '("" "/" "/a" "a/" "a//b" "." ".." "a/./b" "a/../b" "a b/c")))
      (check-false (class-accepts? relative text) text))
     (check-equal? (class->description relative) (hash 'ref "relative-path"))
     (check-exn
@@ -260,10 +260,26 @@
     (check-true (class-accepts? path "/"))
     (check-false (class-accepts? path "/a/"))
     (for
-     ((text (in-list '("/a" "/a/b" "/.config" "/..cache" "/..." "/東京" "/a b" "/a\\b"))))
+     ((text (in-list '("/a" "/a/b" "/.config" "/..cache" "/..." "/東京" "/a\\b"))))
      (check-true (class-accepts? path text) text))
     (for
-     ((text (in-list '("" "." ".." "relative" "a/b" "//" "/a//b" "/./a" "/a/../b" "/a/." "/a/.."))))
+     ((text
+       (in-list
+        '(""
+          "."
+          ".."
+          "relative"
+          "a/b"
+          "//"
+          "/a//b"
+          "/./a"
+          "/a/../b"
+          "/a/."
+          "/a/.."
+          "/a b"
+          "/ a"
+          "/a/b c"
+          "/ "))))
      (check-false (class-accepts? path text) text))
     (for
      ((point (in-list '(0 10 160 8205 8232 8233))))
@@ -282,10 +298,10 @@
     "relative paths have clean components and remain distinct from absolute paths"
     (define path (one "relative-path"))
     (for
-     ((text (in-list '("a" "a/b" ".hidden" "a..b" "a b/c" "α/β"))))
+     ((text (in-list '("a" "a/b" ".hidden" "a..b" "α/β"))))
      (check-true (class-accepts? path text) text))
     (for
-     ((text (in-list '("" "/" "/a" "a/" "a//b" "." ".." "a/./b" "a/../b"))))
+     ((text (in-list '("" "/" "/a" "a/" "a//b" "." ".." "a/./b" "a/../b" "a b/c" " a" "a/ b"))))
      (check-false (class-accepts? path text) text))
     (check-false (class-accepts? path (string-append "a/" (string (integer->char 8205)))))
     (check-exn
@@ -297,6 +313,22 @@
     (check-equal? (class->references alias) '("relative-path"))
     (check-false (class-difference-witness alias path))
     (check-false (class-difference-witness path alias)))
+   (test-case
+    "2026-11-07T15:45 paths exclude the ASCII delimiter without changing string classes"
+    (define classes
+      (compile-classes
+       (hash "absolute" "canonical-path" "relative" "relative-path" "ordinary" "/.*/")
+       #:caps
+       small-caps))
+    (define absolute (hash-ref classes "absolute"))
+    (define relative (hash-ref classes "relative"))
+    (check-false (class-delimiter-witness absolute " "))
+    (check-false (class-delimiter-witness relative " "))
+    (check-false (class-accepts? absolute "/a b"))
+    (check-false (class-pattern-accepts? absolute "/a b"))
+    (check-false (class-accepts? relative "a b"))
+    (check-false (class-pattern-accepts? relative "a b"))
+    (check-true (class-accepts? (hash-ref classes "ordinary") "Market Research")))
    (test-case
     "the class alphabet excludes unsafe categories, ordinary space remains"
     (define any (one "/.*/"))

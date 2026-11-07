@@ -18,7 +18,8 @@ declare : App
 version : 1
 file : services/<service>/app.typify
 required!
-sees : Config Notes
+sees : Config
+sees : Notes
 is : service = /[a-z][a-z0-9-]*/
 is : word = /[a-z]+/
 term : run : word

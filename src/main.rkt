@@ -264,7 +264,7 @@
   (define-values (result json? grammar? text) (run-command/details arguments))
   (values result json? grammar?))
 
-(define (run-command/details arguments)
+(define (run-command/details arguments #:on-bound (on-bound void))
   (define-values (positional options) (parse-options arguments))
   (define json? (hash-ref options "--json" #f))
   (define gbnf? (hash-ref options "--gbnf" #f))
@@ -390,13 +390,16 @@
          (lambda (record raw-terms raw-origins)
            (program-resolver (hash-set* record 'terms raw-terms 'origins raw-origins)))))
       (define tree-diagnostics (hash-ref checked 'diagnostics))
-      (raise-diagnostics tree-diagnostics)
       (define programs (hash-ref checked 'programs))
+      (when (diagnostics-error? tree-diagnostics) (on-bound (programs-bound programs)))
+      (raise-diagnostics tree-diagnostics)
       (define ensure-diagnostics '())
       (define-values
        (report events)
        (plan-programs/details
         programs
+        #:on-bound
+        on-bound
         #:facts
         facts
         #:facts-hash
@@ -423,6 +426,8 @@
        (plan-program/details
         body
         (read-source program)
+        #:on-bound
+        on-bound
         #:captures
         captures
         #:path
@@ -457,7 +462,7 @@
    gbnf?
    text-output))
 
-(define (command-error-result arguments items)
+(define (command-error-result arguments items #:bound (bound 'null))
   (define diagnostics (map diagnostic->jsexpr items))
   (define positional
     (with-handlers
@@ -477,7 +482,12 @@
        'state
        (hash)
        'bound
-       (hash 'c 0 'n 0 'limit 0)
+       (if (ormap
+            (lambda (item)
+              (member (diagnostic-code item) '("E_DECLARATION" "E_KEY_CANONICAL" "E_JOIN_LAW")))
+            items)
+         'null
+         bound)
        'modelled
        "0 of 0"
        'facts
@@ -506,13 +516,14 @@
 
 (define (execute-command arguments)
   (define json? (and (member "--json" arguments) #t))
+  (define failure-bound 'null)
   (with-handlers
    ((exn:fail:typify?
      (lambda (error)
        (define items (exn:fail:typify-diagnostics error))
        (define native (map diagnostic->jsexpr items))
        (if json?
-         (displayln (canonical-json (command-error-result arguments items)))
+         (displayln (canonical-json (command-error-result arguments items #:bound failure-bound)))
          (display-diagnostics native))
        (values
         (if (and (not (ormap (lambda (item) (equal? (diagnostic-code item) "E_USAGE")) items))
@@ -523,7 +534,9 @@
             2
             1))
         native))))
-   (define-values (result json-output? grammar? text-output) (run-command/details arguments))
+   (define-values
+    (result json-output? grammar? text-output)
+    (run-command/details arguments #:on-bound (lambda (bound) (set! failure-bound bound))))
    (define diagnostics (hash-ref result 'diagnostics '()))
    (unless json-output? (display-diagnostics diagnostics))
    (cond

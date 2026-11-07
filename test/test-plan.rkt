@@ -446,7 +446,7 @@
    (list
     (hash
      'constructor
-     "optional"
+     "bind"
      'fact
      "exists"
      'args

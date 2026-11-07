@@ -37,6 +37,7 @@
     "test/test-bounds.rkt"
     "test/test-rules.rkt"
     "test/test-plan.rkt"
+    "test/test-plan-adjudication.rkt"
     "test/test-plan-generated.rkt"
     "test/test-model-rulings.rkt"
     "test/test-keyed-counts.rkt"

@@ -322,7 +322,7 @@
          "E_KEY_CANONICAL"
          "The last stacking key component is not canonical"
          #:span
-         (model-write-span write)
+         (model-cell-span cell)
          #:data
          (hash 'cell (model-cell-name cell) 'class class-name 'witness witness))))))
 
@@ -387,6 +387,13 @@
   (define (duplicate! table name row)
     (when (hash-has-key? table name)
       (decl-fail "duplicate" name "The model clause is declared twice" (row-span row))))
+  (define (bare-fact-arity! name fact width span)
+    (unless (= width (if (equal? fact "clean") 2 1))
+      (decl-fail
+       "arity"
+       name
+       "The bare fact requires exactly its declared number of key arguments"
+       span)))
   (for
    ((row (in-list rows)))
    (attempt
@@ -610,7 +617,33 @@
           "effect"
           name
           "A bare read requires a declared write key"
-          (model-read-span clause)))))))
+          (model-read-span clause)))
+       (when (and (string? (model-read-fact clause)) (hash-has-key? writes name))
+         (define width (model-write-width (hash-ref writes name)))
+         (when (>= width (length template-names))
+           (bare-fact-arity!
+            name
+            (model-read-fact clause)
+            (- width (length template-names))
+            (model-read-span clause))))))))
+  (for
+   (((name guard) (in-hash guards)) #:when (string? guard))
+   (attempt
+    (lambda ()
+      (define descriptor (hash-ref constructors name))
+      (define write (hash-ref writes name #f))
+      (define width
+        (if (hash-ref descriptor 'primitive?)
+          (if write (- (model-write-width write) (length template-names)) 0)
+          (min 1 (length (hash-ref descriptor 'signature)))))
+      (when (and width (>= width 0) (not (failed? 'writes name)))
+        (define row
+          (for/first
+           ((row (in-list rows))
+            #:when
+            (and (eq? (hash-ref row 'kind) 'guard) (equal? (capture-value row "name") name)))
+           row))
+        (bare-fact-arity! name guard width (row-span row))))))
   (define key-widths (hash))
   (define key-classes (hash))
   (for
@@ -672,14 +705,11 @@
             (hash-ref external-spans name)
             (model-write-span write))))
        (define cell (hash-ref cells (model-write-cell write)))
-       (when (and
-              (model-cell-stacking? cell)
-              (eq? (model-write-operation write) 'delete)
-              (< (model-write-width write) (length template-names)))
+       (when (< (model-write-width write) (length template-names))
          (decl-fail
           "partition"
           (row-text (hash-ref write-rows name))
-          "A delete prefix must include every holding file-template partition"
+          "A write key must include every holding file-template partition"
           (model-write-span write)))
        (when (and
               (eq? (model-write-operation write) 'delete)

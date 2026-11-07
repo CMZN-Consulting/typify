@@ -72,7 +72,7 @@
    (lambda ()
      (define root (build-path temporary "root"))
      (make-directory root)
-     (define folder (build-path root "nested space"))
+     (define folder (build-path root "nested-name"))
      (make-directory folder)
      (define file
        (build-path folder (if (eq? (system-type 'os) 'windows) "café.data" "café\".data")))
@@ -135,6 +135,120 @@
         (equal? (hash-ref data 'facts) (sort (hash-ref data 'facts) string<? #:key canonical-json)))
       #t)
      (check "validated-data-is-preserved" (lambda () (equal? (validate-facts data) data)) #t)
+     (check
+      "2026-11-07T15:45-zero-omissions-have-no-wire-field"
+      (lambda () (hash-has-key? data 'omitted))
+      #f)
+     (check
+      "positive-omitted-wire-metadata-is-preserved-and-not-a-fact"
+      (lambda ()
+        (define annotated (validate-facts (hash-set data 'omitted 3)))
+        (list
+         (hash-ref annotated 'omitted)
+         (query annotated "exists" (list root-name))
+         (query annotated "omitted" (list root-name))))
+      '(3 (#t #t) (#f #f)))
+     (for
+      ((invalid (in-list (list 0 -1 #t #f 1.0 "1" 'null))))
+      (check
+       (format "2026-11-07T15:59-invalid-omitted-~s-is-file-error" invalid)
+       (lambda ()
+         (with-handlers
+          ((exn:fail:typify?
+            (lambda (failure)
+              (define diagnostic (exn:fail:typify-diagnostic failure))
+              (list (diagnostic-code diagnostic) (diagnostic-data diagnostic)))))
+          (validate-facts (hash-set data 'omitted invalid) #:path "omitted-wire.json")
+          "accepted"))
+       (list "E_FILE" (hash 'path "omitted-wire.json"))))
+     (for
+      ((given-root
+        (in-list
+         (list " bad root " (string-append root-name "/bad root") (string-append root-name "\n")))))
+      (check
+       (format "2026-11-07T15:48-invalid-normalized-root-preserves-~s" given-root)
+       (lambda ()
+         (parameterize
+          ((current-directory temporary))
+          (with-handlers
+           ((exn:fail:typify?
+             (lambda (failure)
+               (define diagnostic (exn:fail:typify-diagnostic failure))
+               (list (diagnostic-code diagnostic) (diagnostic-data diagnostic)))))
+           (collect-facts given-root)
+           "accepted")))
+       (list "E_USAGE" (hash 'actual given-root)))
+      (unless (eq? (system-type 'os) 'windows)
+        (check
+         (format "independent-collector-rejects-noncanonical-root-~s" given-root)
+         (lambda ()
+           (with-handlers
+            ((exn:fail? (lambda (failure) (string-contains? (exn-message failure) "E_USAGE"))))
+            (shell-facts given-root)
+            #f))
+         #t)))
+     (define omitted-root (build-path temporary "omissions"))
+     (make-directory omitted-root)
+     (define omitted-directory (build-path omitted-root "bad dir"))
+     (define omitted-child (build-path omitted-directory "child"))
+     (define omitted-marker (build-path omitted-child ".obsidian"))
+     (make-directory* omitted-marker)
+     (define omitted-file (build-path omitted-root "bad file"))
+     (display-to-file "opaque" omitted-file)
+     (define omitted-format
+       (build-path omitted-root (string-append "format" (string (integer->char 8205)))))
+     (display-to-file "opaque" omitted-format)
+     (define omitted-space
+       (build-path omitted-root (string-append "nbsp" (string (integer->char 160)))))
+     (display-to-file "opaque" omitted-space)
+     (define valid-file (build-path omitted-root "valid.data"))
+     (display-to-file "opaque" valid-file)
+     (unless (eq? (system-type 'os) 'windows)
+       (display-to-file "opaque" (build-path omitted-root "line\nbreak"))
+       (make-file-or-directory-link outside (build-path omitted-root "bad link"))
+       (make-file-or-directory-link "target with space\n" (build-path omitted-root "valid-link")))
+     (define omitted-data (collect-facts omitted-root))
+     (check
+      "2026-11-07T15:48-counts-entries-not-facts-and-does-not-prune-invalid-directories"
+      (lambda () (hash-ref omitted-data 'omitted))
+      (if (eq? (system-type 'os) 'windows) 6 8))
+     (check
+      "omitted-entry-and-descendant-facts-are-absent-while-valid-siblings-remain"
+      (lambda ()
+        (list
+         (for/list
+          ((path
+            (in-list
+             (list
+              omitted-directory
+              omitted-child
+              omitted-marker
+              omitted-file
+              omitted-format
+              omitted-space))))
+          (query omitted-data "exists" (list (portable path))))
+         (query omitted-data "exists" (list (portable valid-file)))))
+      '(((#f #f) (#f #f) (#f #f) (#f #f) (#f #f) (#f #f)) (#t #t)))
+     (check
+      "clean-does-not-see-a-marker-below-an-omitted-directory"
+      (lambda () (query omitted-data "clean" (list (portable omitted-root) ".obsidian")))
+      '(#t #t))
+     (make-directory* (build-path omitted-root "visible" "deep" ".obsidian"))
+     (check
+      "clean-still-sees-a-marker-below-a-canonical-directory"
+      (lambda ()
+        (query (collect-facts omitted-root) "clean" (list (portable omitted-root) ".obsidian")))
+      '(#f #f))
+     (unless (eq? (system-type 'os) 'windows)
+       (check
+        "independent-collector-agrees-on-omitted-entries-and-descendants"
+        (lambda () (compare-collectors omitted-root))
+        #t)
+       (check
+        "spaces-in-symlink-target-values-do-not-omit-canonical-entries"
+        (lambda ()
+          (query omitted-data "symlink" (list (portable (build-path omitted-root "valid-link")))))
+        '(#t "target with space\n")))
      (define markers
        (validate-facts
         (hash
@@ -297,8 +411,10 @@
          (list
           (hash-set data 'collector "other")
           (hash-set data 'root "/not/../canonical")
+          (hash-set data 'root "/has blank")
           (hash-set data 'facts (list (hash 'fact "unknown" 'args '("/example"))))
           (hash-set data 'facts (list (hash 'fact "exists" 'args '("relative"))))
+          (hash-set data 'facts (list (hash 'fact "exists" 'args '("/has blank"))))
           (hash-set data 'facts (list (hash 'fact "exists" 'args '("/a" "/b"))))
           (hash-set data 'facts (list (hash 'fact "mode" 'args '("/example") 'value "700")))
           (hash-set data 'facts (list (hash 'fact "owner" 'args '("/example") 'value 42))))))
@@ -401,7 +517,7 @@
      'scope
      (if (eq? (system-type 'os) 'windows)
        "POSIX comparison not run on Windows"
-       "Independent POSIX shell collector over controlled filesystem metadata")))))
+       "Independent POSIX shell metadata collector with a pinned Unicode 17 Python path classifier")))))
 
 (module+
  test

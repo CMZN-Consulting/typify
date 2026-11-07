@@ -425,13 +425,284 @@
         'status
         "missing-or-unreadable-oracle"
         'message
-        (exn-message failure)))))
-   (run-blind-corpus #:ids ids #:stop-on-failure? stop?)))
+        (exn-message failure)
+        'error
+        (hash
+         'kind
+         (if (exn:fail:typify? failure) "native" "host")
+         'message
+         (exn-message failure)
+         'diagnostics
+         (if (exn:fail:typify? failure)
+           (map diagnostic->jsexpr (exn:fail:typify-diagnostics failure))
+           '()))))))
+   (run-blind-corpus #:ids ids #:stop-on-failure? stop? #:retain-observations? (and ids #t))))
 
 (define (field data name (default #f)) (if (hash? data) (hash-ref data name default) default))
 
+(define (blind-result-errors result eligible)
+  (cond
+   ((not result) '())
+   (else
+    (define errors '())
+    (define (require! condition name) (unless condition (set! errors (append errors (list name)))))
+    (define raw-results (field result 'results))
+    (define results (if (list? raw-results) raw-results '()))
+    (require! (eq? (field result 'available) #t) "oracle-unavailable")
+    (require! (equal? (field result 'infrastructure-failures) 0) "infrastructure-failure")
+    (require! (member (field result 'setup-error) '(#f null)) "setup-error")
+    (require! (and (list? raw-results) (pair? results)) "missing-attempt-results")
+    (define ids (map (lambda (item) (field item 'id)) results))
+    (require! (= (length ids) (length (remove-duplicates ids))) "duplicate-attempt-id")
+    (require!
+     (for/and
+      ((item (in-list results)))
+      (and (hash? item)
+           (string? (field item 'id))
+           (equal? (field item 'kind) "compared")
+           (boolean? (field item 'pass))
+           (hash? (field item 'observation))
+           (not (field (field item 'observation) 'infrastructure))))
+     "invalid-attempt-record")
+    (require!
+     (and (<= (length ids) (length eligible)) (equal? ids (take eligible (length ids))))
+     "attempt-order-not-eligible-prefix")
+    (require! (equal? (field result 'attempted) (length results)) "attempt-count-disagreement")
+    (require! (equal? (field result 'requested) (length eligible)) "request-count-disagreement")
+    (require!
+     (or (and (eq? (field result 'selected-complete) #t)
+              (= (length results) (length eligible))
+              (for/and
+               ((item (in-list (if (null? results) '() (drop-right results 1)))))
+               (eq? (field item 'pass) #t)))
+         (and (eq? (field result 'stopped-early) #t)
+              (pair? results)
+              (eq? (field (last results) 'pass) #f)
+              (for/and ((item (in-list (drop-right results 1)))) (eq? (field item 'pass) #t))))
+     "incomplete-without-terminal-failure")
+    errors)))
+
+(define (invalid-blind-evidence result eligible errors)
+  (define prefix (field result 'results '()))
+  (hash
+   'validation-errors
+   errors
+   'eligible-ids
+   eligible
+   'attempt-prefix
+   prefix
+   'native-errors
+   (append
+    (if (equal? (field (field result 'error) 'kind) "native") (list (field result 'error)) '())
+    (for/list
+     ((item (in-list (if (list? prefix) prefix '())))
+      #:do
+      ((define observation (field item 'observation (hash))))
+      #:when
+      (and (eq? (field item 'pass) #f)
+           (or (equal? (field (field observation 'error) 'kind) "native")
+               (for/or
+                ((diagnostic (in-list (field observation 'diagnostics '()))))
+                (equal? (field diagnostic 'severity) "error")))))
+     (hash
+      'id
+      (field item 'id)
+      'error
+      (if (equal? (field (field observation 'error) 'kind) "native")
+        (field observation 'error)
+        (hash 'kind "native" 'diagnostics (field observation 'diagnostics '()))))))
+   'report
+   result
+   'clean
+   #f
+   'explanation-status
+   "retained-not-adjudicated"))
+
+(define (retention-controls)
+  (define count 0)
+  (define (check actual expected)
+    (set! count (add1 count))
+    (unless (equal? actual expected)
+      (error 'mutation-retention "expected ~s, got ~s" expected actual)))
+  (define native-error
+    (hash
+     'kind
+     "native"
+     'message
+     "Synthetic native refusal"
+     'diagnostics
+     (list
+      (hash
+       'code
+       "E_CLASS"
+       'severity
+       "error"
+       'file
+       "synthetic.typify"
+       'range
+       'null
+       'message
+       "Synthetic token refusal"
+       'related
+       '()
+       'fix
+       'null
+       'fingerprints
+       (hash)
+       'data
+       (hash 'class "word" 'token "0")))))
+  (define first
+    (hash
+     'id
+     "a"
+     'kind
+     "compared"
+     'pass
+     #t
+     'observation
+     (hash
+      'exit_code
+      0
+      'verdict
+      "accepted"
+      'stdout
+      "{}\n"
+      'stdout_json
+      (hash)
+      'stderr
+      ""
+      'diagnostics
+      '()
+      'infrastructure
+      #f
+      'error
+      'null)))
+  (define second
+    (hash
+     'id
+     "b"
+     'kind
+     "infrastructure"
+     'pass
+     #f
+     'observation
+     (hash
+      'exit_code
+      (hash '$missing #t)
+      'verdict
+      "infrastructure"
+      'stdout
+      "partial\n"
+      'stdout_json
+      (hash '$missing #t)
+      'stderr
+      "native refusal\n"
+      'diagnostics
+      (hash-ref native-error 'diagnostics)
+      'infrastructure
+      "Synthetic native refusal"
+      'error
+      native-error)))
+  (define result
+    (hash
+     'available
+     #t
+     'results
+     (list first second)
+     'attempted
+     2
+     'requested
+     3
+     'infrastructure-failures
+     1
+     'setup-error
+     'null
+     'stopped-early
+     #t
+     'selected-complete
+     #f
+     'mismatches
+     (list (hash 'id "b" 'path "/infrastructure"))))
+  (define errors (blind-result-errors result '("a" "b" "c")))
+  (define retained (invalid-blind-evidence result '("a" "b" "c") errors))
+  (check (pair? errors) #t)
+  (check (hash-ref retained 'attempt-prefix) (list first second))
+  (check (hash-ref retained 'report) result)
+  (check (hash-ref retained 'native-errors) (list (hash 'id "b" 'error native-error)))
+  (check (hash-ref retained 'clean) #f)
+  (check (string->jsexpr (canonical-json retained)) retained)
+  (check
+   (hash-ref (hash-ref (cadr (hash-ref retained 'attempt-prefix)) 'observation) 'stderr)
+   "native refusal\n")
+  (define host-result
+    (hash-set
+     result
+     'results
+     (list
+      first
+      (hash-set
+       second
+       'observation
+       (hash
+        'infrastructure
+        "Host protocol failure"
+        'error
+        (hash 'kind "host" 'message "Host protocol failure" 'diagnostics '()))))))
+  (check
+   (hash-ref
+    (invalid-blind-evidence
+     host-result
+     '("a" "b" "c")
+     (blind-result-errors host-result '("a" "b" "c")))
+    'native-errors)
+   '())
+  (check (pair? (blind-result-errors host-result '("a" "b" "c"))) #t)
+  (define semantic-result
+    (hash-set*
+     result
+     'infrastructure-failures
+     0
+     'results
+     (list
+      first
+      (hash-set*
+       second
+       'kind
+       "compared"
+       'observation
+       (hash
+        'exit_code
+        1
+        'verdict
+        "refused"
+        'stdout
+        "{}\n"
+        'stdout_json
+        (hash)
+        'stderr
+        ""
+        'diagnostics
+        (hash-ref native-error 'diagnostics)
+        'infrastructure
+        #f
+        'error
+        'null)))))
+  (check (blind-result-errors semantic-result '("a" "b" "c")) '())
+  (check
+   (pair?
+    (blind-result-errors (hash-set semantic-result 'results (list second first)) '("a" "b" "c")))
+   #t)
+  (check
+   (pair?
+    (blind-result-errors
+     (hash-set semantic-result 'results (list first second first first))
+     '("a" "b" "c")))
+   #t)
+  count)
+
 (define (run-tests #:blind? (blind? #t) #:stage (stage 1))
   (blind-stage-commands stage)
+  (define retention-checks (retention-controls))
   (define forms (current-meta-forms))
   (define classes (current-meta-classes))
   (define baseline (map evaluate-oracle internal-oracles))
@@ -494,33 +765,8 @@
                (pair? blind-passing-ids)
                (blind-oracle #:ids blind-passing-ids #:stop-on-failure? #t)))
         (define blind-results (if blind-result (field blind-result 'results '()) '()))
-        (define blind-result-valid?
-          (or (not blind-result)
-              (and (eq? (field blind-result 'available) #t)
-                   (zero? (field blind-result 'infrastructure-failures 1))
-                   (pair? blind-results)
-                   (=
-                    (length blind-results)
-                    (length
-                     (remove-duplicates (map (lambda (result) (field result 'id)) blind-results))))
-                   (for/and
-                    ((result (in-list blind-results)))
-                    (and (member (field result 'id) blind-passing-ids)
-                         (equal? (field result 'kind) "compared")
-                         (hash-has-key? result 'pass)
-                         (boolean? (field result 'pass))))
-                   (equal?
-                    (map (lambda (result) (field result 'id)) blind-results)
-                    (take blind-passing-ids (length blind-results)))
-                   (or (and (or (eq? (field blind-result 'selected-complete) #t)
-                                (=
-                                 (field blind-result 'attempted -1)
-                                 (field blind-result 'requested -2)))
-                            (= (length blind-results) (length blind-passing-ids)))
-                       (and (eq? (field blind-result 'stopped-early) #t)
-                            (ormap
-                             (lambda (result) (eq? (field result 'pass) #f))
-                             blind-results))))))
+        (define validation-errors (blind-result-errors blind-result blind-passing-ids))
+        (define blind-result-valid? (null? validation-errors))
         (define blind-witness
           (and blind-result-valid?
                (for/first
@@ -560,7 +806,11 @@
          'internal-attempted
          internal-attempted
          'blind-measurement-valid
-         blind-result-valid?)))
+         blind-result-valid?
+         'blind-invalid-evidence
+         (if blind-result-valid?
+           'null
+           (invalid-blind-evidence blind-result blind-passing-ids validation-errors)))))
       '()))
   (define seeded (length seeds))
   (define killed (count (lambda (measurement) (hash-ref measurement 'killed)) measurements))
@@ -580,6 +830,7 @@
     (for/sum ((measurement (in-list measurements))) (hash-ref measurement 'internal-attempted)))
   (define checks
     (+
+     retention-checks
      (length baseline)
      (if blind? (max 1 (field blind-baseline 'total 0)) 0)
      (length measurements)
@@ -615,6 +866,13 @@
      blind-baseline-failures
      'blind-measurement-errors
      blind-measurement-errors
+     'blind-invalid-with-native-errors
+     (count
+      (lambda (measurement)
+        (pair? (field (hash-ref measurement 'blind-invalid-evidence) 'native-errors '())))
+      measurements)
+     'blind-invalid-cleanliness
+     "Invalid records remain non-clean pending explicit explanation; retained native errors do not automatically forgive protocol or environment failures"
      'single-point-total
      seeded
      'single-point-killed
@@ -652,6 +910,14 @@
    (not blind?)
    'gates
    (hasheq 'meta-mutation gate)
+   'retention-controls
+   (hash
+    'checks
+    retention-checks
+    'status
+    "passed"
+    'scope
+    "Synthetic result records; no frozen input")
    'baseline
    baseline
    'blind-full-baseline

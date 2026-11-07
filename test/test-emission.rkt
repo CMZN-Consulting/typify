@@ -179,6 +179,38 @@
     (gbnf-accepts? grammar (car case))
     (cdr case)
     "the GBNF keeps exact spacing, global refusals and finite captures"))
+  (define paths
+    (body
+     "PathWords"
+     '("is : mode = \"ro\" | \"rw\""
+       "term : bind : canonical-path mode"
+       "form : bind : <canonical-path> <mode>"
+       "does : bind <canonical-path> <mode>"
+       "term : relative : relative-path mode"
+       "form : relative : <relative-path> <mode>"
+       "does : relative <relative-path> <mode>")))
+  (define path-grammar (parse-gbnf (language->gbnf paths)))
+  (for
+   ((case (in-list
+           (list
+            (cons "bind : /a rw" #t)
+            (cons "bind : / rw" #t)
+            (cons "bind : /a b rw" #f)
+            (cons "bind : /a  rw" #f)
+            (cons "relative : a/b ro" #t)
+            (cons "relative : a b ro" #f)))))
+   (check
+    (line-accepts? (car case) paths)
+    (cdr case)
+    "2026-11-07T15:45 path components exclude blanks and preserve their separator")
+   (check
+    (gbnf-accepts? path-grammar (car case))
+    (cdr case)
+    "emitted path automata enforce the same no-blank component rule"))
+  (check
+   (hash-ref (hash-ref (language->grammar paths) 'classes) "Typify.canonical-path")
+   (hash 'builtin "canonical-path")
+   "path semantics retain the canonical builtin JSON node")
   (define comment-models
     (for/list
      ((prefix '("#" "//" "")))

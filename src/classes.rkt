@@ -949,7 +949,11 @@
   (define component
     (list
      'except
-     (list 'repeat (list 'characters (subtract-intervals scalar-intervals '((47 . 47)))) 1 #f)
+     (list
+      'repeat
+      (list 'characters (subtract-intervals scalar-intervals '((32 . 32) (47 . 47))))
+      1
+      #f)
      '("." "..")))
   (rx-sequence
    (list component (list 'repeat (rx-sequence (list (list 'text "/") component)) 0 #f))))

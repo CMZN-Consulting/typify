@@ -79,7 +79,7 @@
   (check (library "concat" "東京" "😀") "東京😀" "concat preserves code points")
   (define invalid-paths
     (append
-     '("" "." ".." "relative" "//" "/a/" "/a//b" "/./a" "/a/../b" "/a/." "/a/..")
+     '("" "." ".." "relative" "//" "/a/" "/a//b" "/./a" "/a/../b" "/a/." "/a/.." "/a b" "/ ")
      (for/list
       ((point '(0 9 10 13 160 8205 8232 8233)))
       (string-append "/a" (string (integer->char point)) "b"))))
@@ -101,13 +101,21 @@
     1
     "join checks its first argument first"))
   (for
-   ((relative '("" "/" "/b" "a/" "a//b" "." ".." "./a" "a/./b" "a/../b" "a/..")))
+   ((relative '("" "/" "/b" "a/" "a//b" "." ".." "./a" "a/./b" "a/../b" "a/.." "b c" "a/b c")))
    (reject
     (lambda () (library "join" "/a" relative))
     "E_LIBRARY_DOMAIN"
     "join requires clean nonempty relative components"))
   (check (library "join" "/a" "b/c") "/a/b/c" "join permits multiple clean relative components")
-  (check (library "join" "/a" "b c") "/a/b c" "ordinary space is allowed inside a component")
+  (define spaced-component
+    (reject
+     (lambda () (library "join" "/a" "b c"))
+     "E_LIBRARY_DOMAIN"
+     "2026-11-07T15:45 excludes ASCII space from join components"))
+  (check
+   (hash-ref (diagnostic-data spaced-component) 'argument)
+   2
+   "a blank in join's component argument reports that argument")
   (for*
    ((function '("concat" "prefix" "suffix" "equal"))
     (point '(0 9 10 13 160 8205 8232 8233))

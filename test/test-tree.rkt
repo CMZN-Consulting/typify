@@ -441,6 +441,40 @@
         (define item (diagnostic-of (lambda () (plan-programs (inherited-programs "" 1)))))
         (list (diagnostic-code item) (diagnostic-related item)))
       (list "E_RULE_FUEL" (list (hash 'kind "program" 'path "nested/settings.data" 'line 2))))
+     (define path-root (build-path temporary "path-role"))
+     (make-directory path-root)
+     (define path-model
+       (declarations
+        (string-append
+         "declare : PathSlot\nfile : item.data\n"
+         "term : selected : canonical-path\n"
+         "form : path : <canonical-path>\ndoes : selected <canonical-path>\nend!\n")))
+     (write-file path-root "item.data" "path : /a\n")
+     (check
+      "2026-11-07T15:45-located-program-keeps-canonical-paths"
+      (lambda () (hash-ref (car (read-tree path-model path-root)) 'terms))
+      '(("selected" "/a")))
+     (write-file path-root "item.data" "path : /a b\n")
+     (check
+      "located-canonical-capture-refuses-an-internal-ASCII-blank"
+      (lambda ()
+        (define diagnostic
+          (car (hash-ref (read-tree/diagnostics path-model path-root) 'diagnostics)))
+        (list
+         (diagnostic-code diagnostic)
+         (diagnostic-file diagnostic)
+         (diagnostic-data diagnostic)))
+      (list "E_CLASS" "item.data" (hash 'class "canonical-path" 'token "/a b")))
+     (define caption-model
+       (declarations
+        (string-append
+         "declare : CaptionSlot\nfile : label.data\nis : caption = /.*/\n"
+         "term : label : caption\nform : label : <caption>\ndoes : label <caption>\nend!\n")))
+     (write-file path-root "label.data" "label : Market Research\n")
+     (check
+      "path-component-ruling-does-not-ban-spaces-from-other-located-captures"
+      (lambda () (hash-ref (car (read-tree caption-model path-root)) 'terms))
+      '(("label" "Market Research")))
      (unless (eq? (system-type 'os) 'windows)
        (define outside (build-path temporary "outside"))
        (make-directory outside)

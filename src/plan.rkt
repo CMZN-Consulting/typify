@@ -14,6 +14,7 @@
          plan-program
          plan-program/details
          plan-needs-facts?
+         programs-bound
          program-resolver
          tuple-key<?)
 
@@ -368,6 +369,15 @@
 (define (plan-needs-facts? programs)
   (ormap (lambda (program) (language-needs-facts? (hash-ref program 'body))) programs))
 
+(define (programs-bound programs)
+  (define c
+    (for/fold
+     ((maximum 0))
+     ((program (in-list programs)))
+     (max maximum (hash-ref (declaration-bound (hash-ref program 'body)) 'c))))
+  (define n (for/sum ((program (in-list programs))) (hash-ref program 'effective-lines 0)))
+  (hash 'c c 'n n 'limit (* c n)))
+
 (define (plan-programs/details
          programs
          #:facts
@@ -375,8 +385,10 @@
          #:facts-hash
          (facts-hash "none")
          #:on-error
-         (on-error #f))
-  (plan-records programs facts facts-hash #f on-error))
+         (on-error #f)
+         #:on-bound
+         (on-bound void))
+  (plan-records programs facts facts-hash #f on-error on-bound))
 
 (define (plan-programs
          programs
@@ -385,10 +397,21 @@
          #:facts-hash
          (facts-hash "none")
          #:on-error
-         (on-error #f))
+         (on-error #f)
+         #:on-bound
+         (on-bound void))
   (define-values
    (report events)
-   (plan-programs/details programs #:facts facts #:facts-hash facts-hash #:on-error on-error))
+   (plan-programs/details
+    programs
+    #:facts
+    facts
+    #:facts-hash
+    facts-hash
+    #:on-error
+    on-error
+    #:on-bound
+    on-bound))
   report)
 
 (define (plan-program/details
@@ -403,7 +426,9 @@
          #:facts-hash
          (facts-hash "none")
          #:on-error
-         (on-error #f))
+         (on-error #f)
+         #:on-bound
+         (on-bound void))
   (define initial
     (hash
      'body
@@ -421,7 +446,7 @@
       ((record (in-list (read-lines text #:file path))))
       (values (src-span-start-line (line-record-span record)) (line-record-span record)))))
   (define checked
-    (check-program
+    (check-program/diagnostics
      text
      body
      #:file
@@ -451,7 +476,9 @@
      (hash-ref checked 'effective-lines)
      '_term-spans
      (hash-ref checked '_term-spans)))
-  (plan-records (list program) facts facts-hash #t on-error))
+  (on-bound (programs-bound (list program)))
+  (raise-diagnostics (hash-ref checked 'diagnostics))
+  (plan-records (list program) facts facts-hash #t on-error void))
 
 (define (plan-program
          body
@@ -465,7 +492,9 @@
          #:facts-hash
          (facts-hash "none")
          #:on-error
-         (on-error #f))
+         (on-error #f)
+         #:on-bound
+         (on-bound void))
   (define-values
    (report events)
    (plan-program/details
@@ -480,12 +509,16 @@
     #:facts-hash
     facts-hash
     #:on-error
-    on-error))
+    on-error
+    #:on-bound
+    on-bound))
   report)
 
-(define (plan-records programs facts facts-hash single? on-error)
+(define (plan-records programs facts facts-hash single? on-error on-bound)
   (unless (or (not on-error) (and (procedure? on-error) (procedure-arity-includes? on-error 1)))
     (raise-argument-error 'plan "one-argument diagnostic handler or #f" on-error))
+  (define bound (programs-bound programs))
+  (on-bound bound)
   (define-values (cells widths) (collect-cells programs))
   (define query-fact (fact-callback facts))
   (define events '())
@@ -495,8 +528,6 @@
     (for
      ((skip (in-list (lookup-observation-skips observation))))
      (set! skips (cons (hash-set skip 'program-index program-index) skips))))
-  (define maximum-c 0)
-  (define effective-lines 0)
   (for
    ((program (in-list programs)) (program-index (in-naturals)))
    (define body (hash-ref program 'body))
@@ -506,8 +537,6 @@
       "The meta body is not an executable plan"
       #:data
       (hash 'actual "Typify")))
-   (set! maximum-c (max maximum-c (hash-ref (declaration-bound body) 'c)))
-   (set! effective-lines (+ effective-lines (hash-ref program 'effective-lines 0)))
    (for
     ((skip (in-list (hash-ref program 'skips '()))))
     (set! skips (cons (hash-set skip 'program-index program-index) skips)))
@@ -561,14 +590,7 @@
    (define scope-constructor (hash-ref event 'scope-constructor name))
    (define write (hash-ref (compiled-model-writes model) name #f))
    (define key (if write (take (cdr original) (model-write-width write)) '()))
-   (define fact-key
-     (if (and write
-              (pair? key)
-              (model-cell-stacking?
-               (hash-ref (compiled-model-cells model) (model-write-cell write)))
-              (> (hash-ref widths (model-write-cell write)) 1))
-       (list (last key))
-       key))
+   (define fact-key (if write (drop key (length (language-template-names body))) key))
    (define bindings
      (for/hash
       ((value (in-list (cdr original))) (position (in-naturals 1)))
@@ -762,7 +784,6 @@
   (define recorded-events (filter (lambda (event) (hash-ref event 'state-only? #f)) folded-events))
   (define final-ensures (reverse ensure-results))
   (define final-skips (reverse skips))
-  (define bound (hash 'c maximum-c 'n effective-lines 'limit (* maximum-c effective-lines)))
   (when (> (length ordered) (hash-ref bound 'limit))
     (raise-arguments-error
      'plan

@@ -23,11 +23,11 @@
 
 (define-runtime-path default-blind-root "corpus")
 
-(define archive-sha256 "ece3d4d5e94e427c7807a0e558fa46772525aecddd2167bcf5df04ed47e7bece")
+(define archive-sha256 "6b9be575abb9d50a8a096ce47bafc235b69844ee818981a7e9285bcbe3971737")
 
-(define tree-sha256 "4a4cbdbc01e115a50db35c91361c6ed747fa11f14425f52b50d441cf90561887")
+(define tree-sha256 "b6c3f117234802db2fbae529af912ebc41961f4269f09c86899ec19afc0606b9")
 
-(define receipt-sha256 "e0b56962c8b8c98765dd990fe9bbe3bdf6524193f64436c38efec2621bfe6ba6")
+(define receipt-sha256 "66e0609c664ca193cadab143e3bb9a36c3b6c9009ec3a79e5d05fd3e9238d943")
 
 (define missing (gensym 'missing))
 
@@ -262,8 +262,14 @@
   (define native '())
   (define exit-code 0)
   (define infrastructure #f)
+  (define error-data #f)
   (with-handlers
-   ((exn:fail? (lambda (error) (set! infrastructure (exn-message error)))))
+   ((exn:fail?
+     (lambda (error)
+       (set! infrastructure (exn-message error))
+       (set! error-data (exception-evidence error))
+       (when (exn:fail:typify? error)
+         (set! native (map diagnostic->jsexpr (exn:fail:typify-diagnostics error)))))))
    (parameterize
     ((current-directory (hash-ref entry 'directory))
      (current-output-port output)
@@ -280,9 +286,7 @@
    'exit_code
    (if infrastructure missing exit-code)
    'verdict
-   (if infrastructure
-     "infrastructure"
-     (case exit-code ((0) "accepted") ((1) "refused") (else "usage_or_io_error")))
+   (observation-verdict exit-code parsed infrastructure)
    'stdout_json
    parsed
    'stdout_gbnf
@@ -294,7 +298,50 @@
    'diagnostics
    native
    'infrastructure
-   infrastructure))
+   infrastructure
+   'error
+   (or error-data 'null)))
+
+(define (observation-verdict exit-code output infrastructure)
+  (if infrastructure
+    "infrastructure"
+    (case exit-code
+      ((0) (if (equal? (field output 'status) "unchecked") "unchecked" "accepted"))
+      ((1) "refused")
+      (else "usage_or_io_error"))))
+
+(define (exception-evidence failure)
+  (hash
+   'kind
+   (if (exn:fail:typify? failure) "native" "host")
+   'message
+   (exn-message failure)
+   'diagnostics
+   (if (exn:fail:typify? failure)
+     (map diagnostic->jsexpr (exn:fail:typify-diagnostics failure))
+     '())))
+
+(define (retained-observation actual)
+  (for/hash
+   (((key value) (in-hash actual)))
+   (values
+    key
+    (cond
+     ((eq? value missing) missing-json)
+     ((eq? key 'diagnostics)
+      (map (lambda (item) (if (diagnostic? item) (diagnostic->jsexpr item) item)) value))
+     (else value)))))
+
+(define (gbnf-invocation? expected)
+  (define invocation (if (hash? expected) (hash-ref expected 'invocation '()) '()))
+  (define arguments
+    (if (and (pair? invocation) (equal? (car invocation) "typify")) (cdr invocation) invocation))
+  (and (list? arguments)
+       (pair? arguments)
+       (equal? (car arguments) "emit")
+       (member "--gbnf" arguments)
+       (not (member "--json" arguments))
+       #t))
 
 (define (pointer path)
   (string-append
@@ -411,46 +458,21 @@
          (difference (append path (list index)) missing (list-ref got index) "unexpected-item"))))
      ((not (equal? wanted got)) (difference path wanted got "value"))))
   (for
-   ((key '(exit_code verdict stdout_json stdout_gbnf diagnostics))
-    #:when
-    (hash-has-key? expected key))
+   ((key '(exit_code stdout_json diagnostics)) #:when (hash-has-key? expected key))
    (compare (hash-ref expected key) (field actual key) (list (symbol->string key))))
-  (define json-output (field actual 'stdout_json))
-  (for
-   ((mapping
-     '((terms terms)
-       (tree_entries self)
-       (ask_lines lines)
-       (ask_json self)
-       (plan plan)
-       (predicted_state state)
-       (bound bound)
-       (modelled modelled)
-       (ensure ensure)
-       (skips skips)
-       (facts_hash facts)
-       (programs programs))))
-   (when (hash-has-key? expected (car mapping))
-     (compare
-      (hash-ref expected (car mapping))
-      (if (eq? (cadr mapping) 'self) json-output (field json-output (cadr mapping)))
-      (list (symbol->string (car mapping))))))
-  (when (hash-has-key? expected 'gbnf_assertions)
+  (when (and (gbnf-invocation? expected) (hash-has-key? expected 'gbnf_assertions))
     (define assertions (hash-ref expected 'gbnf_assertions))
     (define path '("gbnf_assertions"))
     (define source (field actual 'stdout_gbnf))
     (cond
      ((not (hash? assertions)) (difference path assertions missing "invalid-gbnf-assertions"))
+     ((not (equal? (field assertions 'required_nonterminals) '("root")))
+      (difference
+       (append path '("required_nonterminals"))
+       '("root")
+       (field assertions 'required_nonterminals)
+       "invalid-gbnf-assertions"))
      (else
-      (for
-       ((key (in-list (sort (hash-keys assertions) symbol<?)))
-        #:unless
-        (memq key '(required_nonterminals accepts_lines rejects_lines schematic_note)))
-       (difference
-        (append path (list (symbol->string key)))
-        (hash-ref assertions key)
-        missing
-        "unsupported-gbnf-assertion"))
       (cond
        ((not (string? source)) (difference path assertions source "missing-gbnf-output"))
        (else
@@ -463,19 +485,9 @@
               (hash 'source source 'error (exn-message failure))
               "gbnf-parse-error"))))
          (define grammar (parse-gbnf source))
-         (define names
-           (for/list
-            ((line (in-list (string-split source "\n" #:trim? #f)))
-             #:do
-             ((define header (regexp-match #px"^([A-Za-z0-9-]+)[ \t]*::=" (string-trim line))))
-             #:when
-             header)
-            (cadr header)))
          (for
-          ((key '(required_nonterminals accepts_lines rejects_lines))
-           #:when
-           (hash-has-key? assertions key))
-          (define probes (hash-ref assertions key))
+          ((key '(accepts_lines rejects_lines)))
+          (define probes (field assertions key))
           (cond
            ((not (and (list? probes) (andmap string? probes)))
             (difference
@@ -487,25 +499,13 @@
             (for
              ((probe (in-list probes)) (index (in-naturals)))
              (define probe-path (append path (list (symbol->string key) index)))
-             (cond
-              ((eq? key 'required_nonterminals)
-               (unless (member probe names)
-                 (difference probe-path probe missing "missing-nonterminal")))
-              (else
-               (define accepted? (gbnf-accepts? grammar probe))
-               (unless (equal? accepted? (eq? key 'accepts_lines))
-                 (difference
-                  probe-path
-                  probe
-                  (hash 'line probe 'accepted accepted?)
-                  (if accepted? "gbnf-line-accepted" "gbnf-line-refused")))))))))))))))
-  (for
-   ((key '(lsp_range_utf16_zero_based sarif_projection)) #:when (hash-has-key? expected key))
-   (difference
-    (list (symbol->string key))
-    (hash-ref expected key)
-    missing
-    "unsupported-projection"))
+             (define accepted? (gbnf-accepts? grammar probe))
+             (unless (equal? accepted? (eq? key 'accepts_lines))
+               (difference
+                probe-path
+                probe
+                (hash 'line probe 'accepted accepted?)
+                (if accepted? "gbnf-line-accepted" "gbnf-line-refused")))))))))))))
   (reverse differences))
 
 (define (expected-stage entry)
@@ -545,7 +545,9 @@
          #:ids
          (ids #f)
          #:stop-on-failure?
-         (stop-on-failure? #f))
+         (stop-on-failure? #f)
+         #:retain-observations?
+         (retain-observations? #f))
   (define setup-error #f)
   (define receipt
     (with-handlers
@@ -591,7 +593,9 @@
    (define expected (hash-ref entry 'expected))
    (define actual
      (with-handlers
-      ((exn:fail? (lambda (error) (hash 'infrastructure (exn-message error)))))
+      ((exn:fail?
+        (lambda (error)
+          (hash 'infrastructure (exn-message error) 'error (exception-evidence error)))))
       (when setup-error (error 'blind-corpus "~a" setup-error))
       (when (hash-has-key? entry 'inventory-error)
         (error 'blind-corpus "~a" (hash-ref entry 'inventory-error)))
@@ -599,7 +603,14 @@
       (observe entry)))
    (define infrastructure (hash-ref actual 'infrastructure #f))
    (define differences
-     (compare-observation expected actual #:id id #:case-id case-id #:subcase subcase))
+     (with-handlers
+      ((exn:fail?
+        (lambda (error)
+          (set! infrastructure (exn-message error))
+          (set! actual
+            (hash-set* actual 'infrastructure infrastructure 'error (exception-evidence error)))
+          '())))
+      (compare-observation expected actual #:id id #:case-id case-id #:subcase subcase)))
    (when infrastructure
      (set! infrastructure-count (add1 infrastructure-count))
      (set! differences
@@ -624,40 +635,44 @@
         differences)))
    (define passed? (null? differences))
    (hash-update! case-results case-id (lambda (prior) (and prior passed?)) #t)
+   (define recorded-result
+     (hash
+      'id
+      id
+      'case-id
+      case-id
+      'subcase
+      subcase
+      'pass
+      passed?
+      'command
+      (let ((invocation (hash-ref expected 'invocation '())))
+        (if (>= (length invocation) 2) (cadr invocation) "unknown"))
+      'stage
+      (expected-stage entry)
+      'kind
+      (if infrastructure "infrastructure" "compared")
+      'expected
+      (hash
+       'exit_code
+       (visible (field expected 'exit_code))
+       'verdict
+       (visible (field expected 'verdict)))
+      'actual
+      (hash
+       'exit_code
+       (visible (field actual 'exit_code))
+       'verdict
+       (visible (field actual 'verdict))
+       'diagnostic-codes
+       (map (lambda (item) (hash-ref item 'code)) (hash-ref actual 'diagnostics '())))
+      'mismatch-count
+      (length differences)))
    (set! results
      (cons
-      (hash
-       'id
-       id
-       'case-id
-       case-id
-       'subcase
-       subcase
-       'pass
-       passed?
-       'command
-       (let ((invocation (hash-ref expected 'invocation '())))
-         (if (>= (length invocation) 2) (cadr invocation) "unknown"))
-       'stage
-       (expected-stage entry)
-       'kind
-       (if infrastructure "infrastructure" "compared")
-       'expected
-       (hash
-        'exit_code
-        (visible (field expected 'exit_code))
-        'verdict
-        (visible (field expected 'verdict)))
-       'actual
-       (hash
-        'exit_code
-        (visible (field actual 'exit_code))
-        'verdict
-        (visible (field actual 'verdict))
-        'diagnostic-codes
-        (map (lambda (item) (hash-ref item 'code)) (hash-ref actual 'diagnostics '())))
-       'mismatch-count
-       (length differences))
+      (if retain-observations?
+        (hash-set recorded-result 'observation (retained-observation actual))
+        recorded-result)
       results))
    (set! all-differences (append all-differences differences)))
   (define requested (length selected))
@@ -734,8 +749,12 @@
     "exact-key-sets"
     'lists
     "ordered"
+    'compared-fields
+    '("exit_code" "stdout_json" "diagnostics")
     'gbnf
-    "Exact text when stdout_gbnf is specified; independent structural assertions when gbnf_assertions is specified"
+    "For emit --gbnf without --json only: root presence and accepts_lines/rejects_lines membership; raw text and helper rule names are not compared"
+    'other-expected-fields
+    "Author notes; aliases,verdict,SARIF/LSP and raw stdout_gbnf are not compared"
     'unexpected-bound
     "mismatch"
     'semantic-provenance-key
@@ -744,8 +763,8 @@
     "code,file,range and registered required data; native extras ignored"
     'missing-required-data
     "explicit mismatch with missing sentinel and discriminator"
-    'unsupported-projections
-    "explicit missing implementation mismatch")
+    'verdict-reporting
+    "exit0 with native JSON status unchecked is unchecked; otherwise exit status classification")
    'results
    (reverse results)
    'mismatches
@@ -825,6 +844,11 @@
   (check (hash-ref usage 'exit_code) 2)
   (check (hash-ref (hash-ref usage 'stdout_json) 'ok) #f)
   (check (map (lambda (item) (hash-ref item 'code)) (hash-ref usage 'diagnostics)) '("E_USAGE"))
+  (check (observation-verdict 0 (hash 'status "unchecked") #f) "unchecked")
+  (check (observation-verdict 0 (hash 'status "ok") #f) "accepted")
+  (check (observation-verdict 1 (hash 'status "unchecked") #f) "refused")
+  (check (observation-verdict 2 (hash) #f) "usage_or_io_error")
+  (check (observation-verdict 0 (hash 'status "unchecked") "failure") "infrastructure")
   (define execution-root (make-temporary-file "cli-observation~a" 'directory))
   (dynamic-wind
    void
@@ -852,7 +876,27 @@
      (check (length (hash-ref (hash-ref refusal 'stdout_json) 'plan)) 1)
      (check
       (map (lambda (item) (hash-ref item 'code)) (hash-ref refusal 'diagnostics))
-      '("E_ENSURE")))
+      '("E_ENSURE"))
+     (display-to-file
+      (string-append
+       "#lang typify\ndeclare : External\n"
+       "primitive : send : canonical-path\neffect : send = external\n"
+       "form : send : <canonical-path>\ndoes : send <canonical-path>\nend!\n")
+      (build-path execution-root "external.typify"))
+     (display-to-file "send : /example\n" (build-path execution-root "external.data"))
+     (define unchecked
+       (observe
+        (hash
+         'directory
+         execution-root
+         'expected
+         (hash
+          'invocation
+          '("typify" "plan" "external.typify" "External" "external.data" "--json")))))
+     (check (hash-ref unchecked 'exit_code) 0)
+     (check (hash-ref unchecked 'verdict) "unchecked")
+     (check (hash-ref (hash-ref unchecked 'stdout_json) 'status) "unchecked")
+     (check (hash-ref (retained-observation unchecked) 'diagnostics) '()))
    (lambda () (delete-directory/files execution-root)))
   (define invocation '("typify" "check" "language.typify" "Sample" "program.typify" "--json"))
   (define count-diagnostic
@@ -988,7 +1032,39 @@
     (hash-ref (car (compare-observation (hash 'stdout_json 'null) (hash))) 'actual)
     missing-json)
    #t)
-  (check (pair? (compare-observation (hash 'lsp_range_utf16_zero_based (hash 'start 0)) (hash))) #t)
+  (check (compare-observation (hash 'lsp_range_utf16_zero_based (hash 'start 0)) (hash)) '())
+  (define author-note-keys
+    '(terms
+      tree_entries
+      ask_lines
+      ask_json
+      plan
+      predicted_state
+      bound
+      modelled
+      ensure
+      skips
+      facts_hash
+      programs
+      verdict
+      stdout_gbnf
+      gbnf_assertions
+      sarif_projection
+      lsp_range_utf16_zero_based
+      arbitrary-note))
+  (for
+   ((key (in-list author-note-keys)))
+   (check
+    (compare-observation
+     (hash-set clean key "contradictory note")
+     (hash 'exit_code 0 'stdout_json (hash 'ok #t 'terms '() 'diagnostics '())))
+    '()))
+  (check
+   (pair?
+    (compare-observation
+     (hash 'stdout_json (hash 'bound (hash 'c 2)) 'bound (hash 'c 1))
+     (hash 'stdout_json (hash 'bound (hash 'c 1)))))
+   #t)
   (check
    (pair?
     (compare-observation
@@ -1082,7 +1158,7 @@
   (define grammar-assertions
     (hash
      'required_nonterminals
-     '("root" "tag" "label")
+     '("root")
      'accepts_lines
      '("one small" "two small")
      'rejects_lines
@@ -1090,12 +1166,25 @@
      'schematic_note
      "Grammar spelling is separate from the asserted language."))
   (define (grammar-differences assertions (output (hash 'stdout_gbnf grammar-source)))
-    (compare-observation (hash 'gbnf_assertions assertions) output))
+    (define complete
+      (if (hash? assertions)
+        (for/fold
+         ((result assertions))
+         ((key '(required_nonterminals accepts_lines rejects_lines)) (value '(("root") () ())))
+         (if (hash-has-key? result key) result (hash-set result key value)))
+        assertions))
+    (compare-observation
+     (hash
+      'invocation
+      '("typify" "emit" "grammar.typify" "Sample" "--gbnf")
+      'gbnf_assertions
+      complete)
+     output))
   (define (reasons differences) (map (lambda (item) (hash-ref item 'reason)) differences))
   (check (grammar-differences grammar-assertions) '())
   (check
    (reasons (grammar-differences (hash 'required_nonterminals '("missing"))))
-   '("missing-nonterminal"))
+   '("invalid-gbnf-assertions"))
   (check
    (reasons (grammar-differences (hash 'accepts_lines '("one large"))))
    '("gbnf-line-refused"))
@@ -1110,9 +1199,39 @@
   (check
    (reasons (grammar-differences (hash 'accepts_lines "not a list")))
    '("invalid-gbnf-assertions"))
+  (check (reasons (grammar-differences (hash 'unknown_assertion '("one small")))) '())
   (check
-   (reasons (grammar-differences (hash 'unknown_assertion '("one small"))))
-   '("unsupported-gbnf-assertion"))
+   (compare-observation
+    (hash
+     'invocation
+     '("typify" "emit" "grammar.typify" "Sample" "--json")
+     'gbnf_assertions
+     "invalid note")
+    (hash))
+   '())
+  (check
+   (compare-observation
+    (hash
+     'invocation
+     '("typify" "emit" "grammar.typify" "Sample" "--gbnf" "--json")
+     'gbnf_assertions
+     "invalid note")
+    (hash))
+   '())
+  (check
+   (reasons (grammar-differences grammar-assertions (hash 'stdout_gbnf "word ::= \"one\"\n")))
+   '("gbnf-parse-error"))
+  (check
+   (compare-observation
+    (hash
+     'invocation
+     '("typify" "emit" "grammar.typify" "Sample" "--gbnf")
+     'stdout_gbnf
+     "irrelevant exact bytes"
+     'gbnf_assertions
+     grammar-assertions)
+    (hash 'stdout_gbnf "helper ::= \"one\" | \"two\"\nroot ::= helper \" small\"\n"))
+   '())
   (define skips
     (list
      (hash
@@ -1127,8 +1246,17 @@
       'origin
       (hash 'kind "program" 'path "input.typify" 'line 1))))
   (check (compare-observation (hash 'skips skips) (hash 'stdout_json (hash 'skips skips))) '())
-  (check (pair? (compare-observation (hash 'skips skips) (hash 'stdout_json (hash 'skips '())))) #t)
-  (check (pair? (compare-observation (hash 'skips '()) (hash 'stdout_json (hash)))) #t)
+  (check (compare-observation (hash 'skips skips) (hash 'stdout_json (hash 'skips '()))) '())
+  (check (compare-observation (hash 'skips '()) (hash 'stdout_json (hash))) '())
+  (check
+   (pair?
+    (compare-observation
+     (hash 'stdout_json (hash 'skips skips))
+     (hash 'stdout_json (hash 'skips '()))))
+   #t)
+  (check
+   (pair? (compare-observation (hash 'stdout_json (hash 'skips skips)) (hash 'stdout_json (hash))))
+   #t)
   (hash 'suite "blind-comparison" 'checks checks 'status "passed"))
 
 (module+ test-support (provide compare-observation missing missing-json))
