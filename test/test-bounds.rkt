@@ -76,7 +76,6 @@
       (car (request (append selected-arguments '("--json"))))
       (hash 'ok #t 'terms '(("output" "hello")) 'diagnostics '())
       "normal program check response is unchanged")
-     (define parsed (read-declarations declarations #:file declaration-path))
      (define (expected-limits names)
        (for*/fold
         ((limits
@@ -89,7 +88,8 @@
                (((key value) (in-hash model-host-guards)))
                (hash-set guards key value)))))
            (hash-set limits name (hash 'limit limit)))))
-        ((name (in-list names)) ((cap limit) (in-hash (language-caps (hash-ref parsed name)))))
+        ((name (in-list names))
+         ((cap limit) (in-hash (hash "states" 4096 "repetition" 256 "depth" 8 "length" 8))))
         (hash-set limits (string-append name "." cap) (hash 'limit limit))))
      (define expected-bounds (expected-limits '("Alpha" "Zeta")))
      (define expected-all (hash 'ok #t 'bounds expected-bounds 'diagnostics '()))
@@ -177,7 +177,7 @@
        (execute (list "check" declaration-path "Zeta" invalid-path "--bounds" "--json")))
      (check (hash-ref invalid 'exit) 1 "bounds does not bypass program validation")
      (check
-      (hash-has-key? (string->jsexpr (hash-ref invalid 'stdout)) 'languages)
+      (hash-has-key? (string->jsexpr (hash-ref invalid 'stdout)) 'bounds)
       #f
       "a failing check does not report successful derived bounds")
      (display-to-file

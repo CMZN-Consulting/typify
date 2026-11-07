@@ -80,8 +80,11 @@
   (define limits
     (for*/fold
      ((limits (hash)))
-     ((body (in-list bodies)) ((name limit) (in-hash (language-caps body))))
-     (hash-set limits (string-append (language-name body) "." name) (hash 'limit limit))))
+     ((body (in-list bodies)) ((name default) (in-hash meta-cap-defaults)))
+     (hash-set
+      limits
+      (string-append (language-name body) "." name)
+      (hash 'limit (hash-ref (language-caps body) name default)))))
   (define fuelled
     (for*/fold
      ((limits limits))
