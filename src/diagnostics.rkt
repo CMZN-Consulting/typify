@@ -90,7 +90,7 @@
    "E_EXAMPLE"
    '(form actual)
    "E_PROGRAM_COUNT"
-   '(constructor expected actual)
+   '(constructor expected actual key)
    "E_ORDER"
    '(form expected actual)
    "E_REQUIRED"

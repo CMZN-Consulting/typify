@@ -9,7 +9,10 @@
          racket/string
          racket/system
          "../src/diagnostics.rkt"
-         "../src/facts.rkt")
+         "../src/facts.rkt"
+         "../src/language.rkt"
+         "../src/plan.rkt"
+         "../src/tree.rkt")
 
 (provide run-tests)
 
@@ -132,6 +135,97 @@
         (equal? (hash-ref data 'facts) (sort (hash-ref data 'facts) string<? #:key canonical-json)))
       #t)
      (check "validated-data-is-preserved" (lambda () (equal? (validate-facts data) data)) #t)
+     (define markers
+       (validate-facts
+        (hash
+         'collector
+         "typify 1.0"
+         'root
+         "/"
+         'facts
+         (list
+          (hash 'fact "exists" 'args '("/vault"))
+          (hash 'fact "directory" 'args '("/vault/nested/.obsidian"))))))
+     (check
+      "clean-is-derived-with-component-boundaries-and-case-sensitive-names"
+      (lambda ()
+        (list
+         (query markers "clean" '("/vault" ".obsidian"))
+         (query markers "clean" '("/vaul" ".obsidian"))
+         (query markers "clean" '("/vault" ".Obsidian"))
+         (query markers "clean" '("/vault/nested/.obsidian" ".obsidian"))
+         (query #f "clean" '("/vault" ".obsidian"))))
+      '((#f #f) (#t #t) (#t #t) (#t #t) (#f #f)))
+     (check
+      "clean-is-never-accepted-as-a-collector-wire-fact"
+      (lambda ()
+        (with-handlers
+         ((exn:fail:typify?
+           (lambda (failure) (diagnostic-code (exn:fail:typify-diagnostic failure)))))
+         (validate-facts
+          (hash
+           'collector
+           "typify 1.0"
+           'root
+           "/"
+           'facts
+           (list (hash 'fact "clean" 'args '("/vault" ".obsidian")))))
+         "accepted"))
+      "E_FILE")
+     (define (clean-body clauses (direct? #f))
+       (hash-ref
+        (read-declarations
+         (string-append
+          "#lang typify\ndeclare : Clean\ncap : length = 64\n"
+          "primitive : output : canonical-path\neffect : output = external\n"
+          "term : act : canonical-path\n"
+          "rule : act <p> -> (if (clean <p> \".obsidian\") (output <p>))\n"
+          "form : output : <canonical-path>\ndoes : "
+          (if direct? "output" "act")
+          " <canonical-path>\n"
+          clauses
+          "\nend!\n"))
+        "Clean"))
+     (define conditional (clean-body ""))
+     (check
+      "clean-if-is-a-fact-dependency-only-for-plan"
+      (lambda ()
+        (list
+         (language-needs-facts? conditional)
+         (tree-facts-required? (hash "Clean" conditional))))
+      '(#t #f))
+     (check
+      "clean-conditional-controls-primitive-expansion"
+      (lambda ()
+        (list
+         (length (hash-ref (plan-program conditional "output : /vault" #:facts markers) 'plan))
+         (length (hash-ref (plan-program conditional "output : /safe" #:facts markers) 'plan))))
+      '(0 1))
+     (check
+      "clean-guard-is-evaluated-before-an-active-program"
+      (lambda ()
+        (define guarded (clean-body "guard : act = (clean <1> \".obsidian\")"))
+        (define report
+          (check-program/diagnostics
+           "output : /vault"
+           guarded
+           #:facts
+           (lambda (name args origin) (fact-query markers name args))))
+        (list (hash-ref report 'valid) (hash-ref report 'guarded?) (hash-ref report 'terms)))
+      '(#t #t ()))
+     (for
+      ((behavior '("skip" "reject")))
+      (check
+       (string-append "clean-read-" behavior)
+       (lambda ()
+         (define body
+           (clean-body (string-append "reads : output : (clean <1> \".obsidian\") = " behavior) #t))
+         (with-handlers
+          ((exn:fail:typify?
+            (lambda (failure) (diagnostic-code (exn:fail:typify-diagnostic failure)))))
+          (define report (plan-program body "output : /vault" #:facts markers))
+          (length (hash-ref report 'plan))))
+       (if (equal? behavior "reject") "E_FACT_REJECT" 0)))
      (check
       "duplicate-fact-key-is-refused"
       (lambda ()

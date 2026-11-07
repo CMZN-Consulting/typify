@@ -23,7 +23,7 @@
       ("E_CLASS_OVERLAP" form class token)
       ("E_CAP" cap limit actual)
       ("E_EXAMPLE" form actual)
-      ("E_PROGRAM_COUNT" constructor expected actual)
+      ("E_PROGRAM_COUNT" constructor expected actual key)
       ("E_ORDER" form expected actual)
       ("E_REQUIRED" path)
       ("E_TERM_CLASS" kind constructor class actual)

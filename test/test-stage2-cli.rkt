@@ -89,7 +89,7 @@
       (hash-ref failed 'plan)
       '(("store" "/sample" "blue") ("clear" "/sample"))
       "failed ensures preserve the whole plan")
-     (check (hash-ref failed 'state) (hash 'entries '()) "failed ensures preserve final state")
+     (check (hash-ref failed 'state) (hash "entries" '()) "failed ensures preserve final state")
      (check
       (map (lambda (entry) (hash-ref entry 'ok)) (hash-ref failed 'ensure))
       '(#f)
@@ -130,6 +130,12 @@
       "ok\ndata.typify [\"store\",\"/sample\",\"blue\"]\n"
       "plan text prefixes primitive terms with program paths")
      (write-declaration (string-replace declaration "end!" "reads : store : exists = reject\nend!"))
+     (define missing-facts (refusal good-arguments))
+     (check (diagnostic-code missing-facts) "E_USAGE" "one-program plans never invent a facts root")
+     (check
+      (hash-ref (diagnostic-data missing-facts) 'actual)
+      "--facts"
+      "one-program plans identify the missing facts flag")
      (define facts-bytes
        #"{ \"collector\":\"typify 1.0\", \"root\":\"/\", \"facts\":[{\"fact\":\"exists\",\"args\":[\"/sample\"]}] }\n")
      (call-with-output-file facts (lambda (out) (write-bytes facts-bytes out)))
@@ -145,6 +151,49 @@
       (hash-ref (diagnostic-data malformed) 'path)
       facts
       "malformed facts identify their file")
+     (define grammar (request (list "emit" declarations "Records" "--json")))
+     (check
+      (hash-has-key? grammar 'diagnostics)
+      #f
+      "emit prints the grammar without a report wrapper")
+     (define failed-emit (execute (list "emit" absent "Records" "--json")))
+     (check
+      (sort (hash-keys (string->jsexpr (hash-ref failed-emit 'stdout))) symbol<?)
+      '(diagnostics ok)
+      "failed emit prints the native failure object")
+     (define slot-directory (build-path root "SLOT[2]"))
+     (make-directory slot-directory)
+     (display-to-file "ready!" (build-path slot-directory "data.typify"))
+     (write-declaration
+      (string-join
+       '("#lang typify"
+         "declare : Slots"
+         "is : seat = /[0-9]+/"
+         "file : SLOT[<seat>]/data.typify"
+         "cell : assignments = shadow"
+         "primitive : tag : seat"
+         "writes : tag : assignments = put 1"
+         "form : ready!"
+         "does : tag <seat>"
+         "end!")
+       "\n"))
+     (parameterize
+      ((current-directory root))
+      (define slot-check (request (list "check" declarations "Slots" "SLOT[2]/data.typify")))
+      (check
+       (hash-ref slot-check 'terms)
+       '(("tag" "2"))
+       "one-program check binds file-template captures")
+      (define slot-plan (request (list "plan" declarations "Slots" "SLOT[2]/data.typify")))
+      (check
+       (hash-ref slot-plan 'plan)
+       '(("tag" "2"))
+       "one-program plan binds file-template captures")
+      (define mismatch (refusal (list "plan" declarations "Slots" program)))
+      (check
+       (hash-ref (diagnostic-data mismatch) 'actual)
+       program
+       "a template mismatch names the path as given"))
      (for
       ((arguments
         (in-list

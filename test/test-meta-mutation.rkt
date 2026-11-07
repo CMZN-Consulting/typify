@@ -177,6 +177,7 @@
        "form : item : <category-alias> = <title>"
        "does : item <category-alias> <title>"
        "count : item = 1..*"
+       "count : item = 0..1 by 1"
        "end!"
        "declare : InheritedMeta"
        "primitive : choose-order : ordering"
@@ -196,7 +197,15 @@
    (hash-ref (check-program "item : journal = Market Research" body) 'terms)
    (hash-ref (check-program "order : strict\norder : free\nwidth : 1\nwidth : 2" inherited) 'terms)
    (rejects? (lambda () (check-program "order : unknown" inherited)))
-   (rejects? (lambda () (check-program "width : A" inherited)))))
+   (rejects? (lambda () (check-program "width : A" inherited)))
+   (let ((count (hash-ref (language-keyed-counts body) "item")))
+     (list (hash-ref count 'multiplicity) (hash-ref count 'width)))
+   (hash-ref (check-program "item : book = One\nitem : journal = Two" body) 'terms)
+   (rejects? (lambda () (check-program "item : book = One\nitem : book = Two" body)))
+   (rejects?
+    (lambda ()
+      (read-declarations
+       (string-replace source "count : item = 0..1 by 1" "count : item = 0..1 by 3"))))))
 
 (define internal-oracles
   (list
@@ -207,6 +216,10 @@
     fact-model
     '((("item" "journal" "Market Research"))
       (("choose-order" "strict") ("choose-order" "free") ("choose-width" "1") ("choose-width" "2"))
+      #t
+      #t
+      ("0..1" 1)
+      (("item" "book" "One") ("item" "journal" "Two"))
       #t
       #t))
    (oracle

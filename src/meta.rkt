@@ -109,6 +109,12 @@
     "declare-count"
     '("name" "multiplicity")
     "count : item = 1..*")
+   (entry
+    'count-keyed
+    "count : <name> = <multiplicity> by <width>"
+    "declare-keyed-count"
+    '("name" "multiplicity" "width")
+    "count : item = 0..1 by 1")
    (entry 'order "order : <order-mode>" "set-order" '("order-mode") "order : free")
    (entry 'file "file : <value>" "set-file" '("value") "file : catalog.typify")
    (entry 'required "required!" "require-file" '() "required!")

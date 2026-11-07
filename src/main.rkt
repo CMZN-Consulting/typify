@@ -16,7 +16,8 @@
          "model.rkt"
          "facts.rkt"
          "plan.rkt"
-         "tree.rkt")
+         "tree.rkt"
+         "syntax.rkt")
 
 (provide run-command execute-command render-bounds render-tree render-plan display-diagnostics)
 
@@ -160,6 +161,40 @@
      (hash-ref (hash-ref item 'bounds) 'states-upper-bound))))
   (get-output-string output))
 
+(define (program-captures body path)
+  (cond
+   ((not (language-file body)) (hash))
+   (else
+    (define given (if (eq? (system-type 'os) 'windows) (string-replace path "\\" "/") path))
+    (define templates (string-split (language-file body) "/" #:trim? #f))
+    (define components (string-split given "/" #:trim? #f))
+    (define bindings
+      (and (= (length templates) (length components))
+           (for/fold
+            ((bindings (hash)))
+            ((source (in-list templates)) (part (in-list components)))
+            (define captures (and bindings (match-template (parse-template source) part)))
+            (and captures
+                 (for/and
+                  (((name value) (in-hash captures)))
+                  (and (class-accepts? (hash-ref (language-classes body) name) value)
+                       (or (not (hash-has-key? bindings name))
+                           (equal? (hash-ref bindings name) value))))
+                 (for/fold
+                  ((result bindings))
+                  (((name value) (in-hash captures)))
+                  (hash-set result name value))))))
+    (unless bindings
+      (raise-typify
+       "E_USAGE"
+       "The program path does not match its language template"
+       #:data
+       (hash 'actual path)))
+    bindings)))
+
+(define (checked-bounds bodies diagnostics)
+  (hash 'ok #t 'bounds (bounds-report bodies) 'diagnostics (map diagnostic->jsexpr diagnostics)))
+
 (define (read-facts path)
   (define portable-path (string-replace path "\\" "/"))
   (define bytes
@@ -273,12 +308,20 @@
   (define bounds? (hash-ref options "--bounds" #f))
   (define facts-path (hash-ref options "--facts" #f))
   (define text-output #f)
-  (when (and facts-path (not (and (pair? positional) (member (car positional) '("tree" "plan")))))
+  (when (and
+         facts-path
+         (not (and (pair? positional) (member (car positional) '("check" "tree" "plan")))))
     (raise-typify
      "E_USAGE"
-     "--facts is available only with tree or plan"
+     "--facts is available only with check, tree or plan"
      #:data
      (hash 'actual "--facts")))
+  (when (and
+         facts-path
+         (pair? positional)
+         (equal? (car positional) "check")
+         (not (= (length positional) 4)))
+    (raise-typify "E_USAGE" "--facts requires a one-program check" #:data (hash 'actual "--facts")))
   (when (and bounds? (not (and (pair? positional) (equal? (car positional) "check"))))
     (raise-typify
      "E_USAGE"
@@ -319,12 +362,31 @@
      ((list "check" path)
       (define-values (declarations diagnostics) (load-declarations/diagnostics path))
       (if bounds?
-        (with-diagnostics (bounds-report (hash-values declarations)) diagnostics)
+        (checked-bounds (hash-values declarations) diagnostics)
         (checked-response (hash 'diagnostics diagnostics))))
      ((list "check" path name program)
       (define-values (declarations diagnostics) (load-declarations/diagnostics path))
       (define body (select-language declarations name))
-      (define checked (check-program/diagnostics (read-source program) body #:file program))
+      (define captures (program-captures body program))
+      (define-values
+       (facts facts-hash)
+       (facts-input
+        (and facts-path
+             (for/or
+              ((row (in-list (language-rows body))))
+              (memq (hash-ref row 'kind) '(guard reads))))
+        facts-path
+        (current-directory)))
+      (define checked
+        (check-program/diagnostics
+         (read-source program)
+         body
+         #:file
+         program
+         #:captures
+         captures
+         #:facts
+         (lambda (name arguments origin) (fact-query facts name arguments))))
       (define complete
         (hash-set
          checked
@@ -332,7 +394,7 @@
          (diagnostics-sort (append diagnostics (hash-ref checked 'diagnostics '())))))
       (raise-diagnostics (hash-ref complete 'diagnostics))
       (if bounds?
-        (with-diagnostics (bounds-report (list body)) (hash-ref complete 'diagnostics))
+        (checked-bounds (list body) (hash-ref complete 'diagnostics))
         (checked-response complete body)))
      ((list "facts" root) (collect-facts root))
      ((list "tree" path root)
@@ -395,24 +457,24 @@
      ((list "plan" path name program)
       (define-values (declarations diagnostics) (load-declarations/diagnostics path))
       (define body (select-language declarations name))
-      (when (language-file body)
+      (define captures (program-captures body program))
+      (when (and (language-needs-facts? body) (not facts-path))
         (raise-typify
          "E_USAGE"
-         "A language with a file template is planned over a tree"
+         "A one-program plan needs an explicit facts file"
          #:data
-         (hash 'actual name)))
+         (hash 'actual "--facts")))
       (define-values
        (facts facts-hash)
-       (facts-input
-        (language-needs-facts? body)
-        facts-path
-        (or (path-only (path->complete-path program)) (current-directory))))
+       (facts-input (language-needs-facts? body) facts-path (current-directory)))
       (define ensure-diagnostics '())
       (define-values
        (report events)
        (plan-program/details
         body
         (read-source program)
+        #:captures
+        captures
         #:path
         program
         #:facts
@@ -427,9 +489,7 @@
      ((list "emit" path name)
       (define-values (declarations diagnostics) (load-declarations/diagnostics path))
       (define body (select-language declarations name))
-      (with-diagnostics
-       (if gbnf? (hash 'text (language->gbnf body)) (language->grammar body))
-       diagnostics))
+      (if gbnf? (hash 'text (language->gbnf body)) (language->grammar body)))
      (_
       (raise-typify
        "E_USAGE"
@@ -438,7 +498,9 @@
        (hash 'actual (if (null? positional) "" (car positional)))))))
   (values
    (public-data
-    (if (or (hash-has-key? result 'diagnostics) (not json?))
+    (if (or (hash-has-key? result 'diagnostics)
+            (not json?)
+            (and (pair? positional) (equal? (car positional) "emit")))
       result
       (hash-set result 'diagnostics '())))
    json?
@@ -490,22 +552,7 @@
      '()
      'diagnostics
      diagnostics))
-   ((equal? command "emit")
-    (hash
-     'language
-     (if (pair? (cdr positional)) (last positional) "")
-     'version
-     1
-     'classes
-     (hash)
-     'forms
-     '()
-     'caps
-     (hash)
-     'comment
-     ""
-     'diagnostics
-     diagnostics))
+   ((equal? command "emit") (hash 'ok #f 'diagnostics diagnostics))
    (else (hash 'ok #f 'terms '() 'diagnostics diagnostics))))
 
 (define (execute-command arguments)
@@ -526,7 +573,8 @@
    (unless json-output? (display-diagnostics diagnostics))
    (cond
     ((equal? arguments '("--version")) (displayln typify-version))
-    ((and (member "--bounds" arguments) (not json-output?)) (display (render-bounds result)))
+    ((and (member "--bounds" arguments) (not json-output?))
+     (display (render-bounds (hash-ref result 'bounds))))
     ((and (hash-has-key? result 'terms) (hash-has-key? result 'ok) (not json-output?)) (void))
     ((and text-output (not json-output?)) (display text-output))
     ((and (hash-has-key? result 'text) (not json-output?)) (display (hash-ref result 'text)))

@@ -66,14 +66,32 @@
   data)
 
 (define (fact-query data name arguments)
-  (define item
-    (and data
-         (for/first
-          ((item (in-list (hash-ref data 'facts)))
-           #:when
-           (and (equal? (hash-ref item 'fact) name) (equal? (hash-ref item 'args) arguments)))
-          item)))
-  (if item (values #t (hash-ref item 'value #t)) (values #f #f)))
+  (cond
+   ((equal? name "clean")
+    (define clean?
+      (and data
+           (= (length arguments) 2)
+           (andmap string? arguments)
+           (let* ((base (car arguments))
+                  (name (cadr arguments))
+                  (prefix (if (equal? base "/") "/" (string-append base "/"))))
+             (not
+              (for/or
+               ((item (in-list (hash-ref data 'facts))))
+               (define path (car (hash-ref item 'args)))
+               (and (not (equal? path base))
+                    (string-prefix? path prefix)
+                    (equal? (last (string-split path "/" #:trim? #f)) name)))))))
+    (if clean? (values #t #t) (values #f #f)))
+   (else
+    (define item
+      (and data
+           (for/first
+            ((item (in-list (hash-ref data 'facts)))
+             #:when
+             (and (equal? (hash-ref item 'fact) name) (equal? (hash-ref item 'args) arguments)))
+            item)))
+    (if item (values #t (hash-ref item 'value #t)) (values #f #f)))))
 
 (define (octal-mode mode)
   (define digits (number->string (bitwise-and mode 4095) 8))

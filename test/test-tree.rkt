@@ -276,17 +276,18 @@
       (lambda ()
         (define programs
           (read-tree
-           (declarations (context-body "same.data" "guard : use = (exists /absent)"))
+           (declarations parent-body (context-body "same.data" "guard : use = (exists /absent)"))
            context-root
            #:facts
            (hash 'collector "typify 1.0" 'root "/" 'facts '())))
+        (define child (second programs))
         (list
-         (hash-ref (car programs) 'status)
-         (hash-ref (car programs) 'terms)
-         (hash-ref (car programs) 'origins)
-         (hash-ref (car programs) 'raw-terms)
-         (length (hash-ref (car programs) '_raw-term-spans))
-         (hash-ref (car (hash-ref (car programs) 'skips)) 'reason)))
+         (hash-ref child 'status)
+         (hash-ref child 'terms)
+         (hash-ref child 'origins)
+         (hash-ref child 'raw-terms)
+         (length (hash-ref child '_raw-term-spans))
+         (hash-ref (car (hash-ref child 'skips)) 'reason)))
       '("guarded" () () (("use" ("context" "workdir"))) 1 "guard"))
      (define relative-root (build-path temporary "relative-guards"))
      (make-directory relative-root)
@@ -378,7 +379,7 @@
         "declare : Gather\ncap : length = 64\nis : word = /[A-Za-z]+/\n"
         "primitive : use : word\neffect : use = external\nterm : deny : word\nfact : deny\n"
         "term : gather\nfuel : gather = 4\n"
-        "rule : gather -> (each <entry> in (inherited deny) use <entry>)\n"
+        "rule : gather -> (each <entry> in (inherited deny) (use <entry>))\n"
         "form : gather!\ndoes : gather\nfile : nested/deep/use.data\nend!\n"))
      (define (inherited-programs (guard ""))
        (read-tree

@@ -39,7 +39,7 @@
 
 (define model-host-guards (hash "join-law-checks" 1048576))
 
-(define known-facts '("exists" "directory" "symlink" "mode" "owner"))
+(define known-facts '("exists" "directory" "symlink" "mode" "owner" "clean"))
 
 (define (decl-fail kind actual message span)
   (raise-typify "E_DECLARATION" message #:span span #:data (hash 'kind kind 'actual actual)))
@@ -101,7 +101,8 @@
     #:data
     (hash 'cell name))))
 
-(define (state-predicate? name) (member name '("bound" "masked" "visible" "absent")))
+(define (state-predicate? name)
+  (member name '("bound" "masked" "visible" "absent" "covered" "uncovered")))
 
 (define (library-predicate? name) (member name '("prefix" "suffix" "equal")))
 
@@ -178,9 +179,15 @@
    #:span
    span
    #:data
-   (hash 'cell cell 'expected expected 'actual actual)))
+   (hash
+    'cell
+    cell
+    'expected
+    expected
+    'actual
+    (if (list? actual) (string-join actual " ") actual))))
 
-(define (validate-join name table domain span)
+(define (validate-join name table domain span #:complete? (complete? #t))
   (define size (length domain))
   (define work (+ size (* size size) (* size size size)))
   (when (> work (hash-ref model-host-guards "join-law-checks"))
@@ -204,18 +211,24 @@
      (when (and
             (hash-has-key? result (cons value value))
             (not (equal? (hash-ref result (cons value value)) value)))
-       (join-fail name "idempotent" (list value value) span))
+       (join-fail name "idempotent" value span))
      (hash-set result (cons value value) value)))
-  (for*
-   ((left (in-list domain)) (right (in-list domain)))
-   (unless (hash-has-key? completed (cons left right))
-     (join-fail name "complete" (list left right) span)))
+  (when complete?
+    (for*
+     ((left (in-list domain)) (right (in-list domain)))
+     (unless (hash-has-key? completed (cons left right))
+       (join-fail name "complete" (list left right) span))))
   (for*
    ((left (in-list domain)) (middle (in-list domain)) (right (in-list domain)))
-   (unless (equal?
-            (hash-ref completed (cons (hash-ref completed (cons left middle)) right))
-            (hash-ref completed (cons left (hash-ref completed (cons middle right)))))
-     (join-fail name "associative" (list left middle right) span)))
+   (when (and
+          (hash-has-key? completed (cons left middle))
+          (hash-has-key? completed (cons middle right))
+          (hash-has-key? completed (cons (hash-ref completed (cons left middle)) right))
+          (hash-has-key? completed (cons left (hash-ref completed (cons middle right)))))
+     (unless (equal?
+              (hash-ref completed (cons (hash-ref completed (cons left middle)) right))
+              (hash-ref completed (cons left (hash-ref completed (cons middle right)))))
+       (join-fail name "associative" (list left middle right) span))))
   completed)
 
 (define (table-domain table)
@@ -304,7 +317,10 @@
   (define ensures (hash))
   (define joins (hash))
   (define join-spans (hash))
+  (define join-entries (hash))
   (define join-domains (hash))
+  (define table-domains (hash))
+  (define used-tables (make-hash))
   (define external (hash))
   (define external-spans (hash))
   (define stages (hash))
@@ -421,16 +437,20 @@
                (row-span row)))))))
         ((join)
          (define name (capture-value row "name"))
-         (define values (quoted-pair (capture-value row "value") classes (row-span row)))
-         (define left (car values))
-         (define right (cadr values))
-         (define result (caddr values))
-         (define table (hash-ref joins name (hash)))
-         (define key (cons left right))
-         (when (and (hash-has-key? table key) (not (equal? (hash-ref table key) result)))
-           (join-fail name (hash-ref table key) values (row-span row)))
-         (set! joins (hash-set joins name (hash-set* table key result (cons right left) result)))
-         (set! join-spans (hash-set join-spans name (row-span row))))
+         (unless (failed? 'join name)
+           (define triple (quoted-pair (capture-value row "value") classes (row-span row)))
+           (define left (car triple))
+           (define right (cadr triple))
+           (define result (caddr triple))
+           (define table (hash-ref joins name (hash)))
+           (define key (cons left right))
+           (when (and (hash-has-key? table key) (not (equal? (hash-ref table key) result)))
+             (join-fail name "once" (list left right) (row-span row)))
+           (set! join-entries
+             (hash-update join-entries name (lambda (prior) (append prior (list triple))) '()))
+           (set! joins (hash-set joins name (hash-set* table key result (cons right left) result)))
+           (unless (hash-has-key? join-spans name)
+             (set! join-spans (hash-set join-spans name (row-span row))))))
         ((effect)
          (define name (capture-value row "name"))
          (constructor! name row #:primitive? #t)
@@ -583,29 +603,70 @@
                  classes
                  (model-write-span write))))
          (when domain
-           (set! join-domains
-             (hash-update
-              join-domains
-              (model-cell-table cell)
-              (lambda (prior) (sort (remove-duplicates (append prior domain)) string<?))
-              '()))))))))
+           (define normalized (sort (remove-duplicates domain) string<?))
+           (when (and
+                  (hash-has-key? join-domains (model-cell-name cell))
+                  (not (equal? (hash-ref join-domains (model-cell-name cell)) normalized)))
+             (decl-fail
+              "conflict"
+              (model-cell-name cell)
+              "A cell's writers disagree on its value class"
+              (model-write-span write)))
+           (set! join-domains (hash-set join-domains (model-cell-name cell) normalized))))))))
   (for
-   (((name cell) (in-hash cells)) #:when (eq? (model-cell-law cell) 'join))
+   ((cell
+     (in-list
+      (sort
+       (hash-values cells)
+       <
+       #:key
+       (lambda (cell) (src-span-start-byte (model-cell-span cell))))))
+    #:when
+    (eq? (model-cell-law cell) 'join))
    (define table-name (model-cell-table cell))
-   (unless (hash-has-key? joins table-name) (set! joins (hash-set joins table-name (hash))))
-   (unless (hash-has-key? join-spans table-name)
-     (set! join-spans (hash-set join-spans table-name (model-cell-span cell)))))
+   (hash-set! used-tables table-name #t)
+   (define domain (hash-ref join-domains (model-cell-name cell) #f))
+   (when domain
+     (attempt
+      (lambda ()
+        (when (and
+               (hash-has-key? table-domains table-name)
+               (not (equal? (hash-ref table-domains table-name) domain)))
+          (decl-fail
+           "conflict"
+           (model-cell-name cell)
+           "Cells sharing a table require one value class"
+           (model-cell-span cell)))
+        (set! table-domains (hash-set table-domains table-name domain)))))
+   (unless (or (hash-has-key? joins table-name) (failed? 'join table-name))
+     (attempt
+      (lambda ()
+        (decl-fail
+         "reference"
+         table-name
+         "The cell names an undeclared join table"
+         (model-cell-span cell))))))
   (for
-   (((name table) (in-hash joins)))
+   (((name table) (in-hash joins)) #:unless (failed? 'join name))
    (attempt
     (lambda ()
-      (define domain (hash-ref join-domains name (lambda () (table-domain table))))
-      (for
-       (((pair result) (in-hash table)))
-       (unless (and (member (car pair) domain) (member (cdr pair) domain) (member result domain))
-         (join-fail name "closed" (list (car pair) (cdr pair) result) (hash-ref join-spans name))))
+      (define domain (hash-ref table-domains name (lambda () (table-domain table))))
+      (when (hash-has-key? table-domains name)
+        (for*
+         ((triple (in-list (hash-ref join-entries name '()))) (literal (in-list triple)))
+         (unless (member literal domain)
+           (join-fail name "closed" literal (hash-ref join-spans name)))))
       (set! joins
-        (hash-set joins name (validate-join name table domain (hash-ref join-spans name)))))))
+        (hash-set
+         joins
+         name
+         (validate-join
+          name
+          table
+          domain
+          (hash-ref join-spans name)
+          #:complete?
+          (hash-ref used-tables name #f)))))))
   (compiled-model
    cells
    writes

@@ -12,6 +12,17 @@
 
 (define (capture name) (string-append "<" name ">"))
 
+(define (oracle-key<? left right)
+  (define difference
+    (for/first
+     ((index (in-range (min (length left) (length right))))
+      #:unless
+      (string=? (list-ref left index) (list-ref right index)))
+     index))
+  (if difference
+    (string<? (list-ref left difference) (list-ref right difference))
+    (< (length left) (length right))))
+
 (define (declaration name rows)
   (string-append "#lang typify\ndeclare : " name "\n" (string-join rows "\n") "\nend!\n"))
 
@@ -209,9 +220,7 @@
     (if (equal? (car term) "emit") (hash 'term term 'unchecked #t) term))
    (hash
     "entries"
-    (for/list
-     ((key (in-list (sort (hash-keys state) string<? #:key (lambda (key) (string-join key "~"))))))
-     (hash-ref state key)))
+    (for/list ((key (in-list (sort (hash-keys state) oracle-key<?)))) (hash-ref state key)))
    (map (lambda (event) (origin (cadr event))) ordered)))
 
 (define (run-tests)
@@ -371,7 +380,11 @@
      'canary-found
      (and canary (hash-ref canary 'found))
      'scope
-     "Distinct names and literal key domains; no renaming-only declaration count. Independent staged plan and state oracle."
+     "Distinct literal key domains; shadow, first, max-join, partitioned stacking, staged put/delete tuples, rewrite chains, and split loops."
+     'excluded-features
+     '("masks" "guards" "context" "inherited" "ensures" "multiple cells")
+     'canary-role
+     "Positive control for detecting an understated bound; not a blind-defect enumerator."
      'independent-oracle
      "Hand-built primitive events; finite shadow/first/max-join fold; formula fuel^loop-depth; no reader-derived expected values."
      'bound-counts

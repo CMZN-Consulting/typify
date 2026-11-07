@@ -77,10 +77,8 @@
       (hash 'ok #t 'terms '(("output" "hello")) 'diagnostics '())
       "normal program check response is unchanged")
      (define parsed (read-declarations declarations #:file declaration-path))
-     (define expected-all
+     (define expected-bounds
        (hash
-        'diagnostics
-        '()
         'languages
         (for/list
          ((name '("Alpha" "Zeta")))
@@ -96,6 +94,7 @@
           ((guards class-host-guards))
           (((key value) (in-hash model-host-guards)))
           (hash-set guards key value)))))
+     (define expected-all (hash 'ok #t 'bounds expected-bounds 'diagnostics '()))
      (define all-response (request (list "check" declaration-path "--bounds" "--json")))
      (check
       all-response
@@ -103,12 +102,16 @@
       "all-language JSON bounds match the recorded API data")
      (define expected-selected
        (hash
+        'ok
+        #t
         'diagnostics
         '()
-        'languages
-        (list (cadr (hash-ref expected-all 'languages)))
-        'host
-        (hash-ref expected-all 'host)))
+        'bounds
+        (hash
+         'languages
+         (list (cadr (hash-ref expected-bounds 'languages)))
+         'host
+         (hash-ref expected-bounds 'host))))
      (check
       (request (append selected-arguments '("--bounds" "--json")))
       (list expected-selected #t #f)
@@ -117,7 +120,7 @@
       (car (request (list "--bounds" "check" declaration-path "--json")))
       expected-all
       "the bounds flag is recognized before the command")
-     (define text (render-bounds expected-selected))
+     (define text (render-bounds (hash-ref expected-selected 'bounds)))
      (for
       ((pattern
         (list

@@ -312,6 +312,225 @@
    (hash-ref (car (hash-ref template-plan 'programs)) 'plan)
    '(("bind" "a" "/vault"))
    "template captures reach partitioned primitive arguments without per-seat constructors")
+  (check
+   (hash-ref
+    (plan-program templated "bind : /vault" #:path "a/policy.typify" #:captures (hash "seat" "a"))
+    'plan)
+   '(("bind" "a" "/vault"))
+   "standalone planner forwards explicitly bound template captures")
+  (check (tuple-key<? '("/a") '("/a/child")) #t "path strings compare by code point")
+  (check (tuple-key<? '("a") '("a" "")) #t "proper tuple prefixes come first")
+  (check (tuple-key<? '("a" "z") '("aa" "")) #t "the first differing component decides")
+  (check (tuple-key<? '("a" "z") '("a" "zz")) #t "component string prefixes come first")
+  (check (tuple-key<? '("\"") '("A")) #t "decoded quote precedes A despite JSON escaping")
+  (check (tuple-key<? '("a") '("a")) #f "equal keys are not strictly ordered")
+  (define ordered-keys '("/a/child" "\"" "A" "/a" "\\"))
+  (define ordered-body
+    (body
+     "DecodedOrder"
+     (list
+      (string-append
+       "is : order-key = "
+       (string-join (map (lambda (value) (format "~s" value)) ordered-keys) " | "))
+      "cell : entries = shadow"
+      "primitive : write : order-key"
+      "writes : write : entries = put 1"
+      "form : add : <order-key>"
+      "does : write <order-key>")))
+  (define ordered-plan
+    (plan-program
+     ordered-body
+     (string-join (map (lambda (key) (string-append "add : " key)) ordered-keys) "\n")))
+  (check
+   (map (lambda (entry) (hash-ref entry 'key)) (hash-ref (hash-ref ordered-plan 'state) "entries"))
+   '(("\"") ("/a") ("/a/child") ("A") ("\\"))
+   "wire order follows decoded keys rather than their JSON text")
+  (define tuple-body
+    (body
+     "TupleOrder"
+     '("is : left = \"a\" | \"aa\""
+       "is : right = \"\" | \"z\" | \"zz\""
+       "cell : entries = shadow"
+       "primitive : write : left right"
+       "writes : write : entries = put 2"
+       "form : add : [<left>] [<right>]"
+       "does : write <left> <right>")))
+  (define tuple-plan (plan-program tuple-body "add : [aa] []\nadd : [a] [zz]\nadd : [a] [z]"))
+  (check
+   (map (lambda (entry) (hash-ref entry 'key)) (hash-ref (hash-ref tuple-plan 'state) "entries"))
+   '(("a" "z") ("a" "zz") ("aa" ""))
+   "tuple wire order compares components independently")
+  (for
+   ((cell-rows
+     (in-list (list '() '("cell : first-cell = join modes" "cell : second-cell = join modes")))))
+   (define-values
+    (_model diagnostics)
+    (read-declarations/diagnostics
+     (source
+      "JoinIdentity"
+      (append
+       cell-rows
+       '("join : modes : \"a\" \"b\" = \"a\""
+         "join : modes : \"a\" \"c\" = \"c\""
+         "join : modes : \"b\" \"c\" = \"b\"")))
+     #:file
+     "join-identity.typify"))
+   (check
+    (map diagnostic-code diagnostics)
+    '("E_JOIN_LAW")
+    "each table is checked once, used twice or unused")
+   (check
+    (hash-ref (diagnostic-data (car diagnostics)) 'cell)
+    "modes"
+    "join errors identify their table")
+   (check
+    (hash-ref (diagnostic-data (car diagnostics)) 'expected)
+    "associative"
+    "the three-value table is genuinely non-associative")
+   (check
+    (src-span-start-line (diagnostic-range (car diagnostics)))
+    (+ 3 (length cell-rows))
+    "a table law failure covers the first join line"))
+  (define-values
+   (_duplicate duplicate-table)
+   (read-declarations/diagnostics
+    (source
+     "DuplicatePair"
+     '("join : modes : \"a\" \"a\" = \"a\""
+       "join : modes : \"a\" \"a\" = \"b\""
+       "join : modes : \"a\" \"a\" = \"c\""))
+    #:file
+    "duplicate-pair.typify"))
+  (check
+   (map diagnostic-code duplicate-table)
+   '("E_JOIN_LAW")
+   "a conflicting pair does not cause table-law cascades")
+  (check
+   (diagnostic-data (car duplicate-table))
+   (hash 'cell "modes" 'expected "once" 'actual "a a")
+   "duplicate pair data names once and the second listing's pair")
+  (check
+   (src-span-start-line (diagnostic-range (car duplicate-table)))
+   4
+   "conflicting duplicate covers its second listing")
+  (define-values
+   (_undeclared undeclared-table)
+   (read-declarations/diagnostics
+    (source "UndeclaredTable" '("cell : entries = join missing"))
+    #:file
+    "undeclared-table.typify"))
+  (check
+   (map diagnostic-code undeclared-table)
+   '("E_DECLARATION")
+   "a table cannot be silently invented")
+  (check
+   (diagnostic-data (car undeclared-table))
+   (hash 'kind "reference" 'actual "missing")
+   "undeclared table uses the reference diagnostic")
+  (define-values
+   (_diagonal diagonal)
+   (read-declarations/diagnostics
+    (source "Diagonal" '("join : modes : \"\\x61\" \"a\" = \"b\""))
+    #:file
+    "diagonal.typify"))
+  (check (map diagnostic-code diagonal) '("E_JOIN_LAW") "a wrong diagonal has one law failure")
+  (check
+   (diagnostic-data (car diagonal))
+   (hash 'cell "modes" 'expected "idempotent" 'actual "a")
+   "idempotence reports one decoded literal")
+  (define-values
+   (_partial partial)
+   (read-declarations/diagnostics (source "UnusedPartial" '("join : modes : \"a\" \"b\" = \"c\""))))
+  (check partial '() "unused partial tables do not claim complete or closed checks")
+  (define-values
+   (_closed closed)
+   (read-declarations/diagnostics
+    (source
+     "Closed"
+     '("is : entry-key = \"x\""
+       "is : mode = \"a\" | \"b\""
+       "cell : entries = join modes"
+       "join : modes : \"a\" \"b\" = \"\\x63\""
+       "primitive : put : entry-key mode"
+       "writes : put : entries = put 1"))))
+  (check (map diagnostic-code closed) '("E_JOIN_LAW") "used tables are checked for class closure")
+  (check
+   (diagnostic-data (car closed))
+   (hash 'cell "modes" 'expected "closed" 'actual "c")
+   "closure names the decoded outside-domain literal")
+  (define-values
+   (_shared shared)
+   (read-declarations/diagnostics
+    (source
+     "SharedDomain"
+     '("is : entry-key = \"x\""
+       "is : mode-a = \"a\" | \"b\""
+       "is : mode-b = \"a\" | \"c\""
+       "cell : first-cell = join modes"
+       "cell : second-cell = join modes"
+       "join : modes : \"a\" \"b\" = \"b\""
+       "primitive : put-first : entry-key mode-a"
+       "writes : put-first : first-cell = put 1"
+       "primitive : put-second : entry-key mode-b"
+       "writes : put-second : second-cell = put 1"))
+    #:file
+    "shared-domain.typify"))
+  (check
+   (map diagnostic-code shared)
+   '("E_DECLARATION")
+   "shared tables reject conflicting cell value domains")
+  (check
+   (diagnostic-data (car shared))
+   (hash 'kind "conflict" 'actual "second-cell")
+   "the second cell identifies the class conflict")
+  (check
+   (src-span-start-line (diagnostic-range (car shared)))
+   7
+   "shared class conflict covers the second cell line")
+  (define coverage
+    (body
+     "Coverage"
+     '("is : seat = \"a\" | \"b\""
+       "is : path = canonical-path"
+       "cell : mounts = shadow stacking"
+       "primitive : bind : seat path value"
+       "writes : bind : mounts = put 2"
+       "primitive : mask : seat path"
+       "writes : mask : mounts = put 2"
+       "term : inspect : seat path"
+       "fact : inspect"
+       "ensure : inspect : covered-result = (covered mounts <1> <2>)"
+       "ensure : inspect : uncovered-result = (uncovered mounts <1> <2>)"
+       "form : bind : <seat> @ <path>"
+       "does : bind <seat> <path> rw"
+       "form : mask : <seat> @ <path>"
+       "does : mask <seat> <path>"
+       "form : inspect : <seat> @ <path>"
+       "does : inspect <seat> <path>")))
+  (for
+   ((entry
+     (in-list
+      (list
+       (cons "bind : a @ /root\ninspect : a @ /root/child" '(#t #f))
+       (cons "bind : a @ /root\ninspect : a @ /root" '(#f #t))
+       (cons "mask : a @ /root\ninspect : a @ /root/child" '(#f #t))
+       (cons "bind : a @ /root\nmask : a @ /\ninspect : a @ /root/child" '(#f #t))
+       (cons "bind : a @ /root\ninspect : b @ /root/child" '(#f #t))))))
+   (define diagnostics '())
+   (define report
+     (plan-program
+      coverage
+      (car entry)
+      #:on-error
+      (lambda (item) (set! diagnostics (cons item diagnostics)))))
+   (check
+    (map (lambda (item) (hash-ref item 'ok)) (hash-ref report 'ensure))
+    (cdr entry)
+    "coverage tests visible proper ancestors in the same partition")
+   (check
+    (map diagnostic-code diagnostics)
+    '("E_ENSURE")
+    "covered and uncovered are exact negations"))
   (hash 'suite "model-rulings" 'checks checks 'status "passed"))
 
 (module+ test (run-tests))

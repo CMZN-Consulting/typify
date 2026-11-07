@@ -14,7 +14,8 @@
          plan-program
          plan-program/details
          plan-needs-facts?
-         program-resolver)
+         program-resolver
+         tuple-key<?)
 
 (define (origin-span origin program body)
   (define path (hash-ref origin 'path))
@@ -223,7 +224,15 @@
                 (and (equal? (drop-right other-key 1) (drop-right key 1))
                      (path-ancestor? (last other-key) (last key))
                      (> (hash-ref other-entry 'sequence) (hash-ref entry 'sequence))))))))
-    (else (raise-argument-error 'state-query "bound, masked, visible or absent" name))))
+    ((covered uncovered)
+     (define covered?
+       (for/or
+        (((ancestor-key ancestor-entry) (in-hash entries)))
+        (and (equal? (drop-right ancestor-key 1) (drop-right key 1))
+             (path-ancestor? (last ancestor-key) (last key))
+             (state-query state cells "visible" (cons cell-name ancestor-key)))))
+     (if (equal? name "covered") (and covered? #t) (not covered?)))
+    (else (raise-argument-error 'state-query "a declared state predicate" name))))
 
 (define (cell-semantics model cell)
   (list
@@ -292,13 +301,21 @@
     (model-check-stacking-write! model write (hash-ref widths (model-write-cell write)))))
   (values cells widths))
 
+(define (tuple-key<? left right)
+  (cond
+   ((null? left) (pair? right))
+   ((null? right) #f)
+   ((string<? (car left) (car right)) #t)
+   ((string=? (car left) (car right)) (tuple-key<? (cdr left) (cdr right)))
+   (else #f)))
+
 (define (state->jsexpr state)
   (for/hash
    (((cell entries) (in-hash state)))
    (values
     cell
     (for/list
-     ((key (in-list (sort (hash-keys entries) string<? #:key canonical-json))))
+     ((key (in-list (sort (hash-keys entries) tuple-key<?))))
      (define entry (hash-ref entries key))
      (hash
       'key
@@ -341,6 +358,8 @@
          text
          #:path
          (path "<input>")
+         #:captures
+         (captures (hash))
          #:facts
          (facts #f)
          #:facts-hash
@@ -356,7 +375,7 @@
      'status
      "present"
      'placeholders
-     (hash)
+     captures
      'enclosing
      '()
      'line-spans
@@ -401,6 +420,8 @@
          text
          #:path
          (path "<input>")
+         #:captures
+         (captures (hash))
          #:facts
          (facts #f)
          #:facts-hash
@@ -414,6 +435,8 @@
     text
     #:path
     path
+    #:captures
+    captures
     #:facts
     facts
     #:facts-hash
@@ -601,7 +624,7 @@
    (define program (hash-ref clause 'program))
    (define last-key '())
    (define (query name arguments source-origin)
-     (if (member name '("bound" "masked" "visible" "absent"))
+     (if (member name '("bound" "masked" "visible" "absent" "covered" "uncovered"))
        (let ((key (cdr arguments)))
          (unless (= (length key) (hash-ref widths (car arguments)))
            (define row

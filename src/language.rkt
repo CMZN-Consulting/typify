@@ -25,6 +25,7 @@
          declaration-bound
          declaration-check-bounds
          language-model
+         language-keyed-counts
          evaluate-rule-expression
          primitive-events
          language-needs-facts?
@@ -584,9 +585,9 @@
     (if (and (= (length args) 4) (term? (cadddr args))) (effect-term-calls (cadddr args)) '()))
    (else (list expression))))
 
-(define fact-names '("exists" "directory" "symlink" "mode" "owner"))
+(define fact-names '("exists" "directory" "symlink" "mode" "owner" "clean"))
 
-(define state-predicate-names '("bound" "masked" "visible" "absent"))
+(define state-predicate-names '("bound" "masked" "visible" "absent" "covered" "uncovered"))
 
 (define library-predicate-names '("prefix" "suffix" "equal"))
 
@@ -684,6 +685,8 @@
      (term-span expression)))
   (when (and (member name library-predicate-names) (not (= (length args) 2)))
     (expression-arity-fail expression "string string"))
+  (when (and (equal? name "clean") (not (= (length args) 2)))
+    (expression-arity-fail expression "canonical-path string"))
   (when (member name state-predicate-names)
     (unless (and
              (pair? args)
@@ -700,6 +703,16 @@
       (expression-arity-fail
        expression
        (string-join (cons "cell" (make-list width "string")) " "))))
+  (when (and
+         (member name '("covered" "uncovered"))
+         (not
+          (model-cell-stacking?
+           (hash-ref (compiled-model-cells model) (literal-value (car args))))))
+    (declaration-fail
+     "syntax"
+     (term-data expression)
+     "Coverage predicates require a stacking cell"
+     (term-span expression)))
   (for
    ((argument (in-list args)))
    (validate-string-expression!
@@ -713,6 +726,13 @@
     name)))
 
 (define (validate-list-expression! expression constructors classes captures upper record-check)
+  (when (and (term? expression) (equal? (term-constructor expression) "context"))
+    (unless (= (length (term-arguments expression)) 1) (expression-arity-fail expression "string"))
+    (fail
+     "E_TERM_CLASS"
+     "A list source cannot receive a string-valued context"
+     (term-span expression)
+     (hash 'kind "sort" 'constructor "context" 'class "list" 'actual "string")))
   (unless (and
            (term? expression)
            (member (term-constructor expression) '("split" "ancestors" "inherited")))
@@ -804,7 +824,11 @@
 
 (define language-model-cache (make-weak-hasheq))
 
+(define language-keyed-count-cache (make-weak-hasheq))
+
 (define (language-model body) (hash-ref language-model-cache body))
+
+(define (language-keyed-counts body) (hash-ref language-keyed-count-cache body (hash)))
 
 (define (constructor-descriptors constructors)
   (for/hash
@@ -1082,6 +1106,7 @@
   (define pending-forms '())
   (define forms '())
   (define counts (hash))
+  (define keyed-counts (hash))
   (define rules '())
   (define rule-attempts (make-hash))
   (define rule-lefts (make-hash))
@@ -1253,11 +1278,23 @@
             current-form
             key
             (append (hash-ref current-form key) (list (cons (capture-value row "value") span))))))
-        ((count)
+        ((count count-keyed)
          (define key (capture-value row "name"))
-         (when (hash-has-key? counts key)
-           (declaration-fail "duplicate" key "The constructor has two counts" span))
-         (set! counts (hash-set counts key (capture-value row "multiplicity"))))
+         (define width (if (eq? kind 'count-keyed) (string->number (capture-value row "width")) 0))
+         (define selected (if (zero? width) counts keyed-counts))
+         (when (hash-has-key? selected key)
+           (declaration-fail
+            "duplicate"
+            (row-source row)
+            "The constructor has two counts of one kind"
+            span))
+         (if (zero? width)
+           (set! counts (hash-set counts key (capture-value row "multiplicity")))
+           (set! keyed-counts
+             (hash-set
+              keyed-counts
+              key
+              (hash 'multiplicity (capture-value row "multiplicity") 'width width)))))
         ((rule) (set! rules (append rules (list row))))
         ((sees) (set! sees (append sees (list (capture-value row "name")))))
         ((note) (set! notes (append notes (list (capture-value row "name")))))
@@ -1319,7 +1356,19 @@
         (let* ((row (for/first ((row (in-list rows)) #:when (eq? (hash-ref row 'kind) 'file)) row))
                (parts
                 (recover
-                 (lambda () (parse-template file #:span (line-right-span (hash-ref row 'record))))
+                 (lambda ()
+                   (define span (line-right-span (hash-ref row 'record)))
+                   (for/fold
+                    ((parts '()) (offset 0) #:result parts)
+                    ((component (in-list (string-split file "/" #:trim? #f))))
+                    (values
+                     (append
+                      parts
+                      (parse-template
+                       component
+                       #:span
+                       (span-slice span file offset (+ offset (string-length component)))))
+                     (+ offset (string-length component) 1))))
                  '())))
           (for/fold
            ((bindings (hash)))
@@ -1396,6 +1445,13 @@
          (check-duplicates names)
          "A rule variable is repeated"
          (row-span row)))
+      (for
+       ((name (in-list names)) #:when (hash-has-key? template-captures name))
+       (declaration-fail
+        "duplicate"
+        (string-append "<" name ">")
+        "A rule variable repeats a file-template placeholder"
+        (row-span row)))
       (define right-start (+ arrow-position 2))
       (define right-source (substring source right-start))
       (define cuts
@@ -1507,9 +1563,11 @@
   (for
    ((item (in-list (ordered-constructors constructors))))
    (define captures
-     (for/hash
+     (for/fold
+      ((bindings template-captures))
       ((class-name (in-list (constructor-signature item))) (index (in-naturals 1)))
-      (values
+      (hash-set
+       bindings
        (number->string index)
        (hash-ref
         classes
@@ -1689,7 +1747,9 @@
           'constructor
           (term-constructor (form-meaning candidate))))))))
   (for
-   ((key (in-list (sort (hash-keys counts) string<?))))
+   ((key
+     (in-list
+      (sort (remove-duplicates (append (hash-keys counts) (hash-keys keyed-counts))) string<?))))
    (recover
     (lambda ()
       (unless (hash-has-key? constructors key)
@@ -1700,7 +1760,8 @@
           (for/first
            ((row (in-list rows))
             #:when
-            (and (eq? (hash-ref row 'kind) 'count) (equal? (capture-value row "name") key)))
+            (and (memq (hash-ref row 'kind) '(count count-keyed))
+                 (equal? (capture-value row "name") key)))
            row))
          (hash 'kind "reference" 'actual key))))))
   (define body
@@ -1722,29 +1783,25 @@
      caps
      rows
      opening))
+  (hash-set! language-keyed-count-cache body keyed-counts)
   (for
-   ((key (in-list (sort (hash-keys counts) string<?)))
-    #:when
-    (member (hash-ref counts key) '("1" "0..1")))
-   (define declared-defaults
-     (append-map
-      form-defaults
-      (filter (lambda (candidate) (equal? (term-constructor (form-meaning candidate)) key)) forms)))
-   (when (> (length declared-defaults) 1)
-     (define excessive (cadr declared-defaults))
+   (((key constraint) (in-hash keyed-counts)) #:when (hash-has-key? constructors key))
+   (when (>
+          (hash-ref constraint 'width)
+          (length (constructor-signature (hash-ref constructors key))))
      (define row
        (for/first
         ((row (in-list rows))
          #:when
-         (and (eq? (hash-ref row 'kind) 'default) (equal? (row-span row) (cdr excessive))))
+         (and (eq? (hash-ref row 'kind) 'count-keyed) (equal? (capture-value row "name") key)))
         row))
      (recover
       (lambda ()
         (declaration-fail
-         "conflict"
-         (if row (row-source row) (string-append "default : " (car excessive)))
-         "The constructor's defaults exceed its multiplicity"
-         (cdr excessive))))))
+         "syntax"
+         (row-source row)
+         "The count key is wider than the constructor signature"
+         (row-span row))))))
   (define fields
     (for/hasheq
      ((candidate (in-list forms)))
@@ -1765,6 +1822,7 @@
      "form"))
   (define machines
     (for/hasheq ((candidate (in-list forms))) (values candidate (form-language candidate))))
+  (define default-values '())
   (for*
    ((earlier (in-list forms))
     (later (in-list forms))
@@ -1819,7 +1877,65 @@
          "An example does not reach its intended form"
          (cdr pair)
          (hash 'form (form-source candidate) 'actual (car pair))))
-      (void))))
+      (when (member pair (form-defaults candidate))
+        (define row
+          (for/first
+           ((row (in-list rows))
+            #:when
+            (and (eq? (hash-ref row 'kind) 'default) (equal? (row-span row) (cdr pair))))
+           row))
+        (define arguments
+          (for/list
+           ((argument (in-list (term-arguments (form-meaning (car hit))))))
+           (cond
+            ((literal? argument) (literal-value argument))
+            ((and (capture? argument) (hash-has-key? (cdr hit) (capture-name argument)))
+             (hash-ref (cdr hit) (capture-name argument)))
+            (else
+             (declaration-fail
+              "syntax"
+              (if row (row-source row) (string-append "default : " (car pair)))
+              "Default arguments must be literal values"
+              (cdr pair))))))
+        (set! default-values
+          (append
+           default-values
+           (list
+            (list
+             (cons (term-constructor (form-meaning (car hit))) arguments)
+             (cdr pair)
+             row))))))))
+  (define reported-defaults (make-hash))
+  (for*
+   ((name
+     (in-list
+      (sort (remove-duplicates (append (hash-keys counts) (hash-keys keyed-counts))) string<?)))
+    (constraint
+     (in-list
+      (append
+       (if (hash-has-key? counts name)
+         (list (hash 'multiplicity (hash-ref counts name) 'width 0))
+         '())
+       (if (hash-has-key? keyed-counts name) (list (hash-ref keyed-counts name)) '()))))
+    #:when
+    (member (hash-ref constraint 'multiplicity) '("1" "0..1")))
+   (define quantities (make-hash))
+   (for
+    ((entry (in-list default-values))
+     #:when
+     (and (equal? (caar entry) name) (<= (hash-ref constraint 'width) (length (cdar entry)))))
+    (define key (take (cdar entry) (hash-ref constraint 'width)))
+    (define quantity (add1 (hash-ref quantities key 0)))
+    (hash-set! quantities key quantity)
+    (when (and (= quantity 2) (not (hash-has-key? reported-defaults (cadr entry))))
+      (hash-set! reported-defaults (cadr entry) #t)
+      (recover
+       (lambda ()
+         (declaration-fail
+          "conflict"
+          (if (caddr entry) (row-source (caddr entry)) "default")
+          "The constructor's defaults exceed a count's multiplicity"
+          (cadr entry)))))))
   (define checks
     (hash
      'recorded
@@ -2592,7 +2708,7 @@
           (hash 'kind "result" 'constructor name 'class receiving-class 'actual received)))
        received))
     (define normalized-value (cons name args))
-    (define bindings (positional-bindings args))
+    (define bindings (merge-captures captures (positional-bindings args)))
     (for
      ((ensure (in-list (hash-ref (compiled-model-ensures model) name '()))))
      (set! ensures
@@ -2913,7 +3029,7 @@
           #:related
           (map car matching)
           #:data
-          (hash 'constructor name 'expected multiplicity 'actual quantity))))))
+          (hash 'constructor name 'expected multiplicity 'actual quantity 'key '()))))))
    (define actual-resolve (if guard-resolver (guard-resolver raw-terms raw-origins) resolve))
    (define failed-guard (gensym 'failed-guard))
    (define guard-observation
@@ -2965,6 +3081,45 @@
           (set! terms (append terms (list value)))
           (set! origins (append origins (list origin)))
           (set! term-spans (append term-spans (list span)))))))))
+  (parameterize
+   ((current-diagnostic-sink (lambda (item) (set! diagnostics (cons item diagnostics)))))
+   (for
+    (((name constraint) (in-hash (language-keyed-counts body))))
+    (define width (hash-ref constraint 'width))
+    (define multiplicity (hash-ref constraint 'multiplicity))
+    (define groups (make-hash))
+    (define keys '())
+    (for
+     ((value (in-list terms))
+      (origin (in-list origins))
+      (span (in-list term-spans))
+      #:when
+      (equal? (car value) name))
+     (define key (take (cdr value) width))
+     (unless (hash-has-key? groups key) (set! keys (append keys (list key))))
+     (hash-update! groups key (lambda (entries) (append entries (list (cons origin span)))) '()))
+    (for
+     ((key (in-list keys)))
+     (define matching (hash-ref groups key))
+     (define quantity (length matching))
+     (unless (cond
+              ((equal? multiplicity "1") (= quantity 1))
+              ((equal? multiplicity "0..1") (<= quantity 1))
+              ((equal? multiplicity "1..*") (>= quantity 1))
+              (else (equal? multiplicity "*")))
+       (recover
+        (lambda ()
+          (raise-typify
+           "E_PROGRAM_COUNT"
+           "The constructor's key group violates its multiplicity"
+           #:span
+           (if (and (> quantity 1) (member multiplicity '("1" "0..1")))
+             (cdr (cadr matching))
+             (cdar matching))
+           #:related
+           (map car matching)
+           #:data
+           (hash 'constructor name 'expected multiplicity 'actual quantity 'key key))))))))
   (define ordered (diagnostics-sort (reverse diagnostics)))
   (hash
    'valid
@@ -3215,6 +3370,8 @@
       (form-span candidate)))
     'counts
     (language-counts body)
+    'keyed-counts
+    (language-keyed-counts body)
     'file
     (or (language-file body) 'null)
     'required

@@ -855,6 +855,24 @@
       '("E_ENSURE")))
    (lambda () (delete-directory/files execution-root)))
   (define invocation '("typify" "check" "language.typify" "Sample" "program.typify" "--json"))
+  (define count-diagnostic
+    (hash
+     'code
+     "E_PROGRAM_COUNT"
+     'file
+     "program.typify"
+     'range
+     'null
+     'data
+     (hash 'constructor "vault" 'expected "0..1" 'actual 2 'key '("/a"))))
+  (define count-observation (hash 'diagnostics (list count-diagnostic)))
+  (check (compare-observation count-observation count-observation) '())
+  (define changed-key
+    (hash-set count-diagnostic 'data (hash-set (hash-ref count-diagnostic 'data) 'key '("/b"))))
+  (define missing-key
+    (hash-set count-diagnostic 'data (hash-remove (hash-ref count-diagnostic 'data) 'key)))
+  (check (pair? (compare-observation count-observation (hash 'diagnostics (list changed-key)))) #t)
+  (check (pair? (compare-observation count-observation (hash 'diagnostics (list missing-key)))) #t)
   (define diagnostic
     (hash
      'code
