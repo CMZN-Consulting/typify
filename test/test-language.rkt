@@ -239,7 +239,7 @@
   (reject
    (lambda ()
      (read-declarations (string-replace catalog "category title\nterm" "category typo\nterm")))
-   "E_CLASS_UNDECLARED")
+   "E_DECLARATION")
   (reject
    (lambda ()
      (read-declarations

@@ -173,16 +173,36 @@
        "form : item : <category-alias> = <title>"
        "does : item <category-alias> <title>"
        "count : item = 1..*"
+       "end!"
+       "declare : InheritedMeta"
+       "primitive : choose-order : ordering"
+       "primitive : choose-width : width"
+       "form : order : <ordering>"
+       "does : choose-order <ordering>"
+       "form : width : <width>"
+       "does : choose-width <width>"
        "end!")
      "\n"))
-  (define body (hash-ref (read-declarations source) "Catalog"))
-  (hash-ref (check-program "item : journal = Market Research" body) 'terms))
+  (define declarations (read-declarations source))
+  (define body (hash-ref declarations "Catalog"))
+  (define inherited (hash-ref declarations "InheritedMeta"))
+  (list
+   (hash-ref (check-program "item : journal = Market Research" body) 'terms)
+   (hash-ref (check-program "order : strict\norder : free\nwidth : 1\nwidth : 2" inherited) 'terms)
+   (rejects? (lambda () (check-program "order : unknown" inherited)))
+   (rejects? (lambda () (check-program "width : A" inherited)))))
 
 (define internal-oracles
   (list
    (oracle "ordinary-declaration-and-meaning" ordinary-model ordinary-expected)
    (oracle "metadata-retention-and-term-classification" metadata-model metadata-expected)
-   (oracle "facts-and-bare-class-reference" fact-model '(("item" "journal" "Market Research")))
+   (oracle
+    "facts-and-bare-class-reference"
+    fact-model
+    '((("item" "journal" "Market Research"))
+      (("choose-order" "strict") ("choose-order" "free") ("choose-width" "1") ("choose-width" "2"))
+      #t
+      #t))
    (oracle
     "mixed-constructor-needs-fact-marker"
     (lambda ()
