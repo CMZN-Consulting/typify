@@ -1,0 +1,94 @@
+{
+  "case_id": "070-ask-declared-with-default",
+  "title": "Question form (Amendment S): declared word 'access' with default line reports '? : missing : default : access : ro'",
+  "sections_covered": [
+    "§6",
+    "§9",
+    "G",
+    "I",
+    "R",
+    "S",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§9",
+    "G",
+    "I",
+    "R",
+    "S",
+    "X",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "DefaultFormLine",
+    "access",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "G",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : form : access : <mode>",
+    "? : is : mode = \"ro\" | \"rw\"",
+    "? : term : access : mode",
+    "? : does : access <mode>",
+    "? : count : access = 0..1",
+    "? : missing : default : access : ro",
+    "? : example : access : rw"
+  ],
+  "stdout_json": {
+    "word": "access",
+    "status": "declared",
+    "lines": [
+      "? : form : access : <mode>",
+      "? : is : mode = \"ro\" | \"rw\"",
+      "? : term : access : mode",
+      "? : does : access <mode>",
+      "? : count : access = 0..1",
+      "? : missing : default : access : ro",
+      "? : example : access : rw"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_json": {
+    "word": "access",
+    "status": "declared",
+    "lines": [
+      "? : form : access : <mode>",
+      "? : is : mode = \"ro\" | \"rw\"",
+      "? : term : access : mode",
+      "? : does : access <mode>",
+      "? : count : access = 0..1",
+      "? : missing : default : access : ro",
+      "? : example : access : rw"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_provenance": [
+    "§6",
+    "G",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

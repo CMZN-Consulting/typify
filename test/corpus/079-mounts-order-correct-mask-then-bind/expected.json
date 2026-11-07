@@ -1,0 +1,206 @@
+{
+  "case_id": "079-mounts-order-correct-mask-then-bind",
+  "title": "Mounts example ('rule : share <p> <m> -> mask (parent <p>) ; bind <p> <m>', 06:32Z): shadow stacking leaves /mounts/research unmasked and satisfies ensure : share : child-visible",
+  "sections_covered": [
+    "§5",
+    "§9",
+    "B",
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "provenance": [
+    "§5",
+    "§9",
+    "B",
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "Mounts",
+    "program.typify",
+    "--facts",
+    "facts.json",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "B",
+    "H",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "mask",
+        "/mounts"
+      ],
+      [
+        "bind",
+        "/mounts/research",
+        "rw"
+      ]
+    ],
+    "state": {
+      "mounts": [
+        {
+          "key": [
+            "/mounts"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/mounts/research"
+          ],
+          "value": [
+            "rw"
+          ],
+          "masked": false,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 2,
+      "n": 1,
+      "limit": 2
+    },
+    "modelled": "2 of 2",
+    "facts": "sha256:befe70ac7027bdc26e07749e764b92241116eb8216e9e5a72d657ff8bf6c307d",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "mask",
+          "/mounts"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "bind",
+          "/mounts/research",
+          "rw"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      }
+    ],
+    "ensure": [
+      {
+        "constructor": "share",
+        "name": "child-visible",
+        "predicate": [
+          "visible",
+          "/mounts/research"
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "plan": [
+    [
+      "mask",
+      "/mounts"
+    ],
+    [
+      "bind",
+      "/mounts/research",
+      "rw"
+    ]
+  ],
+  "predicted_state": {
+    "mounts": [
+      {
+        "key": [
+          "/mounts"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/mounts/research"
+        ],
+        "value": [
+          "rw"
+        ],
+        "masked": false,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 2,
+    "k": 1,
+    "n": 1,
+    "limit": 2
+  },
+  "modelled": "2 of 2",
+  "ensure": [
+    {
+      "constructor": "share",
+      "name": "child-visible",
+      "predicate": [
+        "visible",
+        "/mounts/research"
+      ],
+      "ok": true
+    }
+  ],
+  "plan_provenance": [
+    "B",
+    "H",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "diagnostics": []
+}

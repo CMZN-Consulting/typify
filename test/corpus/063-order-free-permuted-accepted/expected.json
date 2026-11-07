@@ -1,0 +1,79 @@
+{
+  "case_id": "063-order-free-permuted-accepted",
+  "title": "Free order (default when 'order : strict' is omitted): accepts interleaved forms in any order",
+  "sections_covered": [
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "FreeOrderLang",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "G",
+    "R",
+    "T",
+    "X"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "item",
+        "first"
+      ],
+      [
+        "header",
+        "middle"
+      ],
+      [
+        "item",
+        "second"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "item",
+      "first"
+    ],
+    [
+      "header",
+      "middle"
+    ],
+    [
+      "item",
+      "second"
+    ]
+  ],
+  "terms_provenance": [
+    "§5",
+    "G",
+    "X",
+    "Y"
+  ]
+}

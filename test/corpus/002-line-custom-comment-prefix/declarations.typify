@@ -1,0 +1,11 @@
+#lang typify
+
+declare : SemicolonComments
+version : 1
+comment : ;
+is : word = /[a-z]+/
+term : item : word
+form : item : <word>
+does : item <word>
+example : item : alpha
+end!

@@ -1,0 +1,15 @@
+#lang typify
+
+declare : CountOne
+version : 1
+is : name = /[a-z]+/
+term : title : name
+term : note : name
+form : title : <name>
+does : title <name>
+count : title = 1
+example : title : handbook
+form : note : <name>
+does : note <name>
+example : note : draft
+end!

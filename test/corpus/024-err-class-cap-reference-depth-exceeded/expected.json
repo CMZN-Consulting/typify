@@ -1,0 +1,97 @@
+{
+  "case_id": "024-err-class-cap-reference-depth-exceeded",
+  "title": "Declaration error: class reference chain depth exceeds cap (8)",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "F",
+    "K",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CAP",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 14,
+            "column": 11,
+            "byteOffset": 182
+          },
+          "end": {
+            "line": 14,
+            "column": 13,
+            "byteOffset": 184
+          }
+        },
+        "data": {
+          "cap": "depth",
+          "limit": 8,
+          "actual": 9
+        },
+        "provenance": [
+          "F",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CAP",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 11,
+          "byteOffset": 182
+        },
+        "end": {
+          "line": 14,
+          "column": 13,
+          "byteOffset": 184
+        }
+      },
+      "data": {
+        "cap": "depth",
+        "limit": 8,
+        "actual": 9
+      },
+      "provenance": [
+        "F",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

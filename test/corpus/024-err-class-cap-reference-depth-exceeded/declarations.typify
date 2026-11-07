@@ -1,0 +1,18 @@
+#lang typify
+
+declare : DepthExceeded
+version : 1
+is : c0 = /[a-z]/
+is : c1 = c0
+is : c2 = c1
+is : c3 = c2
+is : c4 = c3
+is : c5 = c4
+is : c6 = c5
+is : c7 = c6
+is : c8 = c7
+is : c9 = c8
+term : item : c9
+form : item : <c9>
+does : item <c9>
+end!

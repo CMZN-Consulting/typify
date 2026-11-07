@@ -1,0 +1,104 @@
+{
+  "case_id": "056-count-one-refused-duplicate",
+  "title": "Count 1 (Amendment X): refused when constructor appears twice",
+  "sections_covered": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "X",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "CountOne",
+    "dup.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "G",
+    "K",
+    "X"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_PROGRAM_COUNT",
+        "file": "dup.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 1,
+            "byteOffset": 14
+          },
+          "end": {
+            "line": 2,
+            "column": 15,
+            "byteOffset": 28
+          }
+        },
+        "data": {
+          "constructor": "title",
+          "expected": "1",
+          "actual": 2
+        },
+        "provenance": [
+          "§4",
+          "G",
+          "K",
+          "X"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_PROGRAM_COUNT",
+      "file": "dup.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 1,
+          "byteOffset": 14
+        },
+        "end": {
+          "line": 2,
+          "column": 15,
+          "byteOffset": 28
+        }
+      },
+      "data": {
+        "constructor": "title",
+        "expected": "1",
+        "actual": 2
+      },
+      "provenance": [
+        "§4",
+        "G",
+        "K",
+        "X"
+      ]
+    }
+  ]
+}

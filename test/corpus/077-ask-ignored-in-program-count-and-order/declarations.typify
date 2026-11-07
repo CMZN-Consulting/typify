@@ -1,0 +1,22 @@
+#lang typify
+
+declare : StrictOrderLang
+version : 1
+order : strict
+is : word = /[a-z]+/
+term : header : word
+term : item : word
+term : footer : word
+form : header : <word>
+does : header <word>
+count : header = 1
+example : header : top
+form : item : <word>
+does : item <word>
+count : item = 1..*
+example : item : first
+form : footer : <word>
+does : footer <word>
+count : footer = 1
+example : footer : bottom
+end!

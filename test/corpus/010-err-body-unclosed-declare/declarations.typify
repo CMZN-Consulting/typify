@@ -1,0 +1,8 @@
+#lang typify
+
+declare : UnclosedLang
+version : 1
+is : word = /[a-z]+/
+term : item : word
+form : item : <word>
+does : item <word>

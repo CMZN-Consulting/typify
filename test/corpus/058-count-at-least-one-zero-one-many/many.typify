@@ -1,0 +1,3 @@
+step : fetch
+step : compile
+step : verify

@@ -1,0 +1,16 @@
+#lang typify
+
+declare : OptionalMountSkip
+version : 1
+is : path = canonical-path
+term : bind : path path
+primitive!
+writes : bind : mounts = put 1
+reads : bind : exists = skip
+cell : mounts = shadow stacking
+term : try-bind : path
+form : try-bind : <path>
+does : try-bind <path>
+example : try-bind : /mounts/optional
+rule : (try-bind <p>) -> (if (exists <p>) (bind <p> <p>))
+end!

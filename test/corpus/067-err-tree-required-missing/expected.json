@@ -1,0 +1,145 @@
+{
+  "case_id": "067-err-tree-required-missing",
+  "title": "Tree error: required program (count = 1) absent from directory reported as 'missing' and refused",
+  "sections_covered": [
+    "§7",
+    "§9",
+    "G",
+    "K",
+    "R",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§7",
+    "§9",
+    "G",
+    "K",
+    "R",
+    "X",
+    "Y"
+  ],
+  "command": "tree",
+  "invocation": [
+    "typify",
+    "tree",
+    "declarations.typify",
+    "ProjectLayout",
+    ".",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§7",
+    "G",
+    "K",
+    "X",
+    "Y"
+  ],
+  "stdout_json": [
+    {
+      "path": "services/api/config.typify",
+      "language": "Config",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "access",
+          "rw"
+        ]
+      ],
+      "origins": [
+        {
+          "term": [
+            "access",
+            "rw"
+          ],
+          "file": "services/api/config.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/app.typify",
+      "language": "App",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "missing",
+      "terms": [],
+      "origins": []
+    }
+  ],
+  "tree_entries": [
+    {
+      "path": "services/api/config.typify",
+      "language": "Config",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "access",
+          "rw"
+        ]
+      ],
+      "origins": [
+        {
+          "term": [
+            "access",
+            "rw"
+          ],
+          "file": "services/api/config.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/app.typify",
+      "language": "App",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "missing",
+      "terms": [],
+      "origins": []
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "E_REQUIRED",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 46,
+          "column": 1,
+          "byteOffset": 846
+        },
+        "end": {
+          "line": 46,
+          "column": 42,
+          "byteOffset": 887
+        }
+      },
+      "data": {
+        "path": "services/api/app.typify"
+      },
+      "provenance": [
+        "§7",
+        "G",
+        "K",
+        "X",
+        "Y"
+      ]
+    }
+  ]
+}

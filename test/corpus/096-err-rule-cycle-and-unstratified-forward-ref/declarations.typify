@@ -1,0 +1,18 @@
+#lang typify
+
+declare : CyclicRules
+version : 1
+is : name = /[a-z]+/
+term : prim : name
+primitive!
+writes : prim : out = put 1
+cell : out = shadow
+term : alpha : name
+term : beta : name
+form : alpha : <name>
+does : alpha <name>
+form : beta : <name>
+does : beta <name>
+rule : (alpha <x>) -> (beta <x>)
+rule : (beta <x>) -> (alpha <x>)
+end!

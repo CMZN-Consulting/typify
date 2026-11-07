@@ -1,0 +1,1336 @@
+{
+  "case_id": "034-hostile-universal-zwsp-bom-zwj",
+  "title": "Hostile audit (21 pairs): ZWSP (U+200B), BOM (U+FEFF), and ZWJ (U+200D per 03:56Z) refused across all 7 classes",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "path",
+      "token_repr": "'/srv/\\u200bshare'",
+      "description": "Zero-Width Space U+200B"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'dir/\\u200bfile'",
+      "description": "Zero-Width Space U+200B"
+    },
+    {
+      "class": "days",
+      "token_repr": "'3\\u200b0'",
+      "description": "Zero-Width Space U+200B"
+    },
+    {
+      "class": "label",
+      "token_repr": "'Invisible\\u200bWord'",
+      "description": "Zero-Width Space U+200B"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"/bin/\\u200bls\"'",
+      "description": "Zero-Width Space U+200B"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'root\\u200b'",
+      "description": "Zero-Width Space U+200B"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'flat\\u200b'",
+      "description": "Zero-Width Space U+200B"
+    },
+    {
+      "class": "path",
+      "token_repr": "'\\ufeff/srv/share'",
+      "description": "BOM U+FEFF"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'\\ufeffdir/file'",
+      "description": "BOM U+FEFF"
+    },
+    {
+      "class": "days",
+      "token_repr": "'\\ufeff30'",
+      "description": "BOM U+FEFF"
+    },
+    {
+      "class": "label",
+      "token_repr": "'\\ufeffTitle'",
+      "description": "BOM U+FEFF"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\\ufeff\"/bin/ls\"'",
+      "description": "BOM U+FEFF"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'\\ufeffadmin'",
+      "description": "BOM U+FEFF"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'\\ufeffflat'",
+      "description": "BOM U+FEFF"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/srv/a\\u200db'",
+      "description": "Zero-Width Joiner U+200D"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'dir/a\\u200db'",
+      "description": "Zero-Width Joiner U+200D"
+    },
+    {
+      "class": "days",
+      "token_repr": "'1\\u200d0'",
+      "description": "Zero-Width Joiner U+200D"
+    },
+    {
+      "class": "label",
+      "token_repr": "'join\\u200dword'",
+      "description": "Zero-Width Joiner U+200D"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"/bin/a\\u200db\"'",
+      "description": "Zero-Width Joiner U+200D"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'id\\u200d1'",
+      "description": "Zero-Width Joiner U+200D"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'flat\\u200d'",
+      "description": "Zero-Width Joiner U+200D"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 8,
+            "byteOffset": 7
+          },
+          "end": {
+            "line": 1,
+            "column": 19,
+            "byteOffset": 20
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/srv/​share"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 11,
+            "byteOffset": 31
+          },
+          "end": {
+            "line": 2,
+            "column": 20,
+            "byteOffset": 42
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "dir/​file"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 8,
+            "byteOffset": 50
+          },
+          "end": {
+            "line": 3,
+            "column": 11,
+            "byteOffset": 55
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "3​0"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 9,
+            "byteOffset": 64
+          },
+          "end": {
+            "line": 4,
+            "column": 23,
+            "byteOffset": 80
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "Invisible​Word"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 8,
+            "byteOffset": 88
+          },
+          "end": {
+            "line": 5,
+            "column": 18,
+            "byteOffset": 100
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"/bin/​ls\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 9,
+            "byteOffset": 109
+          },
+          "end": {
+            "line": 6,
+            "column": 14,
+            "byteOffset": 116
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "root​"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 10,
+            "byteOffset": 126
+          },
+          "end": {
+            "line": 7,
+            "column": 15,
+            "byteOffset": 133
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "flat​"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 8,
+            "byteOffset": 141
+          },
+          "end": {
+            "line": 8,
+            "column": 19,
+            "byteOffset": 154
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "﻿/srv/share"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 9,
+            "column": 11,
+            "byteOffset": 165
+          },
+          "end": {
+            "line": 9,
+            "column": 20,
+            "byteOffset": 176
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "﻿dir/file"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 10,
+            "column": 8,
+            "byteOffset": 184
+          },
+          "end": {
+            "line": 10,
+            "column": 11,
+            "byteOffset": 189
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "﻿30"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 11,
+            "column": 9,
+            "byteOffset": 198
+          },
+          "end": {
+            "line": 11,
+            "column": 15,
+            "byteOffset": 206
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "﻿Title"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 12,
+            "column": 8,
+            "byteOffset": 214
+          },
+          "end": {
+            "line": 12,
+            "column": 18,
+            "byteOffset": 226
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "﻿\"/bin/ls\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 13,
+            "column": 9,
+            "byteOffset": 235
+          },
+          "end": {
+            "line": 13,
+            "column": 15,
+            "byteOffset": 243
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "﻿admin"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 14,
+            "column": 10,
+            "byteOffset": 253
+          },
+          "end": {
+            "line": 14,
+            "column": 15,
+            "byteOffset": 260
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "﻿flat"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 15,
+            "column": 8,
+            "byteOffset": 268
+          },
+          "end": {
+            "line": 15,
+            "column": 16,
+            "byteOffset": 278
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/srv/a‍b"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 16,
+            "column": 11,
+            "byteOffset": 289
+          },
+          "end": {
+            "line": 16,
+            "column": 18,
+            "byteOffset": 298
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "dir/a‍b"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 17,
+            "column": 8,
+            "byteOffset": 306
+          },
+          "end": {
+            "line": 17,
+            "column": 11,
+            "byteOffset": 311
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "1‍0"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 18,
+            "column": 9,
+            "byteOffset": 320
+          },
+          "end": {
+            "line": 18,
+            "column": 18,
+            "byteOffset": 331
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "join‍word"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 19,
+            "column": 8,
+            "byteOffset": 339
+          },
+          "end": {
+            "line": 19,
+            "column": 18,
+            "byteOffset": 351
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"/bin/a‍b\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 20,
+            "column": 9,
+            "byteOffset": 360
+          },
+          "end": {
+            "line": 20,
+            "column": 13,
+            "byteOffset": 366
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "id‍1"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 21,
+            "column": 10,
+            "byteOffset": 376
+          },
+          "end": {
+            "line": 21,
+            "column": 15,
+            "byteOffset": 383
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "flat‍"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byteOffset": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 19,
+          "byteOffset": 20
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/srv/​share"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 11,
+          "byteOffset": 31
+        },
+        "end": {
+          "line": 2,
+          "column": 20,
+          "byteOffset": 42
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "dir/​file"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byteOffset": 50
+        },
+        "end": {
+          "line": 3,
+          "column": 11,
+          "byteOffset": 55
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "3​0"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 9,
+          "byteOffset": 64
+        },
+        "end": {
+          "line": 4,
+          "column": 23,
+          "byteOffset": 80
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "Invisible​Word"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 8,
+          "byteOffset": 88
+        },
+        "end": {
+          "line": 5,
+          "column": 18,
+          "byteOffset": 100
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"/bin/​ls\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 9,
+          "byteOffset": 109
+        },
+        "end": {
+          "line": 6,
+          "column": 14,
+          "byteOffset": 116
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "root​"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 10,
+          "byteOffset": 126
+        },
+        "end": {
+          "line": 7,
+          "column": 15,
+          "byteOffset": 133
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "flat​"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 8,
+          "byteOffset": 141
+        },
+        "end": {
+          "line": 8,
+          "column": 19,
+          "byteOffset": 154
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "﻿/srv/share"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 9,
+          "column": 11,
+          "byteOffset": 165
+        },
+        "end": {
+          "line": 9,
+          "column": 20,
+          "byteOffset": 176
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "﻿dir/file"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 8,
+          "byteOffset": 184
+        },
+        "end": {
+          "line": 10,
+          "column": 11,
+          "byteOffset": 189
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "﻿30"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 9,
+          "byteOffset": 198
+        },
+        "end": {
+          "line": 11,
+          "column": 15,
+          "byteOffset": 206
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "﻿Title"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 12,
+          "column": 8,
+          "byteOffset": 214
+        },
+        "end": {
+          "line": 12,
+          "column": 18,
+          "byteOffset": 226
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "﻿\"/bin/ls\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 13,
+          "column": 9,
+          "byteOffset": 235
+        },
+        "end": {
+          "line": 13,
+          "column": 15,
+          "byteOffset": 243
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "﻿admin"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 10,
+          "byteOffset": 253
+        },
+        "end": {
+          "line": 14,
+          "column": 15,
+          "byteOffset": 260
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "﻿flat"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 15,
+          "column": 8,
+          "byteOffset": 268
+        },
+        "end": {
+          "line": 15,
+          "column": 16,
+          "byteOffset": 278
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/srv/a‍b"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 16,
+          "column": 11,
+          "byteOffset": 289
+        },
+        "end": {
+          "line": 16,
+          "column": 18,
+          "byteOffset": 298
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "dir/a‍b"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 17,
+          "column": 8,
+          "byteOffset": 306
+        },
+        "end": {
+          "line": 17,
+          "column": 11,
+          "byteOffset": 311
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "1‍0"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 18,
+          "column": 9,
+          "byteOffset": 320
+        },
+        "end": {
+          "line": 18,
+          "column": 18,
+          "byteOffset": 331
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "join‍word"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 19,
+          "column": 8,
+          "byteOffset": 339
+        },
+        "end": {
+          "line": 19,
+          "column": 18,
+          "byteOffset": 351
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"/bin/a‍b\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 20,
+          "column": 9,
+          "byteOffset": 360
+        },
+        "end": {
+          "line": 20,
+          "column": 13,
+          "byteOffset": 366
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "id‍1"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 21,
+          "column": 10,
+          "byteOffset": 376
+        },
+        "end": {
+          "line": 21,
+          "column": 15,
+          "byteOffset": 383
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "flat‍"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

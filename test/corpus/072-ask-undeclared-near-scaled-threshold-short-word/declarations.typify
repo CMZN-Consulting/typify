@@ -1,0 +1,18 @@
+#lang typify
+
+declare : ShortWordsAsk
+version : 1
+is : num = /[0-9]+/
+term : cut : num
+term : act : num
+term : dog : num
+form : cut : <num>
+does : cut <num>
+example : cut : 1
+form : act : <num>
+does : act <num>
+example : act : 2
+form : dog : <num>
+does : dog <num>
+example : dog : 3
+end!

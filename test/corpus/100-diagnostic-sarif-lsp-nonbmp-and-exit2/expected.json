@@ -1,0 +1,214 @@
+{
+  "case_id": "100-diagnostic-sarif-lsp-nonbmp-and-exit2",
+  "title": "Diagnostic range on non-BMP code point U+1F680 (start col 9 byteOffset 11, exclusive end col 12 byteOffset 14 per 05:28Z & 05:30Z), SARIF/LSP projections, and exit code 2",
+  "sections_covered": [
+    "§9",
+    "K",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§9",
+    "K",
+    "R",
+    "T",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "json-sarif-lsp-nonbmp-range",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "UnicodeColAudit",
+        "program.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_CLASS",
+            "file": "program.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 9,
+                "byteOffset": 11
+              },
+              "end": {
+                "line": 1,
+                "column": 12,
+                "byteOffset": 14
+              }
+            },
+            "data": {
+              "class": "num",
+              "token": "bad"
+            },
+            "provenance": [
+              "§9",
+              "K",
+              "R",
+              "Y"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_CLASS",
+          "file": "program.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 9,
+              "byteOffset": 11
+            },
+            "end": {
+              "line": 1,
+              "column": 12,
+              "byteOffset": 14
+            }
+          },
+          "data": {
+            "class": "num",
+            "token": "bad"
+          },
+          "provenance": [
+            "§9",
+            "K",
+            "R",
+            "Y"
+          ]
+        }
+      ],
+      "lsp_range_utf16_zero_based": {
+        "start": {
+          "line": 0,
+          "character": 9
+        },
+        "end": {
+          "line": 0,
+          "character": 12
+        }
+      },
+      "sarif_projection": {
+        "ruleId": "E_CLASS",
+        "level": "error",
+        "region": {
+          "start": {
+            "line": 1,
+            "column": 9,
+            "byteOffset": 11
+          },
+          "end": {
+            "line": 1,
+            "column": 12,
+            "byteOffset": 14
+          }
+        },
+        "properties": {
+          "class": "num",
+          "token": "bad"
+        }
+      },
+      "provenance": [
+        "§9",
+        "K",
+        "R",
+        "Y"
+      ]
+    },
+    {
+      "name": "exit-code-2-unreadable-file",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "UnicodeColAudit",
+        "nonexistent.typify",
+        "--json"
+      ],
+      "exit_code": 2,
+      "verdict": "usage_or_io_error",
+      "diagnostics": [
+        {
+          "code": "E_FILE",
+          "file": "nonexistent.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 1,
+              "byteOffset": 0
+            },
+            "end": {
+              "line": 1,
+              "column": 1,
+              "byteOffset": 0
+            }
+          },
+          "data": {
+            "path": "nonexistent.typify"
+          },
+          "provenance": [
+            "§9",
+            "K",
+            "Y"
+          ]
+        }
+      ],
+      "provenance": [
+        "§9",
+        "K",
+        "Y"
+      ]
+    },
+    {
+      "name": "exit-code-2-usage-error",
+      "invocation": [
+        "typify",
+        "unknown-subcommand",
+        "--json"
+      ],
+      "exit_code": 2,
+      "verdict": "usage_or_io_error",
+      "diagnostics": [
+        {
+          "code": "E_USAGE",
+          "file": "",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 1,
+              "byteOffset": 0
+            },
+            "end": {
+              "line": 1,
+              "column": 1,
+              "byteOffset": 0
+            }
+          },
+          "data": {
+            "actual": "unknown-subcommand"
+          },
+          "provenance": [
+            "§9",
+            "K",
+            "Y"
+          ]
+        }
+      ],
+      "provenance": [
+        "§9",
+        "K",
+        "Y"
+      ]
+    }
+  ]
+}

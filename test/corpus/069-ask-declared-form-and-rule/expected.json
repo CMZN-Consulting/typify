@@ -1,0 +1,96 @@
+{
+  "case_id": "069-ask-declared-form-and-rule",
+  "title": "Question form (Amendment S): declared word 'item' answered with form, transitive classes, term, does, count, missing : error, and example in exact order (no status line)",
+  "sections_covered": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "X",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "CatalogAsk",
+    "item",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : form : item : <category> = <title>",
+    "? : is : category = \"book\" | \"journal\" | \"note\"",
+    "? : is : word = /[A-Za-z0-9-]+/",
+    "? : is : title = word (\" \" word)*",
+    "? : term : item : category title",
+    "? : does : item <category> <title>",
+    "? : count : item = 1..*",
+    "? : missing : error",
+    "? : example : item : book = Types and Programming Languages"
+  ],
+  "stdout_json": {
+    "word": "item",
+    "status": "declared",
+    "lines": [
+      "? : form : item : <category> = <title>",
+      "? : is : category = \"book\" | \"journal\" | \"note\"",
+      "? : is : word = /[A-Za-z0-9-]+/",
+      "? : is : title = word (\" \" word)*",
+      "? : term : item : category title",
+      "? : does : item <category> <title>",
+      "? : count : item = 1..*",
+      "? : missing : error",
+      "? : example : item : book = Types and Programming Languages"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_json": {
+    "word": "item",
+    "status": "declared",
+    "lines": [
+      "? : form : item : <category> = <title>",
+      "? : is : category = \"book\" | \"journal\" | \"note\"",
+      "? : is : word = /[A-Za-z0-9-]+/",
+      "? : is : title = word (\" \" word)*",
+      "? : term : item : category title",
+      "? : does : item <category> <title>",
+      "? : count : item = 1..*",
+      "? : missing : error",
+      "? : example : item : book = Types and Programming Languages"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_provenance": [
+    "§6",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

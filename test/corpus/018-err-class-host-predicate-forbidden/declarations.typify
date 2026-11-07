@@ -1,0 +1,10 @@
+#lang typify
+
+declare : BadHostRegex
+version : 1
+is : num = /\d+/
+is : mode = rw
+term : item : num mode
+form : item : <num> <mode>
+does : item <num> <mode>
+end!

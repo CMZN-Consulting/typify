@@ -1,0 +1,3 @@
+label : a" ::= "b
+argv : "\" ]; root ::= [a-z]+"
+ident : rule::=evil

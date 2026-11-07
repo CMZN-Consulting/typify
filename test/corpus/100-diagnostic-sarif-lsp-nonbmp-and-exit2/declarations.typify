@@ -1,0 +1,11 @@
+#lang typify
+
+declare : UnicodeColAudit
+version : 1
+is : prefix = /[^=]+/
+is : num = /[0-9]+/
+term : pair : prefix num
+form : tag : <prefix>=<num>
+does : pair <prefix> <num>
+example : tag : rocket=42
+end!

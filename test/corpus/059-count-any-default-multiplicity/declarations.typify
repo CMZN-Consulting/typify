@@ -1,0 +1,11 @@
+#lang typify
+
+declare : CountAny
+version : 1
+is : tag = /[a-z]+/
+term : tag-line : tag
+form : tag : <tag>
+does : tag-line <tag>
+count : tag-line = *
+example : tag : core
+end!

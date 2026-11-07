@@ -1,0 +1,90 @@
+{
+  "case_id": "009-err-body-nested-declare",
+  "title": "Nested 'declare : InnerLang' before closing 'end!' of outer body",
+  "sections_covered": [
+    "§3",
+    "§9",
+    "K",
+    "Y"
+  ],
+  "provenance": [
+    "§3",
+    "§9",
+    "K",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§3",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 1,
+            "byteOffset": 46
+          },
+          "end": {
+            "line": 5,
+            "column": 20,
+            "byteOffset": 65
+          }
+        },
+        "data": {
+          "kind": "body",
+          "actual": "declare : InnerLang"
+        },
+        "provenance": [
+          "§3",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 1,
+          "byteOffset": 46
+        },
+        "end": {
+          "line": 5,
+          "column": 20,
+          "byteOffset": 65
+        }
+      },
+      "data": {
+        "kind": "body",
+        "actual": "declare : InnerLang"
+      },
+      "provenance": [
+        "§3",
+        "K"
+      ]
+    }
+  ]
+}

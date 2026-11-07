@@ -1,0 +1,8 @@
+argv : /bin/sh -c id
+argv : ""
+argv : "/bin/sh" "-c" "rm -rf /"
+argv : "unterminated
+argv : "bad\nescape"
+argv : "trailing\\"
+argv : "a"  "b"
+argv : "mid"quote"

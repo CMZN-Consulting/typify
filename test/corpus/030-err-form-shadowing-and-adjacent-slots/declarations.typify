@@ -1,0 +1,16 @@
+#lang typify
+
+declare : ShadowedForms
+version : 1
+is : alpha = /[a-z]+/
+is : alnum = /[a-z0-9]+/
+term : pair : alpha alpha
+term : first : alpha
+term : second : alnum
+form : pair : <alpha><alpha>
+does : pair <alpha> <alpha>
+form : pick : <alpha>
+does : first <alpha>
+form : pick : <alnum>
+does : second <alnum>
+end!

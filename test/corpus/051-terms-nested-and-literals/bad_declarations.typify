@@ -1,0 +1,12 @@
+#lang typify
+
+declare : BadNestedConstructor
+version : 1
+is : path = canonical-path
+term : wrap : path
+term : outer : path
+form : wrap : <path>
+does : wrap <path>
+form : nested : <path>
+does : outer (wrap <path>)
+end!

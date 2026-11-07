@@ -1,0 +1,11 @@
+#lang typify
+
+declare : TokenLengthCap
+version : 1
+cap : length = 16
+is : blob = /.+/
+term : data : blob
+form : data : <blob>
+does : data <blob>
+example : data : short
+end!

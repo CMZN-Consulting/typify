@@ -1,0 +1,68 @@
+{
+  "case_id": "029-emptiness-check-sound-passes",
+  "title": "Product-automaton emptiness check passes for 'is : title = /[^=]+/' (05:09Z) separated from category by ' = '",
+  "sections_covered": [
+    "§4",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "SoundDelimCheck",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "item",
+        "journal",
+        "Journal of Automated Reasoning"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "item",
+      "journal",
+      "Journal of Automated Reasoning"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "J",
+    "R",
+    "Y"
+  ]
+}

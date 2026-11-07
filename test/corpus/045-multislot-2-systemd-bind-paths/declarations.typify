@@ -1,0 +1,12 @@
+#lang typify
+
+declare : BindMountForm
+version : 1
+is : seg = /[A-Za-z0-9._-]+/ except "." | ".."
+is : path = "/" | ("/" seg)+
+is : mode = "ro" | "rw"
+term : bind-mount : path path mode
+form : bind : <path>:<path>:<mode>
+does : bind-mount <path> <path> <mode>
+example : bind : /srv/src:/mnt/dst:ro
+end!

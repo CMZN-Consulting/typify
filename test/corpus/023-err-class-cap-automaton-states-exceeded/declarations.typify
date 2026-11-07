@@ -1,0 +1,11 @@
+#lang typify
+
+declare : CapExceeded
+version : 1
+cap : states = 8192
+is : huge_rep = /[a-z]{1,500}/
+is : blowup = /[ab]*a[ab]{12}/
+term : item : huge_rep
+form : item : <huge_rep>
+does : item <huge_rep>
+end!

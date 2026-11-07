@@ -1,0 +1,139 @@
+{
+  "case_id": "082-cell-law-first-keeps-initial",
+  "title": "Cell law 'cell : reg = first' (Amendment U): first write to a key wins and subsequent write to same key leaves state unchanged",
+  "sections_covered": [
+    "H",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "FirstWriteWins",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "H",
+    "U",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "set-once",
+        "mode",
+        "initial"
+      ],
+      [
+        "set-once",
+        "mode",
+        "later"
+      ]
+    ],
+    "state": {
+      "reg": [
+        {
+          "key": [
+            "mode"
+          ],
+          "value": [
+            "initial"
+          ],
+          "masked": false,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 1,
+      "n": 2,
+      "limit": 2
+    },
+    "modelled": "2 of 2",
+    "facts": "none",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "set-once",
+          "mode",
+          "initial"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 14
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "set-once",
+          "mode",
+          "later"
+        ],
+        "path": "program.typify",
+        "line": 2,
+        "rule_line": 14
+      }
+    ],
+    "ensure": []
+  },
+  "plan": [
+    [
+      "set-once",
+      "mode",
+      "initial"
+    ],
+    [
+      "set-once",
+      "mode",
+      "later"
+    ]
+  ],
+  "predicted_state": {
+    "reg": [
+      {
+        "key": [
+          "mode"
+        ],
+        "value": [
+          "initial"
+        ],
+        "masked": false,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 1,
+    "k": 1,
+    "n": 2,
+    "limit": 2
+  },
+  "modelled": "2 of 2",
+  "diagnostics": []
+}

@@ -1,0 +1,259 @@
+{
+  "case_id": "080-err-mounts-order-wrong-bind-then-mask",
+  "title": "Mounts example in wrong order ('rule : share <p> <m> -> bind <p> <m> ; mask (parent <p>)'): ancestor put /mounts masks child /mounts/research and fails E_ENSURE",
+  "sections_covered": [
+    "§5",
+    "§9",
+    "B",
+    "H",
+    "I",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "provenance": [
+    "§5",
+    "§9",
+    "B",
+    "H",
+    "I",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "MountsWrongOrder",
+    "program.typify",
+    "--facts",
+    "facts.json",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "B",
+    "H",
+    "K",
+    "U",
+    "V",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "bind",
+        "/mounts/research",
+        "rw"
+      ],
+      [
+        "mask",
+        "/mounts"
+      ]
+    ],
+    "state": {
+      "mounts": [
+        {
+          "key": [
+            "/mounts"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/mounts/research"
+          ],
+          "value": [
+            "rw"
+          ],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 2,
+      "n": 1,
+      "limit": 2
+    },
+    "modelled": "2 of 2",
+    "facts": "sha256:befe70ac7027bdc26e07749e764b92241116eb8216e9e5a72d657ff8bf6c307d",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "bind",
+          "/mounts/research",
+          "rw"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "mask",
+          "/mounts"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      }
+    ],
+    "ensure": [
+      {
+        "constructor": "share",
+        "name": "child-visible",
+        "predicate": [
+          "visible",
+          "/mounts/research"
+        ],
+        "ok": false
+      }
+    ],
+    "diagnostics": [
+      {
+        "code": "E_ENSURE",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 1,
+            "byteOffset": 0
+          },
+          "end": {
+            "line": 1,
+            "column": 28,
+            "byteOffset": 27
+          }
+        },
+        "data": {
+          "ensure": "child-visible",
+          "key": "/mounts/research"
+        },
+        "provenance": [
+          "B",
+          "H",
+          "K",
+          "U",
+          "V",
+          "Y"
+        ]
+      }
+    ]
+  },
+  "plan": [
+    [
+      "bind",
+      "/mounts/research",
+      "rw"
+    ],
+    [
+      "mask",
+      "/mounts"
+    ]
+  ],
+  "predicted_state": {
+    "mounts": [
+      {
+        "key": [
+          "/mounts"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/mounts/research"
+        ],
+        "value": [
+          "rw"
+        ],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 2,
+    "k": 1,
+    "n": 1,
+    "limit": 2
+  },
+  "modelled": "2 of 2",
+  "ensure": [
+    {
+      "constructor": "share",
+      "name": "child-visible",
+      "predicate": [
+        "visible",
+        "/mounts/research"
+      ],
+      "ok": false
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "E_ENSURE",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 1,
+          "byteOffset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 28,
+          "byteOffset": 27
+        }
+      },
+      "data": {
+        "ensure": "child-visible",
+        "key": "/mounts/research"
+      },
+      "provenance": [
+        "B",
+        "H",
+        "K",
+        "U",
+        "V",
+        "Y"
+      ]
+    }
+  ]
+}

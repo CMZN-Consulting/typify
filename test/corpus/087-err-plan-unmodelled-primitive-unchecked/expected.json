@@ -1,0 +1,210 @@
+{
+  "case_id": "087-err-plan-unmodelled-primitive-unchecked",
+  "title": "Primitive without writes rejected unless 'effect : <primitive> = external' is declared; external primitive makes plan report modelled '1 of 2' and 'unchecked' (Amendment U, Y)",
+  "sections_covered": [
+    "H",
+    "K",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "K",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "missing-writes-without-external-refused",
+      "invocation": [
+        "typify",
+        "check",
+        "bad_declarations.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_DECLARATION",
+            "file": "bad_declarations.typify",
+            "range": {
+              "start": {
+                "line": 7,
+                "column": 1,
+                "byteOffset": 99
+              },
+              "end": {
+                "line": 7,
+                "column": 11,
+                "byteOffset": 109
+              }
+            },
+            "data": {
+              "kind": "body",
+              "actual": "spawn"
+            },
+            "provenance": [
+              "H",
+              "K",
+              "U"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_DECLARATION",
+          "file": "bad_declarations.typify",
+          "range": {
+            "start": {
+              "line": 7,
+              "column": 1,
+              "byteOffset": 99
+            },
+            "end": {
+              "line": 7,
+              "column": 11,
+              "byteOffset": 109
+            }
+          },
+          "data": {
+            "kind": "body",
+            "actual": "spawn"
+          },
+          "provenance": [
+            "H",
+            "K",
+            "U"
+          ]
+        }
+      ],
+      "provenance": [
+        "H",
+        "K",
+        "U",
+        "Y"
+      ]
+    },
+    {
+      "name": "external-primitive-plan-unchecked",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "ExternalPrimitivePlan",
+        "program.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "unchecked",
+      "stdout_json": {
+        "plan": [
+          [
+            "mask",
+            "/mounts/work"
+          ],
+          [
+            "spawn",
+            "/usr/bin/sync"
+          ]
+        ],
+        "state": {
+          "mounts": [
+            {
+              "key": [
+                "/mounts/work"
+              ],
+              "value": [],
+              "masked": true,
+              "origin": {
+                "path": "program.typify",
+                "line": 1
+              }
+            }
+          ]
+        },
+        "bound": {
+          "c": 1,
+          "n": 2,
+          "limit": 2
+        },
+        "modelled": "1 of 2",
+        "status": "unchecked",
+        "facts": "none",
+        "origins": [
+          {
+            "step": 1,
+            "primitive": [
+              "mask",
+              "/mounts/work"
+            ],
+            "file": "program.typify",
+            "line": 1,
+            "rule_line": 19,
+            "modelled": true
+          },
+          {
+            "step": 2,
+            "primitive": [
+              "spawn",
+              "/usr/bin/sync"
+            ],
+            "file": "program.typify",
+            "line": 2,
+            "rule_line": 20,
+            "modelled": false,
+            "effect": "external"
+          }
+        ],
+        "ensure": []
+      },
+      "plan": [
+        [
+          "mask",
+          "/mounts/work"
+        ],
+        [
+          "spawn",
+          "/usr/bin/sync"
+        ]
+      ],
+      "predicted_state": {
+        "mounts": [
+          {
+            "key": [
+              "/mounts/work"
+            ],
+            "value": [],
+            "masked": true,
+            "origin": {
+              "path": "program.typify",
+              "line": 1
+            }
+          }
+        ]
+      },
+      "bound": {
+        "c": 1,
+        "k": 1,
+        "n": 2,
+        "limit": 2
+      },
+      "modelled": "1 of 2",
+      "diagnostics": [],
+      "provenance": [
+        "H",
+        "T",
+        "U",
+        "Y"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+#lang typify
+
+declare : FreeOrderLang
+version : 1
+is : word = /[a-z]+/
+term : header : word
+term : item : word
+form : header : <word>
+does : header <word>
+count : header = 1
+example : header : top
+form : item : <word>
+does : item <word>
+count : item = 1..*
+example : item : entry
+end!

@@ -1,0 +1,141 @@
+{
+  "case_id": "022-err-class-unbound-placeholder",
+  "title": "Declaration error: placeholder in form without class declaration and placeholder in does not bound by form",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 16,
+            "byteOffset": 104
+          },
+          "end": {
+            "line": 7,
+            "column": 25,
+            "byteOffset": 113
+          }
+        },
+        "data": {
+          "kind": "capture",
+          "actual": "<unknown>"
+        },
+        "provenance": [
+          "§4",
+          "K"
+        ]
+      },
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 14,
+            "byteOffset": 127
+          },
+          "end": {
+            "line": 8,
+            "column": 21,
+            "byteOffset": 134
+          }
+        },
+        "data": {
+          "kind": "capture",
+          "actual": "<other>"
+        },
+        "provenance": [
+          "§5",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 16,
+          "byteOffset": 104
+        },
+        "end": {
+          "line": 7,
+          "column": 25,
+          "byteOffset": 113
+        }
+      },
+      "data": {
+        "kind": "capture",
+        "actual": "<unknown>"
+      },
+      "provenance": [
+        "§4",
+        "K"
+      ]
+    },
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 14,
+          "byteOffset": 127
+        },
+        "end": {
+          "line": 8,
+          "column": 21,
+          "byteOffset": 134
+        }
+      },
+      "data": {
+        "kind": "capture",
+        "actual": "<other>"
+      },
+      "provenance": [
+        "§5",
+        "K"
+      ]
+    }
+  ]
+}

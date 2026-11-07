@@ -82,7 +82,9 @@
    "E_USAGE"
    '(actual)
    "E_DECLARATION"
-   '(kind actual)))
+   '(kind actual)
+   "E_CONTEXT"
+   '(constructor key)))
 
 (define diagnostic-codes (sort (hash-keys diagnostic-data-fields) string<?))
 

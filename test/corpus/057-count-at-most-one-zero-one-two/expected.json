@@ -1,0 +1,190 @@
+{
+  "case_id": "057-count-at-most-one-zero-one-two",
+  "title": "Count 0..1 (Amendment X): accepted at 0 and 1 occurrences, refused at 2 occurrences",
+  "sections_covered": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "zero-occurrences",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountAtMostOne",
+        "zero.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "body",
+            "main"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "body",
+          "main"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "one-occurrence",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountAtMostOne",
+        "one.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "subtitle",
+            "intro"
+          ],
+          [
+            "body",
+            "main"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "subtitle",
+          "intro"
+        ],
+        [
+          "body",
+          "main"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "two-occurrences-refused",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountAtMostOne",
+        "two.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_PROGRAM_COUNT",
+            "file": "two.typify",
+            "range": {
+              "start": {
+                "line": 2,
+                "column": 1,
+                "byteOffset": 17
+              },
+              "end": {
+                "line": 2,
+                "column": 17,
+                "byteOffset": 33
+              }
+            },
+            "data": {
+              "constructor": "subtitle",
+              "expected": "0..1",
+              "actual": 2
+            },
+            "provenance": [
+              "§4",
+              "G",
+              "K",
+              "X"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_PROGRAM_COUNT",
+          "file": "two.typify",
+          "range": {
+            "start": {
+              "line": 2,
+              "column": 1,
+              "byteOffset": 17
+            },
+            "end": {
+              "line": 2,
+              "column": 17,
+              "byteOffset": 33
+            }
+          },
+          "data": {
+            "constructor": "subtitle",
+            "expected": "0..1",
+            "actual": 2
+          },
+          "provenance": [
+            "§4",
+            "G",
+            "K",
+            "X"
+          ]
+        }
+      ],
+      "provenance": [
+        "§4",
+        "G",
+        "K",
+        "X",
+        "Y"
+      ]
+    }
+  ]
+}

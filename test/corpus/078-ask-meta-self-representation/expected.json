@@ -1,0 +1,92 @@
+{
+  "case_id": "078-ask-meta-self-representation",
+  "title": "Question form on '?' itself ('? : ?') in the self-describing meta declaration (Amendment S: no status line, missing : none)",
+  "sections_covered": [
+    "§6",
+    "§14",
+    "I",
+    "R",
+    "S",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§14",
+    "I",
+    "R",
+    "S",
+    "X",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "TypifyMetaSubset",
+    "?",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "§14",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : form : ? : <verb>",
+    "? : is : verb = letter /[A-Za-z0-9_-]*/",
+    "? : term : ask-word : verb",
+    "? : does : ask-word <verb>",
+    "? : count : ask-word = *",
+    "? : missing : none",
+    "? : example : ? : form"
+  ],
+  "stdout_json": {
+    "word": "?",
+    "status": "declared",
+    "lines": [
+      "? : form : ? : <verb>",
+      "? : is : verb = letter /[A-Za-z0-9_-]*/",
+      "? : term : ask-word : verb",
+      "? : does : ask-word <verb>",
+      "? : count : ask-word = *",
+      "? : missing : none",
+      "? : example : ? : form"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_json": {
+    "word": "?",
+    "status": "declared",
+    "lines": [
+      "? : form : ? : <verb>",
+      "? : is : verb = letter /[A-Za-z0-9_-]*/",
+      "? : term : ask-word : verb",
+      "? : does : ask-word <verb>",
+      "? : count : ask-word = *",
+      "? : missing : none",
+      "? : example : ? : form"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_provenance": [
+    "§6",
+    "§14",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

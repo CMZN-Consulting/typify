@@ -1,0 +1,184 @@
+{
+  "case_id": "083-cell-write-delete-stage-reset",
+  "title": "Cell write 'writes : del-kv : store = delete 1' with 'stage : del-kv = 1' removes key and satisfies (absent <k>)",
+  "sections_covered": [
+    "H",
+    "I",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "I",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "StageReset",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "H",
+    "I",
+    "U",
+    "V",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "put-kv",
+        "temp",
+        "v1"
+      ],
+      [
+        "put-kv",
+        "keep",
+        "v2"
+      ],
+      [
+        "del-kv",
+        "temp"
+      ]
+    ],
+    "state": {
+      "store": [
+        {
+          "key": [
+            "keep"
+          ],
+          "value": [
+            "v2"
+          ],
+          "masked": false,
+          "origin": {
+            "path": "program.typify",
+            "line": 2
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 1,
+      "n": 3,
+      "limit": 3
+    },
+    "modelled": "3 of 3",
+    "facts": "none",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "put-kv",
+          "temp",
+          "v1"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 22
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "put-kv",
+          "keep",
+          "v2"
+        ],
+        "path": "program.typify",
+        "line": 2,
+        "rule_line": 22
+      },
+      {
+        "step": 3,
+        "primitive": [
+          "del-kv",
+          "temp"
+        ],
+        "path": "program.typify",
+        "line": 3,
+        "rule_line": 23
+      }
+    ],
+    "ensure": [
+      {
+        "constructor": "del-kv",
+        "name": "key-absent",
+        "predicate": [
+          "absent",
+          "temp"
+        ],
+        "ok": true
+      }
+    ]
+  },
+  "plan": [
+    [
+      "put-kv",
+      "temp",
+      "v1"
+    ],
+    [
+      "put-kv",
+      "keep",
+      "v2"
+    ],
+    [
+      "del-kv",
+      "temp"
+    ]
+  ],
+  "predicted_state": {
+    "store": [
+      {
+        "key": [
+          "keep"
+        ],
+        "value": [
+          "v2"
+        ],
+        "masked": false,
+        "origin": {
+          "path": "program.typify",
+          "line": 2
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 1,
+    "k": 1,
+    "n": 3,
+    "limit": 3
+  },
+  "modelled": "3 of 3",
+  "ensure": [
+    {
+      "constructor": "del-kv",
+      "name": "key-absent",
+      "predicate": [
+        "absent",
+        "temp"
+      ],
+      "ok": true
+    }
+  ],
+  "diagnostics": []
+}

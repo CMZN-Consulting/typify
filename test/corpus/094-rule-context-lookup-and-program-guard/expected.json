@@ -1,0 +1,165 @@
+{
+  "case_id": "094-rule-context-lookup-and-program-guard",
+  "title": "Root plan case (05:09Z W, Z): carries facts.json, resolves '(context base-dir)' with 'scope : base-dir = root' and 'guard : mount-rel = ...', and prints 'programs' + final 'state'",
+  "sections_covered": [
+    "§7",
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z"
+  ],
+  "provenance": [
+    "§7",
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    ".",
+    "--facts",
+    "facts.json",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§7",
+    "H",
+    "I",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y",
+    "Z"
+  ],
+  "stdout_json": {
+    "programs": [
+      {
+        "path": "root.typify",
+        "status": "present",
+        "plan": [],
+        "ensure": []
+      },
+      {
+        "path": "services/api/mounts.typify",
+        "status": "present",
+        "plan": [
+          [
+            "bind",
+            "/mounts/root/cache",
+            "/mounts/root/cache"
+          ]
+        ],
+        "ensure": []
+      }
+    ],
+    "state": {
+      "mounts": [
+        {
+          "key": [
+            "/mounts/root/cache"
+          ],
+          "value": [
+            "/mounts/root/cache"
+          ],
+          "masked": false,
+          "origin": {
+            "path": "services/api/mounts.typify",
+            "line": 1
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 1,
+      "n": 2,
+      "limit": 2
+    },
+    "modelled": "1 of 1",
+    "facts": "sha256:48a4457f7a0d3a639869935a9b4a4093339e4943a44f2cc010245740c2e1e62e",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "bind",
+          "/mounts/root/cache",
+          "/mounts/root/cache"
+        ],
+        "file": "services/api/mounts.typify",
+        "line": 1,
+        "rule_line": 28
+      }
+    ]
+  },
+  "programs": [
+    {
+      "path": "root.typify",
+      "status": "present",
+      "plan": [],
+      "ensure": []
+    },
+    {
+      "path": "services/api/mounts.typify",
+      "status": "present",
+      "plan": [
+        [
+          "bind",
+          "/mounts/root/cache",
+          "/mounts/root/cache"
+        ]
+      ],
+      "ensure": []
+    }
+  ],
+  "predicted_state": {
+    "mounts": [
+      {
+        "key": [
+          "/mounts/root/cache"
+        ],
+        "value": [
+          "/mounts/root/cache"
+        ],
+        "masked": false,
+        "origin": {
+          "path": "services/api/mounts.typify",
+          "line": 1
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 1,
+    "k": 1,
+    "n": 2,
+    "limit": 2
+  },
+  "modelled": "1 of 1",
+  "facts_hash": "sha256:48a4457f7a0d3a639869935a9b4a4093339e4943a44f2cc010245740c2e1e62e",
+  "diagnostics": []
+}

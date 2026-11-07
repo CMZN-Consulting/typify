@@ -1,0 +1,240 @@
+{
+  "case_id": "043-hostile-gbnf-emission-injection",
+  "title": "Hostile audit (3 grammar-injection pairs): tokens containing GBNF metasymbols '::=' and '[' refused",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y",
+    "§8"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y",
+    "§8"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "label",
+      "token_repr": "'a\" ::= \"b'",
+      "description": "GBNF rule injection with quotes and ::="
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"\\\\\" ]; root ::= [a-z]+\"'",
+      "description": "escaped quote attempting GBNF character class breakout"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'rule::=evil'",
+      "description": "GBNF metasymbol ::= in ident"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 9,
+            "byteOffset": 8
+          },
+          "end": {
+            "line": 1,
+            "column": 18,
+            "byteOffset": 17
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "a\" ::= \"b"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 8,
+            "byteOffset": 25
+          },
+          "end": {
+            "line": 2,
+            "column": 31,
+            "byteOffset": 48
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"\\\" ]; root ::= [a-z]+\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 9,
+            "byteOffset": 57
+          },
+          "end": {
+            "line": 3,
+            "column": 20,
+            "byteOffset": 68
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "rule::=evil"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 9,
+          "byteOffset": 8
+        },
+        "end": {
+          "line": 1,
+          "column": 18,
+          "byteOffset": 17
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "a\" ::= \"b"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 8,
+          "byteOffset": 25
+        },
+        "end": {
+          "line": 2,
+          "column": 31,
+          "byteOffset": 48
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"\\\" ]; root ::= [a-z]+\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 9,
+          "byteOffset": 57
+        },
+        "end": {
+          "line": 3,
+          "column": 20,
+          "byteOffset": 68
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "rule::=evil"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "case_id": "060-form-default-line-when-omitted",
+  "title": "Form with default line supplies default term when omitted and uses explicit line when present",
+  "sections_covered": [
+    "§4",
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "omitted-uses-default",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "DefaultFormLine",
+        "omitted.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "target",
+            "dataset"
+          ],
+          [
+            "access",
+            "ro"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "target",
+          "dataset"
+        ],
+        [
+          "access",
+          "ro"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "present-overrides-default",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "DefaultFormLine",
+        "present.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "access",
+            "rw"
+          ],
+          [
+            "target",
+            "dataset"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "access",
+          "rw"
+        ],
+        [
+          "target",
+          "dataset"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    }
+  ]
+}

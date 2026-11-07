@@ -1,0 +1,92 @@
+{
+  "case_id": "096-err-rule-cycle-and-unstratified-forward-ref",
+  "title": "Declaration error: cyclic / unstratified rule expansion rejected at declaration time",
+  "sections_covered": [
+    "H",
+    "K",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "K",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "H",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_RULE_CYCLE",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 16,
+            "column": 23,
+            "byteOffset": 290
+          },
+          "end": {
+            "line": 16,
+            "column": 33,
+            "byteOffset": 300
+          }
+        },
+        "data": {
+          "constructor": "alpha"
+        },
+        "provenance": [
+          "H",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_RULE_CYCLE",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 16,
+          "column": 23,
+          "byteOffset": 290
+        },
+        "end": {
+          "line": 16,
+          "column": 33,
+          "byteOffset": 300
+        }
+      },
+      "data": {
+        "constructor": "alpha"
+      },
+      "provenance": [
+        "H",
+        "K"
+      ]
+    }
+  ]
+}

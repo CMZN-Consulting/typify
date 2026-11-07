@@ -1,0 +1,10 @@
+#lang typify
+
+declare : BrokenTree
+version : 1
+sees : NonExistentLang
+is : name = /[a-z]+/
+term : ref : name
+form : <name>.typify : NonExistentLang
+does : ref <name>
+end!

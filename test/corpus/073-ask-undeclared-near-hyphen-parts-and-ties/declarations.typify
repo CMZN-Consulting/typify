@@ -1,0 +1,14 @@
+#lang typify
+
+declare : HyphenPartsAsk
+version : 1
+is : num = /[0-9]+/
+term : read-only-mount : num
+term : mount-point : num
+form : read-only-mount : <num>
+does : read-only-mount <num>
+example : read-only-mount : 1
+form : mount-point : <num>
+does : mount-point <num>
+example : mount-point : 2
+end!

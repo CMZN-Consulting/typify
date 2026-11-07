@@ -1,0 +1,2 @@
+bind : /data/archive:/mounts/archive:ro
+bind : /data/work:/mounts/work:rw

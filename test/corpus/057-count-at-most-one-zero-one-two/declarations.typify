@@ -1,0 +1,15 @@
+#lang typify
+
+declare : CountAtMostOne
+version : 1
+is : name = /[a-z]+/
+term : subtitle : name
+term : body : name
+form : subtitle : <name>
+does : subtitle <name>
+count : subtitle = 0..1
+example : subtitle : overview
+form : body : <name>
+does : body <name>
+example : body : content
+end!

@@ -1,0 +1,162 @@
+{
+  "case_id": "062-order-strict-accepted-and-refused",
+  "title": "Strict order ('order : strict', Amendment X): accepted when forms follow declaration order contiguously, refused when out of order",
+  "sections_covered": [
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "strict-order-accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "StrictOrderLang",
+        "ok.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "header",
+            "start"
+          ],
+          [
+            "item",
+            "alpha"
+          ],
+          [
+            "item",
+            "beta"
+          ],
+          [
+            "footer",
+            "done"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "header",
+          "start"
+        ],
+        [
+          "item",
+          "alpha"
+        ],
+        [
+          "item",
+          "beta"
+        ],
+        [
+          "footer",
+          "done"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "strict-order-refused",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "StrictOrderLang",
+        "bad.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_ORDER",
+            "file": "bad.typify",
+            "range": {
+              "start": {
+                "line": 2,
+                "column": 1,
+                "byteOffset": 13
+              },
+              "end": {
+                "line": 2,
+                "column": 15,
+                "byteOffset": 27
+              }
+            },
+            "data": {
+              "form": "header : <word>",
+              "expected": "item : <word>",
+              "actual": "header : start"
+            },
+            "provenance": [
+              "G",
+              "K",
+              "X"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_ORDER",
+          "file": "bad.typify",
+          "range": {
+            "start": {
+              "line": 2,
+              "column": 1,
+              "byteOffset": 13
+            },
+            "end": {
+              "line": 2,
+              "column": 15,
+              "byteOffset": 27
+            }
+          },
+          "data": {
+            "form": "header : <word>",
+            "expected": "item : <word>",
+            "actual": "header : start"
+          },
+          "provenance": [
+            "G",
+            "K",
+            "X"
+          ]
+        }
+      ],
+      "provenance": [
+        "G",
+        "K",
+        "X",
+        "Y"
+      ]
+    }
+  ]
+}

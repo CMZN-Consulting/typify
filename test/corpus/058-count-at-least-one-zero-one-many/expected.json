@@ -1,0 +1,160 @@
+{
+  "case_id": "058-count-at-least-one-zero-one-many",
+  "title": "Count 1..* (Amendment X): refused at 0 occurrences, accepted at 1 or more occurrences",
+  "sections_covered": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "zero-refused",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountAtLeastOne",
+        "zero.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_PROGRAM_COUNT",
+            "file": "zero.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 1,
+                "byteOffset": 0
+              },
+              "end": {
+                "line": 1,
+                "column": 32,
+                "byteOffset": 31
+              }
+            },
+            "data": {
+              "constructor": "step",
+              "expected": "1..*",
+              "actual": 0
+            },
+            "provenance": [
+              "§4",
+              "G",
+              "K",
+              "X"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_PROGRAM_COUNT",
+          "file": "zero.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 1,
+              "byteOffset": 0
+            },
+            "end": {
+              "line": 1,
+              "column": 32,
+              "byteOffset": 31
+            }
+          },
+          "data": {
+            "constructor": "step",
+            "expected": "1..*",
+            "actual": 0
+          },
+          "provenance": [
+            "§4",
+            "G",
+            "K",
+            "X"
+          ]
+        }
+      ],
+      "provenance": [
+        "§4",
+        "G",
+        "K",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "many-accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountAtLeastOne",
+        "many.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "step",
+            "fetch"
+          ],
+          [
+            "step",
+            "compile"
+          ],
+          [
+            "step",
+            "verify"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "step",
+          "fetch"
+        ],
+        [
+          "step",
+          "compile"
+        ],
+        [
+          "step",
+          "verify"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    }
+  ]
+}

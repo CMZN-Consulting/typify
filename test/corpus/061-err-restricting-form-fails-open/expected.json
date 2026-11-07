@@ -1,0 +1,97 @@
+{
+  "case_id": "061-err-restricting-form-fails-open",
+  "title": "Declaration error: form marked 'restricts!' (Amendment X) with optional count 0..1 and no default line rejected",
+  "sections_covered": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "X",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "G",
+    "K",
+    "X"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_RESTRICTS",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 9,
+            "column": 1,
+            "byteOffset": 166
+          },
+          "end": {
+            "line": 9,
+            "column": 11,
+            "byteOffset": 176
+          }
+        },
+        "data": {
+          "form": "retention : <days>",
+          "constructor": "retention"
+        },
+        "provenance": [
+          "G",
+          "K",
+          "X"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_RESTRICTS",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 9,
+          "column": 1,
+          "byteOffset": 166
+        },
+        "end": {
+          "line": 9,
+          "column": 11,
+          "byteOffset": 176
+        }
+      },
+      "data": {
+        "form": "retention : <days>",
+        "constructor": "retention"
+      },
+      "provenance": [
+        "G",
+        "K",
+        "X"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "case_id": "013-class-literal-alternatives",
+  "title": "Class literal alternatives with quoted literals: accepted exact match and refused non-member with range",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "T",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "ClassLiterals",
+        "ok.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "kind",
+            "journal"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "kind",
+          "journal"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "F",
+        "R",
+        "T",
+        "Y"
+      ]
+    },
+    {
+      "name": "refused",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "ClassLiterals",
+        "bad.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_CLASS",
+            "file": "bad.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 8,
+                "byteOffset": 7
+              },
+              "end": {
+                "line": 1,
+                "column": 16,
+                "byteOffset": 15
+              }
+            },
+            "data": {
+              "class": "category",
+              "token": "magazine"
+            },
+            "provenance": [
+              "§4",
+              "F",
+              "K",
+              "R"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_CLASS",
+          "file": "bad.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 8,
+              "byteOffset": 7
+            },
+            "end": {
+              "line": 1,
+              "column": 16,
+              "byteOffset": 15
+            }
+          },
+          "data": {
+            "class": "category",
+            "token": "magazine"
+          },
+          "provenance": [
+            "§4",
+            "F",
+            "K",
+            "R"
+          ]
+        }
+      ],
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "R",
+        "Y"
+      ]
+    }
+  ]
+}

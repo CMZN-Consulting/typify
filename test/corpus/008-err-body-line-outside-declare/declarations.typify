@@ -1,0 +1,11 @@
+#lang typify
+
+is : stray = /[a-z]+/
+
+declare : ValidBody
+version : 1
+is : word = /[a-z]+/
+term : item : word
+form : item : <word>
+does : item <word>
+end!

@@ -1,0 +1,11 @@
+#lang typify
+
+declare : BadTermArity
+version : 1
+is : word = /[a-z]+/
+term : pair : word word
+form : one : <word>
+does : pair <word>
+form : ghost : <word>
+does : undeclared-ctor <word>
+end!

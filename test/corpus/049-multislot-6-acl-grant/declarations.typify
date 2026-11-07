@@ -1,0 +1,13 @@
+#lang typify
+
+declare : AclGrant
+version : 1
+is : role = /[a-z_]+/
+is : perm = "read" | "write" | "exec"
+is : seg = /[a-z0-9._-]+/ except "." | ".."
+is : path = ("/" seg)+
+term : grant : role perm path
+form : grant : (<role>, <perm>) on <path>
+does : grant <role> <perm> <path>
+example : grant : (auditor, read) on /var/log/audit
+end!

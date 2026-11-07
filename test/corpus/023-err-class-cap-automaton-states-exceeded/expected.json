@@ -1,0 +1,201 @@
+{
+  "case_id": "023-err-class-cap-automaton-states-exceeded",
+  "title": "Declaration error: raising cap above default (8192 > 4096), bounded repetition > 256, and compact pattern automaton state cap > 4096 (04:44Z)",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "F",
+    "K",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CAP",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 16,
+            "byteOffset": 63
+          },
+          "end": {
+            "line": 5,
+            "column": 20,
+            "byteOffset": 67
+          }
+        },
+        "data": {
+          "cap": "states",
+          "limit": 4096,
+          "actual": 8192
+        },
+        "provenance": [
+          "F",
+          "K",
+          "R"
+        ]
+      },
+      {
+        "code": "E_CAP",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 23,
+            "byteOffset": 90
+          },
+          "end": {
+            "line": 6,
+            "column": 30,
+            "byteOffset": 97
+          }
+        },
+        "data": {
+          "cap": "repetition",
+          "limit": 256,
+          "actual": 500
+        },
+        "provenance": [
+          "F",
+          "K",
+          "R"
+        ]
+      },
+      {
+        "code": "E_CAP",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 15,
+            "byteOffset": 113
+          },
+          "end": {
+            "line": 7,
+            "column": 31,
+            "byteOffset": 129
+          }
+        },
+        "data": {
+          "cap": "states",
+          "limit": 4096,
+          "actual": 4097
+        },
+        "provenance": [
+          "F",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CAP",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 16,
+          "byteOffset": 63
+        },
+        "end": {
+          "line": 5,
+          "column": 20,
+          "byteOffset": 67
+        }
+      },
+      "data": {
+        "cap": "states",
+        "limit": 4096,
+        "actual": 8192
+      },
+      "provenance": [
+        "F",
+        "K",
+        "R"
+      ]
+    },
+    {
+      "code": "E_CAP",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 23,
+          "byteOffset": 90
+        },
+        "end": {
+          "line": 6,
+          "column": 30,
+          "byteOffset": 97
+        }
+      },
+      "data": {
+        "cap": "repetition",
+        "limit": 256,
+        "actual": 500
+      },
+      "provenance": [
+        "F",
+        "K",
+        "R"
+      ]
+    },
+    {
+      "code": "E_CAP",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 15,
+          "byteOffset": 113
+        },
+        "end": {
+          "line": 7,
+          "column": 31,
+          "byteOffset": 129
+        }
+      },
+      "data": {
+        "cap": "states",
+        "limit": 4096,
+        "actual": 4097
+      },
+      "provenance": [
+        "F",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "case_id": "052-err-form-without-does-and-does-without-form",
+  "title": "Declaration error: does without preceding form and form without paired does",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 1,
+            "byteOffset": 94
+          },
+          "end": {
+            "line": 7,
+            "column": 19,
+            "byteOffset": 112
+          }
+        },
+        "data": {
+          "kind": "orphan",
+          "actual": "does : item <word>"
+        },
+        "provenance": [
+          "§4",
+          "§5",
+          "K"
+        ]
+      },
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 1,
+            "byteOffset": 113
+          },
+          "end": {
+            "line": 8,
+            "column": 23,
+            "byteOffset": 135
+          }
+        },
+        "data": {
+          "kind": "orphan",
+          "actual": "form : orphan : <word>"
+        },
+        "provenance": [
+          "§4",
+          "§5",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 1,
+          "byteOffset": 94
+        },
+        "end": {
+          "line": 7,
+          "column": 19,
+          "byteOffset": 112
+        }
+      },
+      "data": {
+        "kind": "orphan",
+        "actual": "does : item <word>"
+      },
+      "provenance": [
+        "§4",
+        "§5",
+        "K"
+      ]
+    },
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 1,
+          "byteOffset": 113
+        },
+        "end": {
+          "line": 8,
+          "column": 23,
+          "byteOffset": 135
+        }
+      },
+      "data": {
+        "kind": "orphan",
+        "actual": "form : orphan : <word>"
+      },
+      "provenance": [
+        "§4",
+        "§5",
+        "K"
+      ]
+    }
+  ]
+}

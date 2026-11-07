@@ -1,0 +1,12 @@
+#lang typify
+
+declare : NestedTerms
+version : 1
+is : seg = /[a-z0-9._-]+/ except "." | ".."
+is : path = canonical-path
+is : mode = "ro" | "rw"
+term : mount-entry : path mode
+form : ro-sub : <path> <seg>
+does : mount-entry (join <path> <seg>) "ro"
+example : ro-sub : /mounts archive
+end!

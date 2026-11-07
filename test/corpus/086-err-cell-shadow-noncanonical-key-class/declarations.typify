@@ -1,0 +1,13 @@
+#lang typify
+
+declare : NonCanonicalKeyShadow
+version : 1
+is : raw_path = /\/[a-z.\/]*/
+term : mask : raw_path
+primitive!
+writes : mask : mounts = put 1
+cell : mounts = shadow stacking
+form : mask : <raw_path>
+does : mask <raw_path>
+rule : (mask <p>) -> (mask <p>)
+end!

@@ -1,0 +1,10 @@
+#lang typify
+
+declare : GreedyDelimiterOverlap
+version : 1
+is : key = /[a-z=]+/
+is : val = /[a-z]+/
+term : pair : key val
+form : pair : <key>=<val>
+does : pair <key> <val>
+end!

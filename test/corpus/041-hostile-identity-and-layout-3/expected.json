@@ -1,0 +1,360 @@
+{
+  "case_id": "041-hostile-identity-and-layout-3",
+  "title": "Hostile audit (5 ident/layout pairs): leading hyphen '-flag', leading digit, uppercase ident, and invalid layout enum refused",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "ident",
+      "token_repr": "'-flag'",
+      "description": "leading hyphen option injection in ident"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'9lives'",
+      "description": "leading digit in ident"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'Upper_Case'",
+      "description": "uppercase letters in lowercase ident"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'FLAT'",
+      "description": "case mismatch on literal enum layout"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'custom'",
+      "description": "undeclared enum variant on layout"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 9,
+            "byteOffset": 8
+          },
+          "end": {
+            "line": 1,
+            "column": 14,
+            "byteOffset": 13
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "-flag"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 9,
+            "byteOffset": 22
+          },
+          "end": {
+            "line": 2,
+            "column": 15,
+            "byteOffset": 28
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "9lives"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 9,
+            "byteOffset": 37
+          },
+          "end": {
+            "line": 3,
+            "column": 19,
+            "byteOffset": 47
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "Upper_Case"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 10,
+            "byteOffset": 57
+          },
+          "end": {
+            "line": 4,
+            "column": 14,
+            "byteOffset": 61
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "FLAT"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 10,
+            "byteOffset": 71
+          },
+          "end": {
+            "line": 5,
+            "column": 16,
+            "byteOffset": 77
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "custom"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 9,
+          "byteOffset": 8
+        },
+        "end": {
+          "line": 1,
+          "column": 14,
+          "byteOffset": 13
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "-flag"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 9,
+          "byteOffset": 22
+        },
+        "end": {
+          "line": 2,
+          "column": 15,
+          "byteOffset": 28
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "9lives"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 9,
+          "byteOffset": 37
+        },
+        "end": {
+          "line": 3,
+          "column": 19,
+          "byteOffset": 47
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "Upper_Case"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 10,
+          "byteOffset": 57
+        },
+        "end": {
+          "line": 4,
+          "column": 14,
+          "byteOffset": 61
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "FLAT"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 10,
+          "byteOffset": 71
+        },
+        "end": {
+          "line": 5,
+          "column": 16,
+          "byteOffset": 77
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "custom"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

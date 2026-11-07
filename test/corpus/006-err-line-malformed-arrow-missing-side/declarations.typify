@@ -1,0 +1,19 @@
+#lang typify
+
+declare : KernelShapes
+version : 1
+is : label = /[A-Za-z0-9_:\/ >-]+/
+is : node = /[a-z][a-z0-9_-]*/
+term : ready :
+term : note-line : label
+term : link : node node
+form : ready!
+does : ready
+example : ready!
+form : note-line : <label>
+does : note-line <label>
+example : note-line : hello : world -> arrow-inside-colon
+form : <node> -> <node>
+does : link <node> <node>
+example : alpha -> beta
+end!

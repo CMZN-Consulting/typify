@@ -1,0 +1,11 @@
+#lang typify
+
+declare : TypifyMetaSubset
+version : 1
+is : verb = letter /[A-Za-z0-9_-]*/
+term : ask-word : verb
+form : ? : <verb>
+does : ask-word <verb>
+count : ask-word = *
+example : ? : form
+end!

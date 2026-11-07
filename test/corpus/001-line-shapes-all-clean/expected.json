@@ -1,0 +1,84 @@
+{
+  "case_id": "001-line-shapes-all-clean",
+  "title": "All three fixed kernel line shapes, outer blank stripping at split, and colon priority over arrow",
+  "sections_covered": [
+    "§2",
+    "§3",
+    "§4",
+    "§5",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§2",
+    "§3",
+    "§4",
+    "§5",
+    "F",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "KernelShapes",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§2",
+    "§4",
+    "§5",
+    "R",
+    "T"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "ready"
+      ],
+      [
+        "note-line",
+        "first : second -> still-colon-argument"
+      ],
+      [
+        "link",
+        "alpha",
+        "beta"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "ready"
+    ],
+    [
+      "note-line",
+      "first : second -> still-colon-argument"
+    ],
+    [
+      "link",
+      "alpha",
+      "beta"
+    ]
+  ],
+  "terms_provenance": [
+    "§2",
+    "§5",
+    "Y"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "case_id": "049-multislot-6-acl-grant",
+  "title": "Multi-slot form 6: Parenthesized tuple 'grant : (<role>, <perm>) on <path>'",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "AclGrant",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "grant",
+        "operator",
+        "exec",
+        "/usr/local/bin/deploy"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "grant",
+      "operator",
+      "exec",
+      "/usr/local/bin/deploy"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

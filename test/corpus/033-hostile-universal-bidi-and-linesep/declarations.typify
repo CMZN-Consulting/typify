@@ -1,0 +1,44 @@
+#lang typify
+
+declare : HostileAudit
+version : 1
+is : seg = /[A-Za-z0-9._-]+/ except "." | ".."
+is : path = canonical-path
+is : relpath = seg ("/" seg)*
+is : days = "0" | /[1-9][0-9]{0,3}/
+is : word = /[A-Za-z0-9._-]+/
+is : label = word (" " word)*
+is : char_tok = /[^"\\ ]/ | "\\\"" | "\\\\"
+is : arg_tok = "\"" char_tok+ "\""
+is : argv = arg_tok (" " arg_tok)*
+is : ident = /[a-z][a-z0-9_-]*/
+is : layout = "flat" | "dated" | "named"
+term : t-path : path
+term : t-relpath : relpath
+term : t-days : days
+term : t-label : label
+term : t-argv : argv
+term : t-ident : ident
+term : t-layout : layout
+form : path : <path>
+does : t-path <path>
+example : path : /srv/share
+form : relpath : <relpath>
+does : t-relpath <relpath>
+example : relpath : docs/index.md
+form : days : <days>
+does : t-days <days>
+example : days : 30
+form : label : <label>
+does : t-label <label>
+example : label : Daily Backup
+form : argv : <argv>
+does : t-argv <argv>
+example : argv : "/bin/echo" "hello"
+form : ident : <ident>
+does : t-ident <ident>
+example : ident : worker_1
+form : layout : <layout>
+does : t-layout <layout>
+example : layout : flat
+end!

@@ -1,0 +1,72 @@
+{
+  "case_id": "046-multislot-3-http-header-rule",
+  "title": "Multi-slot form 3: Bracketed verb and arrow delimiter 'header : [<verb>] <hname> => <hval>'",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HttpHeaderRule",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "header-rule",
+        "POST",
+        "Content-Type",
+        "application/json"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "header-rule",
+      "POST",
+      "Content-Type",
+      "application/json"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

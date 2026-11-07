@@ -1,0 +1,2 @@
+mask : /mounts/work
+spawn : /usr/bin/sync

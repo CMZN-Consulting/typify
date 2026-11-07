@@ -1,0 +1,70 @@
+{
+  "case_id": "015-class-grouping-and-quantifiers",
+  "title": "Regular-core grouping, optional ?, + and bounded {m,n} quantifiers with lowered cap : repetition = 16",
+  "sections_covered": [
+    "§4",
+    "F",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "ClassQuantifiers",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "release",
+        "2.0.15"
+      ],
+      [
+        "release",
+        "0.9.1-beta2"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "release",
+      "2.0.15"
+    ],
+    [
+      "release",
+      "0.9.1-beta2"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

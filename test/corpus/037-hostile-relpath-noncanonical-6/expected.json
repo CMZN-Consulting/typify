@@ -1,0 +1,421 @@
+{
+  "case_id": "037-hostile-relpath-noncanonical-6",
+  "title": "Hostile audit (6 relpath pairs): traversal, leading slash, double slash, and trailing slash refused",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "relpath",
+      "token_repr": "'../secret'",
+      "description": "leading parent traversal ../"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'a/../../b'",
+      "description": "mid-path parent traversal"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'./local'",
+      "description": "leading current-dir ./"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'/abs/path'",
+      "description": "leading slash in relative path"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'dir//file'",
+      "description": "double slash empty segment in relpath"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'dir/file/'",
+      "description": "trailing slash in relpath"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 11,
+            "byteOffset": 10
+          },
+          "end": {
+            "line": 1,
+            "column": 20,
+            "byteOffset": 19
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "../secret"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 11,
+            "byteOffset": 30
+          },
+          "end": {
+            "line": 2,
+            "column": 20,
+            "byteOffset": 39
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "a/../../b"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 11,
+            "byteOffset": 50
+          },
+          "end": {
+            "line": 3,
+            "column": 18,
+            "byteOffset": 57
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "./local"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 11,
+            "byteOffset": 68
+          },
+          "end": {
+            "line": 4,
+            "column": 20,
+            "byteOffset": 77
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "/abs/path"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 11,
+            "byteOffset": 88
+          },
+          "end": {
+            "line": 5,
+            "column": 20,
+            "byteOffset": 97
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "dir//file"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 11,
+            "byteOffset": 108
+          },
+          "end": {
+            "line": 6,
+            "column": 20,
+            "byteOffset": 117
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "dir/file/"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 11,
+          "byteOffset": 10
+        },
+        "end": {
+          "line": 1,
+          "column": 20,
+          "byteOffset": 19
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "../secret"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 11,
+          "byteOffset": 30
+        },
+        "end": {
+          "line": 2,
+          "column": 20,
+          "byteOffset": 39
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "a/../../b"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 11,
+          "byteOffset": 50
+        },
+        "end": {
+          "line": 3,
+          "column": 18,
+          "byteOffset": 57
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "./local"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 11,
+          "byteOffset": 68
+        },
+        "end": {
+          "line": 4,
+          "column": 20,
+          "byteOffset": 77
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "/abs/path"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 11,
+          "byteOffset": 88
+        },
+        "end": {
+          "line": 5,
+          "column": 20,
+          "byteOffset": 97
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "dir//file"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 11,
+          "byteOffset": 108
+        },
+        "end": {
+          "line": 6,
+          "column": 20,
+          "byteOffset": 117
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "dir/file/"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

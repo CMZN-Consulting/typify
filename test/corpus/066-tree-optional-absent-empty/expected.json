@@ -1,0 +1,171 @@
+{
+  "case_id": "066-tree-optional-absent-empty",
+  "title": "Tree optional program without default: absent notes.typify reported as 'absent-empty' contributing zero terms",
+  "sections_covered": [
+    "§7",
+    "§9",
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§7",
+    "§9",
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "command": "tree",
+  "invocation": [
+    "typify",
+    "tree",
+    "declarations.typify",
+    "ProjectLayout",
+    ".",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§7",
+    "G",
+    "X",
+    "Y"
+  ],
+  "stdout_json": [
+    {
+      "path": "services/api/config.typify",
+      "language": "Config",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "access",
+          "rw"
+        ]
+      ],
+      "origins": [
+        {
+          "term": [
+            "access",
+            "rw"
+          ],
+          "file": "services/api/config.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/app.typify",
+      "language": "App",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "run",
+          "worker"
+        ]
+      ],
+      "origins": [
+        {
+          "term": [
+            "run",
+            "worker"
+          ],
+          "file": "services/api/app.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/notes.typify",
+      "language": "Notes",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "absent-empty",
+      "terms": [],
+      "origins": []
+    }
+  ],
+  "tree_entries": [
+    {
+      "path": "services/api/config.typify",
+      "language": "Config",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "access",
+          "rw"
+        ]
+      ],
+      "origins": [
+        {
+          "term": [
+            "access",
+            "rw"
+          ],
+          "file": "services/api/config.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/app.typify",
+      "language": "App",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "present",
+      "terms": [
+        [
+          "run",
+          "worker"
+        ]
+      ],
+      "origins": [
+        {
+          "term": [
+            "run",
+            "worker"
+          ],
+          "file": "services/api/app.typify",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "services/api/notes.typify",
+      "language": "Notes",
+      "placeholders": {
+        "service": "api"
+      },
+      "status": "absent-empty",
+      "terms": [],
+      "origins": []
+    }
+  ],
+  "tree_provenance": [
+    "§7",
+    "G",
+    "X",
+    "Y"
+  ],
+  "diagnostics": []
+}

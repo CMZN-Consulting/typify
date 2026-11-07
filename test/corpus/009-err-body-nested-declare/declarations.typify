@@ -1,0 +1,8 @@
+#lang typify
+
+declare : OuterLang
+version : 1
+declare : InnerLang
+version : 1
+end!
+end!

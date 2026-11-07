@@ -1,0 +1,16 @@
+#lang typify
+
+declare : MissingConstructorAction
+version : 1
+is : name = /[a-z]+/
+term : prim-op : name
+primitive!
+writes : prim-op : log = put 1
+cell : log = shadow
+term : unhandled : name
+form : prim : <name>
+does : prim-op <name>
+form : unhandled : <name>
+does : unhandled <name>
+rule : (prim-op <n>) -> (prim-op <n>)
+end!

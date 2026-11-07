@@ -1,0 +1,62 @@
+{
+  "case_id": "002-line-custom-comment-prefix",
+  "title": "Declaration of custom comment prefix via 'comment : ;'",
+  "sections_covered": [
+    "§2",
+    "§3",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§2",
+    "§3",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "SemicolonComments",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§2",
+    "§3",
+    "R",
+    "T"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "item",
+        "bravo"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "item",
+      "bravo"
+    ]
+  ],
+  "terms_provenance": [
+    "§2",
+    "§5",
+    "Y"
+  ]
+}

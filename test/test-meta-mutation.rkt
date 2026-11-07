@@ -4,18 +4,16 @@
          racket/file
          racket/list
          racket/path
-         racket/runtime-path
          racket/string
          "../src/language.rkt"
-         "../src/meta.rkt")
+         "../src/meta.rkt"
+         "blind-corpus.rkt")
 
 (provide run-tests mutation-operators)
 
 (struct mutation (id family change forms classes) #:transparent)
 
 (struct oracle (id run expected) #:transparent)
-
-(define-runtime-path language-tests "test-language.rkt")
 
 (define mutation-operators
   '(remove-row
@@ -353,7 +351,7 @@
    (define actual ((oracle-run item)))
    (hasheq 'id (oracle-id item) 'pass (equal? actual (oracle-expected item)))))
 
-(define (blind-oracle)
+(define (blind-oracle #:ids (ids #f) #:stop-on-failure? (stop? #f))
   (with-handlers
    ((exn:fail?
      (lambda (failure)
@@ -368,8 +366,7 @@
         "missing-or-unreadable-oracle"
         'message
         (exn-message failure)))))
-   (define runner (dynamic-require language-tests 'run-blind-corpus))
-   (runner)))
+   (run-blind-corpus #:ids ids #:stop-on-failure? stop?)))
 
 (define (field data name (default #f)) (if (hash? data) (hash-ref data name default) default))
 
@@ -379,28 +376,85 @@
   (define baseline (map evaluate-oracle internal-oracles))
   (define baseline-failures (count (lambda (result) (not (hash-ref result 'pass))) baseline))
   (define blind-baseline (blind-oracle))
-  (define blind-available? (eq? (field blind-baseline 'available) #t))
+  (define blind-baseline-results (field blind-baseline 'results '()))
+  (define blind-baseline-shape?
+    (and (for/and
+          ((result (in-list blind-baseline-results)))
+          (and (hash? result)
+               (string? (field result 'id))
+               (hash-has-key? result 'pass)
+               (boolean? (field result 'pass))))
+         (=
+          (length blind-baseline-results)
+          (length
+           (remove-duplicates (map (lambda (result) (field result 'id)) blind-baseline-results))))))
+  (define blind-available? (and (eq? (field blind-baseline 'available) #t) blind-baseline-shape?))
+  (define blind-passing-ids
+    (for/list
+     ((result (in-list blind-baseline-results)) #:when (eq? (field result 'pass) #t))
+     (field result 'id)))
+  (define blind-baseline-failures
+    (count (lambda (result) (not (eq? (field result 'pass) #t))) blind-baseline-results))
   (define blind-valid?
     (and blind-available?
          (exact-positive-integer? (field blind-baseline 'total))
-         (equal? (field blind-baseline 'failures) 0)))
+         (eq? (field blind-baseline 'complete) #t)
+         (equal? (field blind-baseline 'failures) 0)
+         (zero? blind-baseline-failures)))
   (define seeds (make-mutations forms classes))
   (define measurements
-    (if (and (zero? baseline-failures) (or (not blind-available?) blind-valid?))
+    (if (zero? baseline-failures)
       (for/list
        ((seed seeds))
        (parameterize
         ((current-meta-forms (mutation-forms seed)) (current-meta-classes (mutation-classes seed)))
+        (define blind-result
+          (and blind-available?
+               (pair? blind-passing-ids)
+               (blind-oracle #:ids blind-passing-ids #:stop-on-failure? #t)))
+        (define blind-results (if blind-result (field blind-result 'results '()) '()))
+        (define blind-result-valid?
+          (or (not blind-result)
+              (and (eq? (field blind-result 'available) #t)
+                   (zero? (field blind-result 'infrastructure-failures 1))
+                   (pair? blind-results)
+                   (=
+                    (length blind-results)
+                    (length
+                     (remove-duplicates (map (lambda (result) (field result 'id)) blind-results))))
+                   (for/and
+                    ((result (in-list blind-results)))
+                    (and (member (field result 'id) blind-passing-ids)
+                         (equal? (field result 'kind) "compared")
+                         (hash-has-key? result 'pass)
+                         (boolean? (field result 'pass))))
+                   (equal?
+                    (map (lambda (result) (field result 'id)) blind-results)
+                    (take blind-passing-ids (length blind-results)))
+                   (or (and (or (eq? (field blind-result 'selected-complete) #t)
+                                (=
+                                 (field blind-result 'attempted -1)
+                                 (field blind-result 'requested -2)))
+                            (= (length blind-results) (length blind-passing-ids)))
+                       (and (eq? (field blind-result 'stopped-early) #t)
+                            (ormap
+                             (lambda (result) (eq? (field result 'pass) #f))
+                             blind-results))))))
+        (define blind-witness
+          (and blind-result-valid?
+               (for/first
+                ((result (in-list blind-results))
+                 #:when
+                 (and (equal? (field result 'kind) "compared") (eq? (field result 'pass) #f)))
+                result)))
+        (define internal-attempted 0)
         (define internal
-          (for/or
-           ((item internal-oracles))
-           (define result (evaluate-oracle item))
-           (and (not (hash-ref result 'pass)) (oracle-id item))))
-        (define blind-result (and blind-valid? (blind-oracle)))
-        (define blind-killed?
-          (and blind-result
-               (or (not (eq? (field blind-result 'available) #t))
-                   (not (equal? (field blind-result 'failures) 0)))))
+          (and (not blind-witness)
+               (for/or
+                ((item internal-oracles))
+                (set! internal-attempted (add1 internal-attempted))
+                (define result (evaluate-oracle item))
+                (and (not (hash-ref result 'pass)) (oracle-id item)))))
         (hasheq
          'id
          (mutation-id seed)
@@ -409,26 +463,77 @@
          'change
          (mutation-change seed)
          'killed
-         (and (or internal blind-killed?) #t)
+         (and (or internal blind-witness) #t)
          'internal-witness
          (or internal 'null)
          'blind-witness
-         (and blind-killed? #t))))
+         (if blind-witness (field blind-witness 'id) 'null)
+         'blind-observation
+         (or blind-witness 'null)
+         'blind-mismatches
+         (if blind-witness (field blind-result 'mismatches '()) '())
+         'blind-attempted
+         (length blind-results)
+         'blind-requested
+         (if blind-result (length blind-passing-ids) 0)
+         'internal-attempted
+         internal-attempted
+         'blind-measurement-valid
+         blind-result-valid?)))
       '()))
   (define seeded (length seeds))
   (define killed (count (lambda (measurement) (hash-ref measurement 'killed)) measurements))
   (define complete? (= (length measurements) seeded))
   (define survivors (- seeded killed))
+  (define blind-killed
+    (count (lambda (measurement) (string? (hash-ref measurement 'blind-witness))) measurements))
+  (define internally-killed
+    (count (lambda (measurement) (string? (hash-ref measurement 'internal-witness))) measurements))
+  (define blind-measurement-errors
+    (count
+     (lambda (measurement) (not (hash-ref measurement 'blind-measurement-valid)))
+     measurements))
+  (define blind-invocations
+    (for/sum ((measurement (in-list measurements))) (hash-ref measurement 'blind-attempted)))
+  (define internal-invocations
+    (for/sum ((measurement (in-list measurements))) (hash-ref measurement 'internal-attempted)))
+  (define checks
+    (+
+     (length baseline)
+     (max 1 (field blind-baseline 'total 0))
+     (length measurements)
+     blind-invocations
+     internal-invocations))
+  (define failures
+    (+
+     baseline-failures
+     (field blind-baseline 'failures 1)
+     (- (length measurements) killed)
+     blind-measurement-errors))
   (define gate
     (hasheq
      'total
      seeded
      'failures
-     (+ survivors baseline-failures (if blind-valid? 0 1))
+     (+ survivors baseline-failures blind-measurement-errors (if blind-valid? 0 1))
      'seeded
      seeded
      'killed
      killed
+     'blind-killed
+     blind-killed
+     'internally-killed
+     internally-killed
+     'blind-invocations
+     blind-invocations
+     'internal-invocations
+     internal-invocations
+     'blind-baseline-passing
+     (length blind-passing-ids)
+     'blind-baseline-failing
+     blind-baseline-failures
+     'blind-measurement-errors
+     blind-measurement-errors
      'single-point-total
      seeded
      'single-point-killed
@@ -440,7 +545,9 @@
      'status
      (cond
       ((not (zero? baseline-failures)) "invalid-baseline")
-      ((not blind-valid?) "missing-blind-evidence")
+      ((not blind-available?) "missing-blind-evidence")
+      ((not blind-valid?) "invalid-blind-baseline")
+      ((positive? blind-measurement-errors) "blind-measurement-infrastructure-failure")
       ((not complete?) "incomplete-measurement")
       ((positive? survivors) "surviving-mutations")
       (else "measured"))))
@@ -448,11 +555,13 @@
    'suite
    "meta-mutation"
    'count
-   (length baseline)
+   checks
    'pass
-   (- (length baseline) baseline-failures)
+   (- checks failures)
    'fail
-   baseline-failures
+   failures
+   'status
+   (if (zero? failures) "passed" "failed")
    'gates
    (hasheq 'meta-mutation gate)
    'baseline
@@ -463,6 +572,8 @@
    (map symbol->string mutation-operators)
    'denominator
    "One application of each registered operator at every eligible field of the current immutable meta table and class sources; no equivalent-mutant filtering."
+   'blind-algorithm
+   "Run the frozen baseline first; only baseline-passing invocation IDs are eligible. For each registered mutation, stop at its first newly failing eligible blind invocation; otherwise run the independent internal oracles until their first failure. A non-clean blind baseline invalidates the overall gate, and baseline-failing invocations never kill mutants. Roundtrip and witness laws are excluded."
    'measurements
    measurements))
 

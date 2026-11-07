@@ -1,0 +1,146 @@
+{
+  "case_id": "018-err-class-host-predicate-forbidden",
+  "title": "Declaration error: host regex escape outside regular core and unquoted bare word naming no class",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "K",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 11,
+            "byteOffset": 59
+          },
+          "end": {
+            "line": 5,
+            "column": 16,
+            "byteOffset": 64
+          }
+        },
+        "data": {
+          "class": "pattern",
+          "token": "/\\d+/"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "R"
+        ]
+      },
+      {
+        "code": "E_CLASS_UNDECLARED",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 13,
+            "byteOffset": 78
+          },
+          "end": {
+            "line": 6,
+            "column": 15,
+            "byteOffset": 80
+          }
+        },
+        "data": {
+          "class": "rw"
+        },
+        "provenance": [
+          "§4",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 11,
+          "byteOffset": 59
+        },
+        "end": {
+          "line": 5,
+          "column": 16,
+          "byteOffset": 64
+        }
+      },
+      "data": {
+        "class": "pattern",
+        "token": "/\\d+/"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "R"
+      ]
+    },
+    {
+      "code": "E_CLASS_UNDECLARED",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 13,
+          "byteOffset": 78
+        },
+        "end": {
+          "line": 6,
+          "column": 15,
+          "byteOffset": 80
+        }
+      },
+      "data": {
+        "class": "rw"
+      },
+      "provenance": [
+        "§4",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

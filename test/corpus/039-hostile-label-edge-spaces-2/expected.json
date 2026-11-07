@@ -1,0 +1,275 @@
+{
+  "case_id": "039-hostile-label-edge-spaces-2",
+  "title": "Hostile audit: untrimmed capture inside '[ a ]' (04:19Z correction) and leading, trailing, or double internal spaces in label refused",
+  "sections_covered": [
+    "§2",
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§2",
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "UntrimmedCaptureAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§2",
+    "§4",
+    "F",
+    "Q",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 9,
+            "byteOffset": 8
+          },
+          "end": {
+            "line": 1,
+            "column": 12,
+            "byteOffset": 11
+          }
+        },
+        "data": {
+          "class": "word",
+          "token": " a "
+        },
+        "provenance": [
+          "§2",
+          "§4",
+          "F",
+          "K",
+          "R"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 10,
+            "byteOffset": 22
+          },
+          "end": {
+            "line": 2,
+            "column": 19,
+            "byteOffset": 31
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "  leading"
+        },
+        "provenance": [
+          "§2",
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 10,
+            "byteOffset": 42
+          },
+          "end": {
+            "line": 3,
+            "column": 20,
+            "byteOffset": 52
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "trailing  "
+        },
+        "provenance": [
+          "§2",
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 10,
+            "byteOffset": 63
+          },
+          "end": {
+            "line": 4,
+            "column": 23,
+            "byteOffset": 76
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "double  space"
+        },
+        "provenance": [
+          "§2",
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 9,
+          "byteOffset": 8
+        },
+        "end": {
+          "line": 1,
+          "column": 12,
+          "byteOffset": 11
+        }
+      },
+      "data": {
+        "class": "word",
+        "token": " a "
+      },
+      "provenance": [
+        "§2",
+        "§4",
+        "F",
+        "K",
+        "R"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 10,
+          "byteOffset": 22
+        },
+        "end": {
+          "line": 2,
+          "column": 19,
+          "byteOffset": 31
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "  leading"
+      },
+      "provenance": [
+        "§2",
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 10,
+          "byteOffset": 42
+        },
+        "end": {
+          "line": 3,
+          "column": 20,
+          "byteOffset": 52
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "trailing  "
+      },
+      "provenance": [
+        "§2",
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 10,
+          "byteOffset": 63
+        },
+        "end": {
+          "line": 4,
+          "column": 23,
+          "byteOffset": 76
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "double  space"
+      },
+      "provenance": [
+        "§2",
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R"
+      ]
+    }
+  ]
+}

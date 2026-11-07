@@ -1,0 +1,80 @@
+{
+  "case_id": "044-multislot-1-catalog-item",
+  "title": "Multi-slot form 1: Catalog 'item : <category> = <title>' with delimiter ' = '",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "Catalog",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "item",
+        "book",
+        "The Art of Computer Programming"
+      ],
+      [
+        "item",
+        "journal",
+        "Communications of the ACM"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "item",
+      "book",
+      "The Art of Computer Programming"
+    ],
+    [
+      "item",
+      "journal",
+      "Communications of the ACM"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

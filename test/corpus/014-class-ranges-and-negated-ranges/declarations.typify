@@ -1,0 +1,11 @@
+#lang typify
+
+declare : ClassRanges
+version : 1
+is : hex = /[0-9a-f]+/
+is : key = /[^=]+/
+term : pair : key hex
+form : <key>=<hex>
+does : pair <key> <hex>
+example : port=1f40
+end!

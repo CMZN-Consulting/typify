@@ -1,0 +1,317 @@
+{
+  "case_id": "090-ensure-origin-distinguishes-writer",
+  "title": "Cross-line origin tracking: second 'share : /mounts/beta ro' re-masks '/mounts' at step 3, hiding '/mounts/alpha' from line 1 and naming both origins in the failing check (K, U, Y)",
+  "sections_covered": [
+    "H",
+    "I",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "I",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "Mounts",
+    "program.typify",
+    "--facts",
+    "facts.json",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "H",
+    "I",
+    "K",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "mask",
+        "/mounts"
+      ],
+      [
+        "bind",
+        "/mounts/alpha",
+        "rw"
+      ],
+      [
+        "mask",
+        "/mounts"
+      ],
+      [
+        "bind",
+        "/mounts/beta",
+        "ro"
+      ]
+    ],
+    "state": {
+      "mounts": [
+        {
+          "key": [
+            "/mounts"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 2
+          }
+        },
+        {
+          "key": [
+            "/mounts/alpha"
+          ],
+          "value": [
+            "rw"
+          ],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/mounts/beta"
+          ],
+          "value": [
+            "ro"
+          ],
+          "masked": false,
+          "origin": {
+            "path": "program.typify",
+            "line": 2
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 2,
+      "n": 2,
+      "limit": 4
+    },
+    "modelled": "4 of 4",
+    "facts": "sha256:ace21817f1488a1aa84ebb15135860bb3b8f6fd17b87a92db3ee220c49a3217c",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "mask",
+          "/mounts"
+        ],
+        "file": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "bind",
+          "/mounts/alpha",
+          "rw"
+        ],
+        "file": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      },
+      {
+        "step": 3,
+        "primitive": [
+          "mask",
+          "/mounts"
+        ],
+        "file": "program.typify",
+        "line": 2,
+        "rule_line": 19
+      },
+      {
+        "step": 4,
+        "primitive": [
+          "bind",
+          "/mounts/beta",
+          "ro"
+        ],
+        "file": "program.typify",
+        "line": 2,
+        "rule_line": 19
+      }
+    ],
+    "ensure": [
+      {
+        "constructor": "share",
+        "name": "child-visible",
+        "predicate": [
+          "visible",
+          "/mounts/alpha"
+        ],
+        "ok": false
+      },
+      {
+        "constructor": "share",
+        "name": "child-visible",
+        "predicate": [
+          "visible",
+          "/mounts/beta"
+        ],
+        "ok": true
+      }
+    ],
+    "diagnostics": [
+      {
+        "code": "E_ENSURE",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 1,
+            "byteOffset": 0
+          },
+          "end": {
+            "line": 1,
+            "column": 25,
+            "byteOffset": 24
+          }
+        },
+        "data": {
+          "ensure": "child-visible",
+          "key": "/mounts/alpha"
+        },
+        "provenance": [
+          "H",
+          "I",
+          "K",
+          "U",
+          "V",
+          "Y"
+        ]
+      }
+    ]
+  },
+  "plan": [
+    [
+      "mask",
+      "/mounts"
+    ],
+    [
+      "bind",
+      "/mounts/alpha",
+      "rw"
+    ],
+    [
+      "mask",
+      "/mounts"
+    ],
+    [
+      "bind",
+      "/mounts/beta",
+      "ro"
+    ]
+  ],
+  "predicted_state": {
+    "mounts": [
+      {
+        "key": [
+          "/mounts"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 2
+        }
+      },
+      {
+        "key": [
+          "/mounts/alpha"
+        ],
+        "value": [
+          "rw"
+        ],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/mounts/beta"
+        ],
+        "value": [
+          "ro"
+        ],
+        "masked": false,
+        "origin": {
+          "path": "program.typify",
+          "line": 2
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 2,
+    "k": 1,
+    "n": 2,
+    "limit": 4
+  },
+  "modelled": "4 of 4",
+  "diagnostics": [
+    {
+      "code": "E_ENSURE",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 1,
+          "byteOffset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 25,
+          "byteOffset": 24
+        }
+      },
+      "data": {
+        "ensure": "child-visible",
+        "key": "/mounts/alpha"
+      },
+      "provenance": [
+        "H",
+        "I",
+        "K",
+        "U",
+        "V",
+        "Y"
+      ]
+    }
+  ]
+}

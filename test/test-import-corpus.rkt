@@ -8,6 +8,13 @@
 
 (define provenance (make-string 64 #\a))
 
+(define manifest-bytes #"# Corpus\r\nFrozen author inventory.\r\n")
+
+(define expected-manifest-sha256 "63b03d52d04a55f030a1cf5a0dd72a9467a8fe5190be2e6b32cfb7109243aca4")
+
+(define expected-manifest-tree-sha256
+  "45f8d55fa82da7047bedf990a631db074892feaf0e5e17208b513a7283f665b2")
+
 (define fixed-files
   (list
    (cons "declaration.typify" #"#lang typify\r\ndeclare : Example\r\nend!\r\n")
@@ -165,6 +172,140 @@
                 (import-corpus source (make-string 64 #\0) provenance #:root wrong-hash-root)))
              (not (directory-exists? (build-path wrong-hash-root "test" "corpus")))))
       #t)
+     (define source-manifest (build-path source "MANIFEST.md"))
+     (write-bytes-file source-manifest manifest-bytes)
+     (check
+      "optional-manifest-in-inventory-and-independent-tree-hash"
+      (lambda ()
+        (define inventory (corpus-inventory source))
+        (list
+         (hash-ref inventory 'cases)
+         (hash-ref inventory 'metadata)
+         (car (hash-ref inventory 'files))
+         (hash-ref inventory 'bytes)
+         (hash-ref inventory 'tree-sha256)))
+      (list
+       '("case-a")
+       '("MANIFEST.md")
+       (hasheq 'path "MANIFEST.md" 'bytes 36 'sha256 expected-manifest-sha256)
+       126
+       expected-manifest-tree-sha256))
+     (define manifest-root (checkout temporary "manifest-checkout"))
+     (define manifest-destination (build-path manifest-root "test" "corpus"))
+     (define destination-manifest (build-path manifest-destination "MANIFEST.md"))
+     (define manifest-receipt-path (build-path manifest-destination "import.json"))
+     (define manifest-receipt #f)
+     (define manifest-receipt-bytes #f)
+     (check
+      "manifest-copied-verbatim-with-compatible-v2-receipt"
+      (lambda ()
+        (set! manifest-receipt
+          (import-corpus source expected-manifest-tree-sha256 provenance #:root manifest-root))
+        (set! manifest-receipt-bytes (file->bytes manifest-receipt-path))
+        (list
+         (hash-ref manifest-receipt 'schema)
+         (hash-ref manifest-receipt 'cases)
+         (hash-ref manifest-receipt 'metadata)
+         (file->bytes destination-manifest)
+         (original-files? (build-path manifest-destination "case-a"))))
+      (list "typify-corpus-import-v2" '("case-a") '("MANIFEST.md") manifest-bytes #t))
+     (check
+      "manifest-import-idempotency"
+      (lambda ()
+        (and (equal?
+              (import-corpus source expected-manifest-tree-sha256 provenance #:root manifest-root)
+              manifest-receipt)
+             (equal? (file->bytes manifest-receipt-path) manifest-receipt-bytes)
+             (equal? (file->bytes destination-manifest) manifest-bytes)))
+      #t)
+     (write-bytes-file source-manifest #"changed manifest\n")
+     (check
+      "changed-source-manifest-refused-without-overwrite"
+      (lambda ()
+        (and (rejects?
+              (lambda ()
+                (import-corpus
+                 source
+                 expected-manifest-tree-sha256
+                 provenance
+                 #:root
+                 manifest-root)))
+             (equal? (file->bytes destination-manifest) manifest-bytes)
+             (equal? (file->bytes manifest-receipt-path) manifest-receipt-bytes)))
+      #t)
+     (delete-file source-manifest)
+     (check
+      "removed-source-manifest-refused-without-overwrite"
+      (lambda ()
+        (and (rejects?
+              (lambda ()
+                (import-corpus
+                 source
+                 expected-manifest-tree-sha256
+                 provenance
+                 #:root
+                 manifest-root)))
+             (equal? (file->bytes destination-manifest) manifest-bytes)))
+      #t)
+     (write-bytes-file source-manifest manifest-bytes)
+     (write-bytes-file destination-manifest #"changed destination manifest\n")
+     (check
+      "changed-destination-manifest-refused-without-repair"
+      (lambda ()
+        (and (rejects?
+              (lambda ()
+                (import-corpus
+                 source
+                 expected-manifest-tree-sha256
+                 provenance
+                 #:root
+                 manifest-root)))
+             (equal? (file->bytes destination-manifest) #"changed destination manifest\n")
+             (equal? (file->bytes manifest-receipt-path) manifest-receipt-bytes)))
+      #t)
+     (define manifest-collision-root (checkout temporary "manifest-collision"))
+     (define manifest-collision-destination (build-path manifest-collision-root "test" "corpus"))
+     (make-directory* manifest-collision-destination)
+     (write-bytes-file (build-path manifest-collision-destination "MANIFEST.md") #"keep manifest\n")
+     (check
+      "preexisting-manifest-refused-before-case-copy"
+      (lambda ()
+        (and (rejects?
+              (lambda ()
+                (import-corpus
+                 source
+                 expected-manifest-tree-sha256
+                 provenance
+                 #:root
+                 manifest-collision-root)))
+             (equal?
+              (file->bytes (build-path manifest-collision-destination "MANIFEST.md"))
+              #"keep manifest\n")
+             (not (directory-exists? (build-path manifest-collision-destination "case-a")))
+             (not (file-exists? (build-path manifest-collision-destination "import.json")))))
+      #t)
+     (define other-metadata (build-path source "README.md"))
+     (write-bytes-file other-metadata #"not authorized metadata\n")
+     (check
+      "other-root-metadata-refused"
+      (lambda () (rejects? (lambda () (corpus-inventory source))))
+      #t)
+     (delete-file other-metadata)
+     (delete-file source-manifest)
+     (make-directory source-manifest)
+     (check
+      "manifest-directory-refused"
+      (lambda () (rejects? (lambda () (corpus-inventory source))))
+      #t)
+     (delete-directory source-manifest)
+     (write-bytes-file source-manifest manifest-bytes)
+     (define metadata-only (build-path temporary "metadata-only"))
+     (make-directory metadata-only)
+     (write-bytes-file (build-path metadata-only "MANIFEST.md") manifest-bytes)
+     (check
+      "manifest-is-not-a-case"
+      (lambda () (rejects? (lambda () (corpus-inventory metadata-only))))
+      #t)
      (unless (eq? (system-type 'os) 'windows)
        (let ((file-link (build-path source-case "linked.typify"))
              (directory-link (build-path source-case "linked-directory")))
@@ -181,7 +322,14 @@
           "directory-symlink-refused-during-inventory"
           (lambda () (rejects? (lambda () (corpus-inventory source))))
           #t)
-         (delete-file directory-link))))
+         (delete-file directory-link)
+         (delete-file source-manifest)
+         (make-file-or-directory-link (build-path source-case "input.typify") source-manifest)
+         (check
+          "manifest-symlink-refused-during-inventory"
+          (lambda () (rejects? (lambda () (corpus-inventory source))))
+          #t)
+         (delete-file source-manifest))))
    (lambda () (delete-directory/files temporary)))
   (hasheq
    'suite

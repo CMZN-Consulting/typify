@@ -40,7 +40,8 @@
       ("E_QUESTION" actual)
       ("E_FILE" path)
       ("E_USAGE" actual)
-      ("E_DECLARATION" kind actual)))
+      ("E_DECLARATION" kind actual)
+      ("E_CONTEXT" constructor key)))
   (check
    diagnostic-codes
    (sort (map car registry) string<?)

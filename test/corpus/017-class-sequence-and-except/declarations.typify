@@ -1,0 +1,11 @@
+#lang typify
+
+declare : ClassExcept
+version : 1
+is : seg = /[a-z0-9._-]+/ except "." | ".."
+is : path = "/" seg ("/" seg)*
+term : target : path
+form : target : <path>
+does : target <path>
+example : target : /srv/data
+end!

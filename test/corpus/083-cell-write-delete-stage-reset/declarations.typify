@@ -1,0 +1,25 @@
+#lang typify
+
+declare : StageReset
+version : 1
+is : key = /[a-z]+/
+is : val = /[a-z0-9]+/
+term : put-kv : key val
+primitive!
+stage : put-kv = 0
+writes : put-kv : store = put 1
+term : del-kv : key
+primitive!
+stage : del-kv = 1
+writes : del-kv : store = delete 1
+cell : store = shadow
+form : put : <key> = <val>
+does : put-kv <key> <val>
+example : put : session = abc
+form : clear : <key>
+does : del-kv <key>
+example : clear : session
+rule : put-kv <k> <v> -> put-kv <k> <v>
+rule : del-kv <k> -> del-kv <k>
+ensure : del-kv : key-absent = (absent <k>)
+end!

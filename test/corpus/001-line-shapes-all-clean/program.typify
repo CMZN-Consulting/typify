@@ -1,0 +1,5 @@
+# Comment line ignored by the kernel
+
+  ready!  
+note-line :   first : second -> still-colon-argument  
+  alpha   ->   beta  

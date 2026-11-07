@@ -1,0 +1,92 @@
+{
+  "case_id": "011-err-body-duplicate-language",
+  "title": "Duplicate language declaration 'declare : DupLang' in the same file",
+  "sections_covered": [
+    "§3",
+    "§9",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§3",
+    "§9",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§3",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 11,
+            "column": 11,
+            "byteOffset": 140
+          },
+          "end": {
+            "line": 11,
+            "column": 18,
+            "byteOffset": 147
+          }
+        },
+        "data": {
+          "kind": "duplicate",
+          "actual": "DupLang"
+        },
+        "provenance": [
+          "§3",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 11,
+          "byteOffset": 140
+        },
+        "end": {
+          "line": 11,
+          "column": 18,
+          "byteOffset": 147
+        }
+      },
+      "data": {
+        "kind": "duplicate",
+        "actual": "DupLang"
+      },
+      "provenance": [
+        "§3",
+        "K"
+      ]
+    }
+  ]
+}

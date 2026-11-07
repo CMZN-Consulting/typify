@@ -1,0 +1,5 @@
+path : /mounts/..%2fsecret
+path : /mounts//etc
+relpath : ../%2e%2e/config
+ident : svc%i
+ident : unit%n

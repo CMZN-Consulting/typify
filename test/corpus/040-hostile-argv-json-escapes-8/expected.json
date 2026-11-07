@@ -1,0 +1,543 @@
+{
+  "case_id": "040-hostile-argv-json-escapes-8",
+  "title": "Hostile audit (8 argv pairs): unquoted argv, empty token, unescaped spaces, dangling backslash, and bad escapes refused",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "argv",
+      "token_repr": "'/bin/sh -c id'",
+      "description": "unquoted tokens in argv"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"\"'",
+      "description": "empty quoted argument"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"/bin/sh\" \"-c\" \"rm -rf /\"'",
+      "description": "unescaped spaces inside quoted token"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"unterminated'",
+      "description": "unterminated quote"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"bad\\\\nescape\"'",
+      "description": "unsupported escape sequence \\n"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"trailing\\\\\\\\\"'",
+      "description": "dangling backslash before closing quote"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"a\"  \"b\"'",
+      "description": "double space separator between tokens"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"mid\"quote\"'",
+      "description": "unescaped internal quote"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 8,
+            "byteOffset": 7
+          },
+          "end": {
+            "line": 1,
+            "column": 21,
+            "byteOffset": 20
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "/bin/sh -c id"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 8,
+            "byteOffset": 28
+          },
+          "end": {
+            "line": 2,
+            "column": 10,
+            "byteOffset": 30
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 8,
+            "byteOffset": 38
+          },
+          "end": {
+            "line": 3,
+            "column": 33,
+            "byteOffset": 63
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"/bin/sh\" \"-c\" \"rm -rf /\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 8,
+            "byteOffset": 71
+          },
+          "end": {
+            "line": 4,
+            "column": 21,
+            "byteOffset": 84
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"unterminated"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 8,
+            "byteOffset": 92
+          },
+          "end": {
+            "line": 5,
+            "column": 21,
+            "byteOffset": 105
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"bad\\nescape\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 8,
+            "byteOffset": 113
+          },
+          "end": {
+            "line": 6,
+            "column": 20,
+            "byteOffset": 125
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"trailing\\\\\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 8,
+            "byteOffset": 133
+          },
+          "end": {
+            "line": 7,
+            "column": 16,
+            "byteOffset": 141
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"a\"  \"b\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 8,
+            "byteOffset": 149
+          },
+          "end": {
+            "line": 8,
+            "column": 19,
+            "byteOffset": 160
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"mid\"quote\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byteOffset": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 21,
+          "byteOffset": 20
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "/bin/sh -c id"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 8,
+          "byteOffset": 28
+        },
+        "end": {
+          "line": 2,
+          "column": 10,
+          "byteOffset": 30
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byteOffset": 38
+        },
+        "end": {
+          "line": 3,
+          "column": 33,
+          "byteOffset": 63
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"/bin/sh\" \"-c\" \"rm -rf /\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 8,
+          "byteOffset": 71
+        },
+        "end": {
+          "line": 4,
+          "column": 21,
+          "byteOffset": 84
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"unterminated"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 8,
+          "byteOffset": 92
+        },
+        "end": {
+          "line": 5,
+          "column": 21,
+          "byteOffset": 105
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"bad\\nescape\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 8,
+          "byteOffset": 113
+        },
+        "end": {
+          "line": 6,
+          "column": 20,
+          "byteOffset": 125
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"trailing\\\\\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 8,
+          "byteOffset": 133
+        },
+        "end": {
+          "line": 7,
+          "column": 16,
+          "byteOffset": 141
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"a\"  \"b\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 8,
+          "byteOffset": 149
+        },
+        "end": {
+          "line": 8,
+          "column": 19,
+          "byteOffset": 160
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"mid\"quote\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

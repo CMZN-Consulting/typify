@@ -1,0 +1,11 @@
+#lang typify
+
+declare : ClassRefs
+version : 1
+is : tail = /[a-z0-9_-]*/
+is : ident = letter tail
+term : symbol : ident
+form : symbol : <ident>
+does : symbol <ident>
+example : symbol : alpha_1
+end!

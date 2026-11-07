@@ -1,0 +1,15 @@
+#lang typify
+
+declare : UntrimmedCaptureAudit
+version : 1
+is : word = /[A-Za-z0-9._-]+/
+is : label = word (" " word)*
+term : bracketed : word
+term : titled : label
+form : item : [<word>]
+does : bracketed <word>
+example : item : [alpha]
+form : label : (<label>)
+does : titled <label>
+example : label : (Daily Backup)
+end!

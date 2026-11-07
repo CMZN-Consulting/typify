@@ -1,0 +1,12 @@
+#lang typify
+
+declare : ArrowTransition
+version : 1
+is : state = /[A-Z][A-Z0-9_]*/
+is : event = /[a-z_]+/
+is : guard = /[a-z0-9_]+/
+term : step : state event state guard
+form : <state> : <event> -> <state> [<guard>]
+does : step <state> <event> <state> <guard>
+example : IDLE : start -> RUNNING [ready]
+end!

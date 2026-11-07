@@ -1,0 +1,72 @@
+{
+  "case_id": "048-multislot-5-package-pin",
+  "title": "Multi-slot form 5: Three-slot package pin 'pin : <pkg>@<ver>#<sha>' with '@' and '#' delimiters",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "PackagePin",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "pin",
+        "typify-core",
+        "1.0.0",
+        "deadbeef"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "pin",
+      "typify-core",
+      "1.0.0",
+      "deadbeef"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

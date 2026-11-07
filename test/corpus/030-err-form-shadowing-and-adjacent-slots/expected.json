@@ -1,0 +1,158 @@
+{
+  "case_id": "030-err-form-shadowing-and-adjacent-slots",
+  "title": "Declaration error: adjacent placeholders without literal delimiter and overlapping forms with non-disjoint automata",
+  "sections_covered": [
+    "§4",
+    "F",
+    "J",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "J",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "J",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS_OVERLAP",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 10,
+            "column": 15,
+            "byteOffset": 180
+          },
+          "end": {
+            "line": 10,
+            "column": 29,
+            "byteOffset": 194
+          }
+        },
+        "data": {
+          "form": "pair : <alpha><alpha>",
+          "class": "alpha",
+          "token": ""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "J",
+          "K",
+          "R"
+        ]
+      },
+      {
+        "code": "E_FORM_SHADOW",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 14,
+            "column": 1,
+            "byteOffset": 266
+          },
+          "end": {
+            "line": 14,
+            "column": 22,
+            "byteOffset": 287
+          }
+        },
+        "data": {
+          "form": "pick : <alpha>",
+          "actual": "pick : <alnum>"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "J",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS_OVERLAP",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 15,
+          "byteOffset": 180
+        },
+        "end": {
+          "line": 10,
+          "column": 29,
+          "byteOffset": 194
+        }
+      },
+      "data": {
+        "form": "pair : <alpha><alpha>",
+        "class": "alpha",
+        "token": ""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "J",
+        "K",
+        "R"
+      ]
+    },
+    {
+      "code": "E_FORM_SHADOW",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 1,
+          "byteOffset": 266
+        },
+        "end": {
+          "line": 14,
+          "column": 22,
+          "byteOffset": 287
+        }
+      },
+      "data": {
+        "form": "pick : <alpha>",
+        "actual": "pick : <alnum>"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "J",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

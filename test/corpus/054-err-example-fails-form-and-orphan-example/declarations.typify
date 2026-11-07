@@ -1,0 +1,11 @@
+#lang typify
+
+declare : BadExample
+version : 1
+is : num = /[0-9]+/
+term : count-box : num
+example : count-box : 10
+form : count-box : <num>
+does : count-box <num>
+example : count-box : not-a-number
+end!

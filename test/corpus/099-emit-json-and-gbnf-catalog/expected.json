@@ -1,0 +1,95 @@
+{
+  "case_id": "099-emit-json-and-gbnf-catalog",
+  "title": "Grammar emission ('typify emit', 06:00Z, 06:05Z, 06:20Z J): emits JSON grammar with comment, caps, qualified classes, and forms by default, and GBNF with '--gbnf'",
+  "sections_covered": [
+    "§8",
+    "§9",
+    "F",
+    "J",
+    "R",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§8",
+    "§9",
+    "F",
+    "J",
+    "R",
+    "X",
+    "Y"
+  ],
+  "command": "emit",
+  "subcases": [
+    {
+      "name": "emit-json-default",
+      "invocation": [
+        "typify",
+        "emit",
+        "declarations.typify",
+        "Catalog"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "language": "Catalog",
+        "version": 1,
+        "comment": "#",
+        "caps": {
+          "states": 4096,
+          "repetition": 256,
+          "depth": 8,
+          "length": 4096
+        },
+        "classes": {
+          "Catalog.category": {
+            "literals": [
+              "book",
+              "journal"
+            ]
+          },
+          "Catalog.title": {
+            "pattern": "[^=]+"
+          }
+        },
+        "forms": [
+          {
+            "verb": "item",
+            "shape": "colon",
+            "production": "item : <category> = <title>"
+          }
+        ]
+      },
+      "provenance": [
+        "§8",
+        "§9",
+        "J",
+        "R",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "emit-gbnf-flag",
+      "invocation": [
+        "typify",
+        "emit",
+        "declarations.typify",
+        "Catalog",
+        "--gbnf"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_gbnf": "root ::= line\nline ::= \"item : \" category \" = \" title\ncategory ::= \"book\" | \"journal\"\ntitle ::= [^=]+\n",
+      "provenance": [
+        "§8",
+        "§9",
+        "F",
+        "J",
+        "R",
+        "Y"
+      ]
+    }
+  ],
+  "diagnostics": []
+}

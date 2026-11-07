@@ -1,0 +1,21 @@
+#lang typify
+
+declare : Mounts
+version : 1
+is : path = canonical-path
+is : mode = "ro" | "rw"
+term : bind : path mode
+primitive!
+writes : bind : mounts = put 1
+reads : bind : exists = reject
+term : mask : path
+primitive!
+writes : mask : mounts = put 1
+cell : mounts = shadow stacking
+term : share : path mode
+form : share : <path> <mode>
+does : share <path> <mode>
+example : share : /mounts/research rw
+rule : share <p> <m> -> mask (parent <p>) ; bind <p> <m>
+ensure : share : child-visible = (visible <p>)
+end!

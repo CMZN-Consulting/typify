@@ -22,6 +22,7 @@
     "test/test-diagnostics.rkt"
     "test/test-declaration-diagnostics.rkt"
     "test/test-program-diagnostics.rkt"
+    "test/blind-corpus.rkt"
     "test/test-language.rkt"
     "test/test-language-edge.rkt"
     "test/test-library.rkt"
@@ -30,6 +31,7 @@
     "test/test-bounds.rkt"
     "test/test-decoder.rkt"
     "test/test-import-corpus.rkt"
+    "test/test-publication.rkt"
     "test/test-meta-mutation.rkt"))
 
 (define gate-names

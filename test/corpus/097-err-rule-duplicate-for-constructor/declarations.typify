@@ -1,0 +1,15 @@
+#lang typify
+
+declare : DuplicateRule
+version : 1
+is : name = /[a-z]+/
+term : prim : name
+primitive!
+writes : prim : out = put 1
+cell : out = shadow
+term : action : name
+form : action : <name>
+does : action <name>
+rule : action <x> -> prim <x>
+rule : action <x> -> prim <x> ; prim <x>
+end!

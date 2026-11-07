@@ -1,19 +1,15 @@
 #lang racket/base
 
-(require json
-         racket/file
-         racket/list
-         racket/runtime-path
+(require racket/list
          racket/string
          "../src/classes.rkt"
          "../src/diagnostics.rkt"
          "../src/language.rkt"
          "../src/meta.rkt"
+         "blind-corpus.rkt"
          "witness-report.rkt")
 
 (provide run-tests run-blind-corpus)
-
-(define-runtime-path import-path "corpus/import.json")
 
 (define catalog
   (string-append
@@ -24,10 +20,170 @@
    "form : item : <category> = <title>\ndoes : item <category> <title>\n"
    "example : item : book = Algebra\ncount : item = 1..*\nend!\n"))
 
-(define (run-blind-corpus)
-  (if (file-exists? import-path)
-    (error 'blind-corpus "The imported corpus requires its declared case schema")
-    (hash 'available #f 'total 0 'failures 1 'corpus "test/corpus/" 'provenance "not-imported")))
+(define (declarations-data model)
+  (for/hash (((name body) (in-hash model))) (values name (declaration->jsexpr body #:origins? #f))))
+
+(define (failure-data failure)
+  (if (exn:fail:typify? failure)
+    (let ((item (exn:fail:typify-diagnostic failure)))
+      (hash
+       'code
+       (diagnostic-code item)
+       'file
+       (diagnostic-file item)
+       'range
+       (src-span->jsexpr (diagnostic-range item))
+       'data
+       (diagnostic-data-projection (diagnostic-code item) (diagnostic-data item))))
+    (hash 'message (exn-message failure))))
+
+(define (measure-blind-declarations)
+  (with-handlers
+   ((exn:fail?
+     (lambda (failure)
+       (values
+        (hash
+         'available
+         #f
+         'inputs
+         0
+         'admitted
+         0
+         'refused
+         0
+         'unavailable
+         0
+         'infrastructure
+         1
+         'roundtrips
+         0
+         'successful-roundtrips
+         0
+         'failures
+         1
+         'complete
+         #f
+         'declarations
+         '()
+         'error
+         (failure-data failure))
+        '()))))
+   (define inputs (blind-declaration-inputs))
+   (define records '())
+   (define models '())
+   (define admitted 0)
+   (define refused 0)
+   (define unavailable 0)
+   (define infrastructure 0)
+   (define successful-roundtrips 0)
+   (define roundtrip-failures 0)
+   (for
+    ((input (in-list inputs)))
+    (define identity
+      (hash
+       'id
+       (hash-ref input 'id)
+       'case-id
+       (hash-ref input 'case-id)
+       'file
+       (hash-ref input 'file)
+       'source-sha256
+       (if (string? (hash-ref input 'source)) (content-hash (hash-ref input 'source)) 'null)))
+    (define parsed
+      (with-handlers
+       ((exn:fail:typify? (lambda (failure) (cons 'refused failure)))
+        (exn:fail? (lambda (failure) (cons 'infrastructure failure))))
+       (if (string? (hash-ref input 'source))
+         (cons
+          'admitted
+          (parameterize
+           ((current-directory (hash-ref input 'directory)))
+           (read-declarations (hash-ref input 'source) #:file (hash-ref input 'file))))
+         (cons 'unavailable "The invoked declaration source is absent"))))
+    (case (car parsed)
+      ((unavailable)
+       (set! unavailable (add1 unavailable))
+       (set! records
+         (cons (hash-set* identity 'status "unavailable-source" 'reason (cdr parsed)) records)))
+      ((refused)
+       (set! refused (add1 refused))
+       (set! records
+         (cons
+          (hash-set* identity 'status "refused" 'diagnostic (failure-data (cdr parsed)))
+          records)))
+      ((infrastructure)
+       (set! infrastructure (add1 infrastructure))
+       (set! records
+         (cons
+          (hash-set* identity 'status "infrastructure" 'error (failure-data (cdr parsed)))
+          records)))
+      (else
+       (set! admitted (add1 admitted))
+       (define model (cdr parsed))
+       (define namespace
+         (string-append
+          "blind:"
+          (string-replace (string-replace (hash-ref input 'id) "%" "%25") "/" "%2F")))
+       (set! models (cons (cons namespace model) models))
+       (define roundtrip
+         (with-handlers
+          ((exn:fail? (lambda (failure) (hash 'pass #f 'error (failure-data failure)))))
+          (define repeated
+            (read-declarations (emit-declarations model) #:file (hash-ref input 'file)))
+          (hash 'pass (equal? (declarations-data model) (declarations-data repeated)))))
+       (if (hash-ref roundtrip 'pass)
+         (set! successful-roundtrips (add1 successful-roundtrips))
+         (set! roundtrip-failures (add1 roundtrip-failures)))
+       (set! records
+         (cons
+          (hash-set*
+           identity
+           'status
+           "admitted"
+           'namespace
+           namespace
+           'languages
+           (sort (hash-keys model) string<?)
+           'roundtrip
+           roundtrip)
+          records)))))
+   (define ids (map (lambda (input) (hash-ref input 'id)) inputs))
+   (define collisions (- (length ids) (length (remove-duplicates ids))))
+   (define complete?
+     (and (positive? (length inputs))
+          (zero? collisions)
+          (zero? infrastructure)
+          (= (length inputs) (+ admitted refused unavailable infrastructure))
+          (= admitted (length models))))
+   (values
+    (hash
+     'available
+     #t
+     'inputs
+     (length inputs)
+     'admitted
+     admitted
+     'refused
+     refused
+     'unavailable
+     unavailable
+     'infrastructure
+     infrastructure
+     'roundtrips
+     admitted
+     'successful-roundtrips
+     successful-roundtrips
+     'failures
+     (+ roundtrip-failures infrastructure collisions)
+     'collisions
+     collisions
+     'complete
+     complete?
+     'scope
+     "Roundtrip and witness laws apply to reader-admitted declarations; refusals and absent invoked source paths are inventoried separately and are not successful roundtrips."
+     'declarations
+     (reverse records))
+    (reverse models))))
 
 (define (run-tests)
   (define checks 0)
@@ -202,39 +358,109 @@
   (for
    ((model (in-list public-models)))
    (check (model-data (read-declarations (emit-declarations model))) (model-data model)))
-  (define declaration-witnesses
-    (measure-witnesses (map cons '("catalog" "flags" "mounts" "meta") public-models)))
-  (check (hash-ref declaration-witnesses 'failures) 0)
   (define blind (run-blind-corpus))
+  (define-values (blind-coverage blind-models) (measure-blind-declarations))
+  (define custody-verified?
+    (and (eq? (hash-ref blind 'available #f) #t)
+         (eq? (hash-ref blind 'complete #f) #t)
+         (zero? (hash-ref blind 'infrastructure-failures 1))))
+  (define blind-declarations
+    (hash-set*
+     blind-coverage
+     'custody-verified
+     custody-verified?
+     'complete
+     (and (hash-ref blind-coverage 'complete) custody-verified?)))
+  (define declaration-witnesses
+    (measure-witnesses
+     (append (map cons '("catalog" "flags" "mounts" "meta") public-models) blind-models)))
+  (define blind-failures (hash-ref blind 'failures 1))
+  (define law-failures
+    (+
+     (hash-ref blind-declarations 'failures)
+     (hash-ref declaration-witnesses 'failures)
+     (if (hash-ref blind-declarations 'complete) 0 1)))
+  (define count
+    (+
+     checks
+     (max 1 (hash-ref blind 'total 0))
+     (max 1 (hash-ref blind-declarations 'inputs))
+     (hash-ref blind-declarations 'roundtrips)
+     1
+     (hash-ref declaration-witnesses 'checks)))
+  (define failures (+ blind-failures law-failures))
   (hash
    'suite
    "language"
-   'checks
-   checks
+   'count
+   count
+   'pass
+   (- count failures)
+   'fail
+   failures
    'status
-   "passed"
+   (if (zero? failures) "passed" "failed")
+   'blind-baseline-failures
+   blind-failures
+   'blind-declaration-coverage
+   blind-declarations
    'gates
    (hash
     'blind-verdict
-    (hash-set* blind 'blind #f 'independent #f)
+    (hash-set*
+     blind
+     'total
+     (hash-ref blind 'case-total 0)
+     'failures
+     (hash-ref blind 'case-failures 1)
+     'invocations
+     (hash-ref blind 'total 0)
+     'invocation-failures
+     blind-failures)
     'structural-round-trip
     (hash
      'total
-     (length public-models)
+     (+ (length public-models) (hash-ref blind-declarations 'admitted))
      'failures
-     0
+     (hash-ref blind-declarations 'failures)
      'public-declarations
      (length public-models)
      'blind-declarations
-     0
+     (hash-ref blind-declarations 'admitted)
+     'blind-inputs
+     (hash-ref blind-declarations 'inputs)
+     'blind-refused
+     (hash-ref blind-declarations 'refused)
+     'blind-unavailable
+     (hash-ref blind-declarations 'unavailable)
+     'blind-infrastructure
+     (hash-ref blind-declarations 'infrastructure)
+     'blind-roundtrips
+     (hash-ref blind-declarations 'roundtrips)
      'complete
-     #f
+     (hash-ref blind-declarations 'complete)
      'status
-     "public-passed-blind-pending")
+     (if (and (hash-ref blind-declarations 'complete)
+              (zero? (hash-ref blind-declarations 'failures)))
+       "measured"
+       "incomplete-or-failed"))
     'byte-smoke
     (hash 'total 1 'failures 0)
     'declaration-witnesses
-    (hash-set* declaration-witnesses 'complete #f 'status "public-passed-blind-pending")
+    (hash-set*
+     declaration-witnesses
+     'complete
+     (hash-ref blind-declarations 'complete)
+     'blind-inputs
+     (hash-ref blind-declarations 'inputs)
+     'blind-admitted
+     (hash-ref blind-declarations 'admitted)
+     'blind-refused
+     (hash-ref blind-declarations 'refused)
+     'blind-unavailable
+     (hash-ref blind-declarations 'unavailable)
+     'blind-infrastructure
+     (hash-ref blind-declarations 'infrastructure))
     'worked-example-classes
     (hash 'total (length worked-coverage) 'failures 0 'host-predicates 0 'coverage worked-coverage)
     'meta-selfcheck

@@ -1,0 +1,145 @@
+{
+  "case_id": "017-class-sequence-and-except",
+  "title": "Class juxtaposition sequence and weakest-binding finite literal exclusion (<class> except \"a\" | \"b\")",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "ClassExcept",
+        "ok.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "target",
+            "/var/log/syslog"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "target",
+          "/var/log/syslog"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "F",
+        "Q",
+        "R",
+        "T",
+        "Y"
+      ]
+    },
+    {
+      "name": "refused",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "ClassExcept",
+        "bad.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_CLASS",
+            "file": "bad.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 10,
+                "byteOffset": 9
+              },
+              "end": {
+                "line": 1,
+                "column": 21,
+                "byteOffset": 20
+              }
+            },
+            "data": {
+              "class": "path",
+              "token": "/var/../etc"
+            },
+            "provenance": [
+              "§4",
+              "F",
+              "K",
+              "Q",
+              "R"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_CLASS",
+          "file": "bad.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 10,
+              "byteOffset": 9
+            },
+            "end": {
+              "line": 1,
+              "column": 21,
+              "byteOffset": 20
+            }
+          },
+          "data": {
+            "class": "path",
+            "token": "/var/../etc"
+          },
+          "provenance": [
+            "§4",
+            "F",
+            "K",
+            "Q",
+            "R"
+          ]
+        }
+      ],
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "Y"
+      ]
+    }
+  ]
+}

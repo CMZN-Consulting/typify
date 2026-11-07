@@ -1,0 +1,77 @@
+{
+  "case_id": "074-ask-undeclared-accepts-menu",
+  "title": "Question form (Amendment I, S): undeclared word 'book' accepted by first placeholder <category> of form 'item : <category> = <title>'",
+  "sections_covered": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "Catalog",
+    "book",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : book = undeclared",
+    "? : accepts : item : <category> = <title>"
+  ],
+  "stdout_json": {
+    "word": "book",
+    "status": "undeclared",
+    "lines": [
+      "? : book = undeclared",
+      "? : accepts : item : <category> = <title>"
+    ],
+    "near": [],
+    "accepts": [
+      "item : <category> = <title>"
+    ]
+  },
+  "ask_json": {
+    "word": "book",
+    "status": "undeclared",
+    "lines": [
+      "? : book = undeclared",
+      "? : accepts : item : <category> = <title>"
+    ],
+    "near": [],
+    "accepts": [
+      "item : <category> = <title>"
+    ]
+  },
+  "ask_provenance": [
+    "§6",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

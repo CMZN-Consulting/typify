@@ -1,0 +1,360 @@
+{
+  "case_id": "038-hostile-days-numeric-5",
+  "title": "Hostile audit (5 days pairs): negative, leading zero '007', overflow, scientific, and hex refused",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "days",
+      "token_repr": "'-1'",
+      "description": "negative integer"
+    },
+    {
+      "class": "days",
+      "token_repr": "'007'",
+      "description": "leading zero octal ambiguity"
+    },
+    {
+      "class": "days",
+      "token_repr": "'999999999999999999999'",
+      "description": "integer overflow > 4 digits"
+    },
+    {
+      "class": "days",
+      "token_repr": "'1e5'",
+      "description": "scientific notation"
+    },
+    {
+      "class": "days",
+      "token_repr": "'0x10'",
+      "description": "hexadecimal prefix"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 8,
+            "byteOffset": 7
+          },
+          "end": {
+            "line": 1,
+            "column": 10,
+            "byteOffset": 9
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "-1"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 8,
+            "byteOffset": 17
+          },
+          "end": {
+            "line": 2,
+            "column": 11,
+            "byteOffset": 20
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "007"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 8,
+            "byteOffset": 28
+          },
+          "end": {
+            "line": 3,
+            "column": 29,
+            "byteOffset": 49
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "999999999999999999999"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 8,
+            "byteOffset": 57
+          },
+          "end": {
+            "line": 4,
+            "column": 11,
+            "byteOffset": 60
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "1e5"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 8,
+            "byteOffset": 68
+          },
+          "end": {
+            "line": 5,
+            "column": 12,
+            "byteOffset": 72
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "0x10"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byteOffset": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 10,
+          "byteOffset": 9
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "-1"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 8,
+          "byteOffset": 17
+        },
+        "end": {
+          "line": 2,
+          "column": 11,
+          "byteOffset": 20
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "007"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byteOffset": 28
+        },
+        "end": {
+          "line": 3,
+          "column": 29,
+          "byteOffset": 49
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "999999999999999999999"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 8,
+          "byteOffset": 57
+        },
+        "end": {
+          "line": 4,
+          "column": 11,
+          "byteOffset": 60
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "1e5"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 8,
+          "byteOffset": 68
+        },
+        "end": {
+          "line": 5,
+          "column": 12,
+          "byteOffset": 72
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "0x10"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

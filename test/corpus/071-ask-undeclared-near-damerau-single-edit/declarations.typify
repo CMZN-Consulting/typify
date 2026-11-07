@@ -1,0 +1,15 @@
+#lang typify
+
+declare : AskNearDemo
+version : 1
+is : seg = /[a-z0-9._-]+/ except "." | ".."
+is : path = ("/" seg)+
+term : bind : path
+term : mask : path
+form : bind : <path>
+does : bind <path>
+example : bind : /mounts/work
+form : mask : <path>
+does : mask <path>
+example : mask : /mounts/work/tmp
+end!

@@ -1,0 +1,102 @@
+{
+  "case_id": "086-err-cell-shadow-noncanonical-key-class",
+  "title": "Declaration error (05:09Z U): 'cell : mounts = shadow stacking' keyed by class 'raw_path' not a subset of built-in 'canonical-path' rejected",
+  "sections_covered": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "H",
+    "K",
+    "Q",
+    "U"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_KEY_CANONICAL",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 9,
+            "column": 1,
+            "byteOffset": 153
+          },
+          "end": {
+            "line": 9,
+            "column": 32,
+            "byteOffset": 184
+          }
+        },
+        "data": {
+          "cell": "mounts",
+          "class": "raw_path"
+        },
+        "provenance": [
+          "H",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_KEY_CANONICAL",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 9,
+          "column": 1,
+          "byteOffset": 153
+        },
+        "end": {
+          "line": 9,
+          "column": 32,
+          "byteOffset": 184
+        }
+      },
+      "data": {
+        "cell": "mounts",
+        "class": "raw_path"
+      },
+      "provenance": [
+        "H",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

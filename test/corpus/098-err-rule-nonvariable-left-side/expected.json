@@ -1,0 +1,94 @@
+{
+  "case_id": "098-err-rule-nonvariable-left-side",
+  "title": "Declaration error: rule left-hand side with literal argument instead of variable placeholder rejected",
+  "sections_covered": [
+    "H",
+    "K",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "K",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "H",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 13,
+            "column": 16,
+            "byteOffset": 229
+          },
+          "end": {
+            "line": 13,
+            "column": 25,
+            "byteOffset": 238
+          }
+        },
+        "data": {
+          "kind": "capture",
+          "actual": "\"literal\""
+        },
+        "provenance": [
+          "H",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 13,
+          "column": 16,
+          "byteOffset": 229
+        },
+        "end": {
+          "line": 13,
+          "column": 25,
+          "byteOffset": 238
+        }
+      },
+      "data": {
+        "kind": "capture",
+        "actual": "\"literal\""
+      },
+      "provenance": [
+        "H",
+        "K"
+      ]
+    }
+  ]
+}

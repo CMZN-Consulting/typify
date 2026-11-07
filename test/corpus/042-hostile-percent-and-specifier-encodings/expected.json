@@ -1,0 +1,360 @@
+{
+  "case_id": "042-hostile-percent-and-specifier-encodings",
+  "title": "Hostile audit (5 encoding pairs): traversal and systemd specifier (%n, %i) spoofing refused",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "path",
+      "token_repr": "'/mounts/..%2fsecret'",
+      "description": "percent-encoded traversal in path"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/mounts//etc'",
+      "description": "empty component in path"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'../%2e%2e/config'",
+      "description": "traversal in relpath"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'svc%i'",
+      "description": "systemd instance specifier %i in ident"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'unit%n'",
+      "description": "systemd unit specifier %n in ident"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 8,
+            "byteOffset": 7
+          },
+          "end": {
+            "line": 1,
+            "column": 27,
+            "byteOffset": 26
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts/..%2fsecret"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 8,
+            "byteOffset": 34
+          },
+          "end": {
+            "line": 2,
+            "column": 20,
+            "byteOffset": 46
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts//etc"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 11,
+            "byteOffset": 57
+          },
+          "end": {
+            "line": 3,
+            "column": 27,
+            "byteOffset": 73
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "../%2e%2e/config"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 9,
+            "byteOffset": 82
+          },
+          "end": {
+            "line": 4,
+            "column": 14,
+            "byteOffset": 87
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "svc%i"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 9,
+            "byteOffset": 96
+          },
+          "end": {
+            "line": 5,
+            "column": 15,
+            "byteOffset": 102
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "unit%n"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byteOffset": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 27,
+          "byteOffset": 26
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts/..%2fsecret"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 8,
+          "byteOffset": 34
+        },
+        "end": {
+          "line": 2,
+          "column": 20,
+          "byteOffset": 46
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts//etc"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 11,
+          "byteOffset": 57
+        },
+        "end": {
+          "line": 3,
+          "column": 27,
+          "byteOffset": 73
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "../%2e%2e/config"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 9,
+          "byteOffset": 82
+        },
+        "end": {
+          "line": 4,
+          "column": 14,
+          "byteOffset": 87
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "svc%i"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 9,
+          "byteOffset": 96
+        },
+        "end": {
+          "line": 5,
+          "column": 15,
+          "byteOffset": 102
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "unit%n"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

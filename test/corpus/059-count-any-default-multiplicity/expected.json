@@ -1,0 +1,96 @@
+{
+  "case_id": "059-count-any-default-multiplicity",
+  "title": "Count * (Amendment X): accepts 0, 1, or many occurrences",
+  "sections_covered": [
+    "§4",
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "G",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "zero-accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountAny",
+        "empty.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [],
+        "diagnostics": []
+      },
+      "terms": [],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "many-accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountAny",
+        "many.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "tag-line",
+            "alpha"
+          ],
+          [
+            "tag-line",
+            "beta"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "tag-line",
+          "alpha"
+        ],
+        [
+          "tag-line",
+          "beta"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,667 @@
+{
+  "case_id": "036-hostile-path-noncanonical-6",
+  "title": "Hostile audit (10 canonical-path pairs): Storm 07 Gauss 6 class-specific path attacks + 8 non-canonical path spellings refused by built-in canonical-path (05:09Z)",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y",
+    "H"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y",
+    "H"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "path",
+      "token_repr": "'/mounts/../etc/shadow'",
+      "description": "dot-dot parent traversal segment"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/mounts/./research'",
+      "description": "dot current-directory segment"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/mounts//research'",
+      "description": "duplicate slash empty segment"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/mounts/research/'",
+      "description": "trailing slash on non-root path"
+    },
+    {
+      "class": "path",
+      "token_repr": "'mounts/research'",
+      "description": "missing leading slash on absolute path"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/mounts/research/..'",
+      "description": "trailing dot-dot segment"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/mounts/research/.'",
+      "description": "trailing single-dot segment"
+    },
+    {
+      "class": "path",
+      "token_repr": "'///'",
+      "description": "triple slash root"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/mounts/res earch'",
+      "description": "unquoted space inside path segment"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/..'",
+      "description": "root parent traversal /.."
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 8,
+            "byteOffset": 7
+          },
+          "end": {
+            "line": 1,
+            "column": 29,
+            "byteOffset": 28
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts/../etc/shadow"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 8,
+            "byteOffset": 36
+          },
+          "end": {
+            "line": 2,
+            "column": 26,
+            "byteOffset": 54
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts/./research"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 8,
+            "byteOffset": 62
+          },
+          "end": {
+            "line": 3,
+            "column": 25,
+            "byteOffset": 79
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts//research"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 8,
+            "byteOffset": 87
+          },
+          "end": {
+            "line": 4,
+            "column": 25,
+            "byteOffset": 104
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts/research/"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 8,
+            "byteOffset": 112
+          },
+          "end": {
+            "line": 5,
+            "column": 23,
+            "byteOffset": 127
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "mounts/research"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 8,
+            "byteOffset": 135
+          },
+          "end": {
+            "line": 6,
+            "column": 27,
+            "byteOffset": 154
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts/research/.."
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 8,
+            "byteOffset": 162
+          },
+          "end": {
+            "line": 7,
+            "column": 26,
+            "byteOffset": 180
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts/research/."
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 8,
+            "byteOffset": 188
+          },
+          "end": {
+            "line": 8,
+            "column": 11,
+            "byteOffset": 191
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "///"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 9,
+            "column": 8,
+            "byteOffset": 199
+          },
+          "end": {
+            "line": 9,
+            "column": 25,
+            "byteOffset": 216
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/mounts/res earch"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 10,
+            "column": 8,
+            "byteOffset": 224
+          },
+          "end": {
+            "line": 10,
+            "column": 11,
+            "byteOffset": 227
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/.."
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byteOffset": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 29,
+          "byteOffset": 28
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts/../etc/shadow"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 8,
+          "byteOffset": 36
+        },
+        "end": {
+          "line": 2,
+          "column": 26,
+          "byteOffset": 54
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts/./research"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byteOffset": 62
+        },
+        "end": {
+          "line": 3,
+          "column": 25,
+          "byteOffset": 79
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts//research"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 8,
+          "byteOffset": 87
+        },
+        "end": {
+          "line": 4,
+          "column": 25,
+          "byteOffset": 104
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts/research/"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 8,
+          "byteOffset": 112
+        },
+        "end": {
+          "line": 5,
+          "column": 23,
+          "byteOffset": 127
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "mounts/research"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 8,
+          "byteOffset": 135
+        },
+        "end": {
+          "line": 6,
+          "column": 27,
+          "byteOffset": 154
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts/research/.."
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 8,
+          "byteOffset": 162
+        },
+        "end": {
+          "line": 7,
+          "column": 26,
+          "byteOffset": 180
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts/research/."
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 8,
+          "byteOffset": 188
+        },
+        "end": {
+          "line": 8,
+          "column": 11,
+          "byteOffset": 191
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "///"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 9,
+          "column": 8,
+          "byteOffset": 199
+        },
+        "end": {
+          "line": 9,
+          "column": 25,
+          "byteOffset": 216
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/mounts/res earch"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 8,
+          "byteOffset": 224
+        },
+        "end": {
+          "line": 10,
+          "column": 11,
+          "byteOffset": 227
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/.."
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "case_id": "054-err-example-fails-form-and-orphan-example",
+  "title": "Declaration error: orphan example before any form and example failing its form's class",
+  "sections_covered": [
+    "§4",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 1,
+            "byteOffset": 90
+          },
+          "end": {
+            "line": 7,
+            "column": 25,
+            "byteOffset": 114
+          }
+        },
+        "data": {
+          "kind": "orphan",
+          "actual": "example : count-box : 10"
+        },
+        "provenance": [
+          "§4",
+          "K"
+        ]
+      },
+      {
+        "code": "E_EXAMPLE",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 10,
+            "column": 23,
+            "byteOffset": 185
+          },
+          "end": {
+            "line": 10,
+            "column": 35,
+            "byteOffset": 197
+          }
+        },
+        "data": {
+          "form": "count-box : <num>",
+          "actual": "count-box : not-a-number"
+        },
+        "provenance": [
+          "§4",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 1,
+          "byteOffset": 90
+        },
+        "end": {
+          "line": 7,
+          "column": 25,
+          "byteOffset": 114
+        }
+      },
+      "data": {
+        "kind": "orphan",
+        "actual": "example : count-box : 10"
+      },
+      "provenance": [
+        "§4",
+        "K"
+      ]
+    },
+    {
+      "code": "E_EXAMPLE",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 23,
+          "byteOffset": 185
+        },
+        "end": {
+          "line": 10,
+          "column": 35,
+          "byteOffset": 197
+        }
+      },
+      "data": {
+        "form": "count-box : <num>",
+        "actual": "count-box : not-a-number"
+      },
+      "provenance": [
+        "§4",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

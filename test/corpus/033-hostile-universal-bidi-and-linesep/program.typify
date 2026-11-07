@@ -1,0 +1,14 @@
+path : /srv/‮txt.exe
+relpath : sub/‮cod
+days : ‮30
+label : safe ‮evil
+argv : "/bin/‮sh"
+ident : admin‮
+layout : flat‮
+path : /srv/a b
+relpath : a b
+days : 10 
+label : first second
+argv : "/bin/a b"
+ident : id x
+layout : flat 

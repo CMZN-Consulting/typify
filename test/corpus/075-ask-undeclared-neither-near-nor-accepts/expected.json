@@ -1,0 +1,70 @@
+{
+  "case_id": "075-ask-undeclared-neither-near-nor-accepts",
+  "title": "Question form (Amendment I, S): undeclared word 'price' with neither near words nor accepting first-slot forms emits only '? : price = undeclared'",
+  "sections_covered": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "Catalog",
+    "price",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : price = undeclared"
+  ],
+  "stdout_json": {
+    "word": "price",
+    "status": "undeclared",
+    "lines": [
+      "? : price = undeclared"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_json": {
+    "word": "price",
+    "status": "undeclared",
+    "lines": [
+      "? : price = undeclared"
+    ],
+    "near": [],
+    "accepts": []
+  },
+  "ask_provenance": [
+    "§6",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

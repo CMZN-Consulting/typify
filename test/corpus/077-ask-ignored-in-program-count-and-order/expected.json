@@ -1,0 +1,87 @@
+{
+  "case_id": "077-ask-ignored-in-program-count-and-order",
+  "title": "Question lines '? : <word>' inside a strict-order program do not disturb 'order : strict', counts, or emitted terms",
+  "sections_covered": [
+    "§6",
+    "G",
+    "I",
+    "R",
+    "S",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "G",
+    "I",
+    "R",
+    "S",
+    "T",
+    "X",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "StrictOrderLang",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "G",
+    "I",
+    "X"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "header",
+        "start"
+      ],
+      [
+        "item",
+        "alpha"
+      ],
+      [
+        "footer",
+        "end"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "header",
+      "start"
+    ],
+    [
+      "item",
+      "alpha"
+    ],
+    [
+      "footer",
+      "end"
+    ]
+  ],
+  "terms_provenance": [
+    "§5",
+    "§6",
+    "G",
+    "I",
+    "X",
+    "Y"
+  ]
+}

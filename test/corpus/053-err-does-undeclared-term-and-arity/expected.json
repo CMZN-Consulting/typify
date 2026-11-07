@@ -1,0 +1,142 @@
+{
+  "case_id": "053-err-does-undeclared-term-and-arity",
+  "title": "Declaration error: does supplies wrong arity to declared term or names undeclared term",
+  "sections_covered": [
+    "§5",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§5",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§5",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_TERM_CLASS",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 8,
+            "byteOffset": 121
+          },
+          "end": {
+            "line": 8,
+            "column": 19,
+            "byteOffset": 132
+          }
+        },
+        "data": {
+          "kind": "arity",
+          "constructor": "pair",
+          "class": "word",
+          "actual": "pair <word>"
+        },
+        "provenance": [
+          "§5",
+          "K"
+        ]
+      },
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 10,
+            "column": 8,
+            "byteOffset": 162
+          },
+          "end": {
+            "line": 10,
+            "column": 23,
+            "byteOffset": 177
+          }
+        },
+        "data": {
+          "kind": "arity",
+          "actual": "undeclared-ctor"
+        },
+        "provenance": [
+          "§5",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_TERM_CLASS",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 8,
+          "byteOffset": 121
+        },
+        "end": {
+          "line": 8,
+          "column": 19,
+          "byteOffset": 132
+        }
+      },
+      "data": {
+        "kind": "arity",
+        "constructor": "pair",
+        "class": "word",
+        "actual": "pair <word>"
+      },
+      "provenance": [
+        "§5",
+        "K"
+      ]
+    },
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 8,
+          "byteOffset": 162
+        },
+        "end": {
+          "line": 10,
+          "column": 23,
+          "byteOffset": 177
+        }
+      },
+      "data": {
+        "kind": "arity",
+        "actual": "undeclared-ctor"
+      },
+      "provenance": [
+        "§5",
+        "K"
+      ]
+    }
+  ]
+}

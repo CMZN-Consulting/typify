@@ -1,0 +1,10 @@
+#lang typify
+
+declare : ClassLiterals
+version : 1
+is : category = "book" | "journal" | "note"
+term : kind : category
+form : kind : <category>
+does : kind <category>
+example : kind : book
+end!

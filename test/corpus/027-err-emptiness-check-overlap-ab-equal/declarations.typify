@@ -1,0 +1,10 @@
+#lang typify
+
+declare : SubtleOverlap
+version : 1
+is : left = "a" | "a=b"
+is : right = "b" | "b=c"
+term : split : left right
+form : split : <left>=<right>
+does : split <left> <right>
+end!

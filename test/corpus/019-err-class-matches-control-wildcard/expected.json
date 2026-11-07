@@ -1,0 +1,98 @@
+{
+  "case_id": "019-err-class-matches-control-wildcard",
+  "title": "Declaration error: class range explicitly names forbidden Cc control code points",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "K",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 11,
+            "byteOffset": 62
+          },
+          "end": {
+            "line": 5,
+            "column": 27,
+            "byteOffset": 78
+          }
+        },
+        "data": {
+          "class": "raw",
+          "token": "/[\\x00-\\x7f]+/"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 11,
+          "byteOffset": 62
+        },
+        "end": {
+          "line": 5,
+          "column": 27,
+          "byteOffset": 78
+        }
+      },
+      "data": {
+        "class": "raw",
+        "token": "/[\\x00-\\x7f]+/"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

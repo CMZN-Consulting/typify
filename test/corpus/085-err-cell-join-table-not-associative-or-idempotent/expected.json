@@ -1,0 +1,102 @@
+{
+  "case_id": "085-err-cell-join-table-not-associative-or-idempotent",
+  "title": "Declaration error (05:28Z U): finite join table violating idempotence and associativity over listed unordered pairs rejected",
+  "sections_covered": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "H",
+    "K",
+    "Q",
+    "U"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_JOIN_LAW",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 11,
+            "column": 1,
+            "byteOffset": 206
+          },
+          "end": {
+            "line": 11,
+            "column": 38,
+            "byteOffset": 243
+          }
+        },
+        "data": {
+          "cell": "cap_cell",
+          "expected": "idempotence",
+          "actual": "\"low\" \"low\""
+        },
+        "provenance": [
+          "H",
+          "K",
+          "Q",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_JOIN_LAW",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 1,
+          "byteOffset": 206
+        },
+        "end": {
+          "line": 11,
+          "column": 38,
+          "byteOffset": 243
+        }
+      },
+      "data": {
+        "cell": "cap_cell",
+        "expected": "idempotence",
+        "actual": "\"low\" \"low\""
+      },
+      "provenance": [
+        "H",
+        "K",
+        "Q",
+        "U"
+      ]
+    }
+  ]
+}

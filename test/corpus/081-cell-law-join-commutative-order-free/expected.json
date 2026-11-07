@@ -1,0 +1,145 @@
+{
+  "case_id": "081-cell-law-join-commutative-order-free",
+  "title": "Cell law 'cell : perms = join modes' (05:28Z U): unordered pair '\"ro\" \"rw\" = \"rw\"' listed once derives symmetric entry '\"rw\" \"ro\" = \"rw\"'",
+  "sections_covered": [
+    "H",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "ModeJoin",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "H",
+    "Q",
+    "U",
+    "V",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "grant-mode",
+        "/mounts/shared",
+        "rw"
+      ],
+      [
+        "grant-mode",
+        "/mounts/shared",
+        "ro"
+      ]
+    ],
+    "state": {
+      "perms": [
+        {
+          "key": [
+            "/mounts/shared"
+          ],
+          "value": [
+            "rw"
+          ],
+          "masked": false,
+          "origin": {
+            "path": "program.typify",
+            "line": 2
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 1,
+      "n": 2,
+      "limit": 2
+    },
+    "modelled": "2 of 2",
+    "facts": "none",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "grant-mode",
+          "/mounts/shared",
+          "rw"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 17
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "grant-mode",
+          "/mounts/shared",
+          "ro"
+        ],
+        "path": "program.typify",
+        "line": 2,
+        "rule_line": 17
+      }
+    ],
+    "ensure": []
+  },
+  "plan": [
+    [
+      "grant-mode",
+      "/mounts/shared",
+      "rw"
+    ],
+    [
+      "grant-mode",
+      "/mounts/shared",
+      "ro"
+    ]
+  ],
+  "predicted_state": {
+    "perms": [
+      {
+        "key": [
+          "/mounts/shared"
+        ],
+        "value": [
+          "rw"
+        ],
+        "masked": false,
+        "origin": {
+          "path": "program.typify",
+          "line": 2
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 1,
+    "k": 1,
+    "n": 2,
+    "limit": 2
+  },
+  "modelled": "2 of 2",
+  "diagnostics": []
+}

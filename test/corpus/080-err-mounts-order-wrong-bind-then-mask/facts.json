@@ -1,0 +1,18 @@
+{
+  "collector": "typify 1.0",
+  "root": "/mounts",
+  "facts": [
+    {
+      "fact": "exists",
+      "args": [
+        "/mounts"
+      ]
+    },
+    {
+      "fact": "exists",
+      "args": [
+        "/mounts/research"
+      ]
+    }
+  ]
+}

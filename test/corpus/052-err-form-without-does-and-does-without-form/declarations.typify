@@ -1,0 +1,11 @@
+#lang typify
+
+declare : MissingDoesOrForm
+version : 1
+is : word = /[a-z]+/
+term : item : word
+does : item <word>
+form : orphan : <word>
+form : valid : <word>
+does : item <word>
+end!

@@ -1,0 +1,295 @@
+{
+  "case_id": "093-rule-foreach-under-fuel-cap",
+  "title": "Bounded iteration '(each <x> in (split <p>) ...)' with 'fuel : batch = 3' (06:05Z E, 06:36Z K): accepted at 3 components, refused with E_RULE_FUEL at 4 components",
+  "sections_covered": [
+    "E",
+    "H",
+    "I",
+    "K",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "provenance": [
+    "E",
+    "H",
+    "I",
+    "K",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "under-fuel-cap-accepted",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "BoundedForEach",
+        "ok.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "plan": [
+          [
+            "reg-item",
+            "alpha"
+          ],
+          [
+            "reg-item",
+            "beta"
+          ],
+          [
+            "reg-item",
+            "gamma"
+          ]
+        ],
+        "state": {
+          "items": [
+            {
+              "key": [
+                "alpha"
+              ],
+              "value": [],
+              "masked": true,
+              "origin": {
+                "path": "ok.typify",
+                "line": 1
+              }
+            },
+            {
+              "key": [
+                "beta"
+              ],
+              "value": [],
+              "masked": true,
+              "origin": {
+                "path": "ok.typify",
+                "line": 1
+              }
+            },
+            {
+              "key": [
+                "gamma"
+              ],
+              "value": [],
+              "masked": true,
+              "origin": {
+                "path": "ok.typify",
+                "line": 1
+              }
+            }
+          ]
+        },
+        "bound": {
+          "c": 3,
+          "n": 1,
+          "limit": 3
+        },
+        "modelled": "3 of 3",
+        "facts": "none",
+        "origins": [
+          {
+            "step": 1,
+            "primitive": [
+              "reg-item",
+              "alpha"
+            ],
+            "path": "ok.typify",
+            "line": 1,
+            "rule_line": 16
+          },
+          {
+            "step": 2,
+            "primitive": [
+              "reg-item",
+              "beta"
+            ],
+            "path": "ok.typify",
+            "line": 1,
+            "rule_line": 16
+          },
+          {
+            "step": 3,
+            "primitive": [
+              "reg-item",
+              "gamma"
+            ],
+            "path": "ok.typify",
+            "line": 1,
+            "rule_line": 16
+          }
+        ],
+        "ensure": []
+      },
+      "plan": [
+        [
+          "reg-item",
+          "alpha"
+        ],
+        [
+          "reg-item",
+          "beta"
+        ],
+        [
+          "reg-item",
+          "gamma"
+        ]
+      ],
+      "predicted_state": {
+        "items": [
+          {
+            "key": [
+              "alpha"
+            ],
+            "value": [],
+            "masked": true,
+            "origin": {
+              "path": "ok.typify",
+              "line": 1
+            }
+          },
+          {
+            "key": [
+              "beta"
+            ],
+            "value": [],
+            "masked": true,
+            "origin": {
+              "path": "ok.typify",
+              "line": 1
+            }
+          },
+          {
+            "key": [
+              "gamma"
+            ],
+            "value": [],
+            "masked": true,
+            "origin": {
+              "path": "ok.typify",
+              "line": 1
+            }
+          }
+        ]
+      },
+      "bound": {
+        "c": 3,
+        "k": 1,
+        "n": 1,
+        "limit": 3
+      },
+      "modelled": "3 of 3",
+      "diagnostics": [],
+      "provenance": [
+        "E",
+        "H",
+        "I",
+        "R",
+        "T",
+        "U",
+        "V",
+        "Y"
+      ]
+    },
+    {
+      "name": "over-fuel-cap-refused",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "BoundedForEach",
+        "exceed.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "plan": [],
+        "state": {},
+        "bound": {
+          "c": 3,
+          "n": 1,
+          "limit": 3
+        },
+        "modelled": "0 of 0",
+        "facts": "none",
+        "origins": [],
+        "ensure": [],
+        "diagnostics": [
+          {
+            "code": "E_RULE_FUEL",
+            "file": "exceed.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 9,
+                "byteOffset": 8
+              },
+              "end": {
+                "line": 1,
+                "column": 32,
+                "byteOffset": 31
+              }
+            },
+            "data": {
+              "constructor": "batch",
+              "limit": 3,
+              "actual": 4
+            },
+            "provenance": [
+              "H",
+              "I",
+              "K",
+              "V"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_RULE_FUEL",
+          "file": "exceed.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 9,
+              "byteOffset": 8
+            },
+            "end": {
+              "line": 1,
+              "column": 32,
+              "byteOffset": 31
+            }
+          },
+          "data": {
+            "constructor": "batch",
+            "limit": 3,
+            "actual": 4
+          },
+          "provenance": [
+            "H",
+            "I",
+            "K",
+            "V"
+          ]
+        }
+      ],
+      "provenance": [
+        "E",
+        "H",
+        "I",
+        "K",
+        "V",
+        "Y"
+      ]
+    }
+  ]
+}

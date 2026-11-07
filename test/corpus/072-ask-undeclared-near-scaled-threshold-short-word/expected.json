@@ -1,0 +1,82 @@
+{
+  "case_id": "072-ask-undeclared-near-scaled-threshold-short-word",
+  "title": "Question form (Amendment I, S): length-scaled threshold max(1, floor(L/4)) = 1 for 'cat' matches 'act' (transposition=1) and 'cut' (substitution=1) sorted lexicographically, excluding 'dog' (distance 3)",
+  "sections_covered": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "ShortWordsAsk",
+    "cat",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : cat = undeclared",
+    "? : near : act",
+    "? : near : cut"
+  ],
+  "stdout_json": {
+    "word": "cat",
+    "status": "undeclared",
+    "lines": [
+      "? : cat = undeclared",
+      "? : near : act",
+      "? : near : cut"
+    ],
+    "near": [
+      "act",
+      "cut"
+    ],
+    "accepts": []
+  },
+  "ask_json": {
+    "word": "cat",
+    "status": "undeclared",
+    "lines": [
+      "? : cat = undeclared",
+      "? : near : act",
+      "? : near : cut"
+    ],
+    "near": [
+      "act",
+      "cut"
+    ],
+    "accepts": []
+  },
+  "ask_provenance": [
+    "§6",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

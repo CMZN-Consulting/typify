@@ -1,0 +1,325 @@
+{
+  "case_id": "091-library-all-eight-functions-clean",
+  "title": "All 8 library functions & predicates (06:00Z & 06:05Z E): parent, join, split, ancestors, concat, prefix, suffix, equal with ';' rule sequence",
+  "sections_covered": [
+    "§5",
+    "E",
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "provenance": [
+    "§5",
+    "E",
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "BuiltinLibraryAll8",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§5",
+    "E",
+    "H",
+    "I",
+    "U",
+    "V",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "emit-op",
+        "/mounts/team/guide"
+      ],
+      [
+        "emit-op",
+        "/mounts/team/docs-archive"
+      ],
+      [
+        "emit-op",
+        "/"
+      ],
+      [
+        "emit-op",
+        "/mounts"
+      ],
+      [
+        "emit-op",
+        "/mounts/team"
+      ],
+      [
+        "emit-op",
+        "/team"
+      ]
+    ],
+    "state": {
+      "out": [
+        {
+          "key": [
+            "/"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/mounts"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/mounts/team"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/mounts/team/docs-archive"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/mounts/team/guide"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        },
+        {
+          "key": [
+            "/team"
+          ],
+          "value": [],
+          "masked": true,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 10,
+      "n": 1,
+      "limit": 10
+    },
+    "modelled": "6 of 6",
+    "facts": "none",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "emit-op",
+          "/mounts/team/guide"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 16
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "emit-op",
+          "/mounts/team/docs-archive"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 16
+      },
+      {
+        "step": 3,
+        "primitive": [
+          "emit-op",
+          "/"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 16
+      },
+      {
+        "step": 4,
+        "primitive": [
+          "emit-op",
+          "/mounts"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 16
+      },
+      {
+        "step": 5,
+        "primitive": [
+          "emit-op",
+          "/mounts/team"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 16
+      },
+      {
+        "step": 6,
+        "primitive": [
+          "emit-op",
+          "/team"
+        ],
+        "path": "program.typify",
+        "line": 1,
+        "rule_line": 16
+      }
+    ],
+    "ensure": []
+  },
+  "plan": [
+    [
+      "emit-op",
+      "/mounts/team/guide"
+    ],
+    [
+      "emit-op",
+      "/mounts/team/docs-archive"
+    ],
+    [
+      "emit-op",
+      "/"
+    ],
+    [
+      "emit-op",
+      "/mounts"
+    ],
+    [
+      "emit-op",
+      "/mounts/team"
+    ],
+    [
+      "emit-op",
+      "/team"
+    ]
+  ],
+  "predicted_state": {
+    "out": [
+      {
+        "key": [
+          "/"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/mounts"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/mounts/team"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/mounts/team/docs-archive"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/mounts/team/guide"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      },
+      {
+        "key": [
+          "/team"
+        ],
+        "value": [],
+        "masked": true,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 10,
+    "k": 1,
+    "n": 1,
+    "limit": 10
+  },
+  "modelled": "6 of 6",
+  "diagnostics": []
+}

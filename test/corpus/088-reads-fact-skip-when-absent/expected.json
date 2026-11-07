@@ -1,0 +1,132 @@
+{
+  "case_id": "088-reads-fact-skip-when-absent",
+  "title": "Fact precondition 'reads : bind : exists = skip' and optional '(if (exists <p>) ...)' (Amendments U, V, W): absent path skipped cleanly",
+  "sections_covered": [
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "I",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "OptionalMountSkip",
+    "program.typify",
+    "--facts",
+    "facts.json",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "H",
+    "I",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "stdout_json": {
+    "plan": [
+      [
+        "bind",
+        "/mounts/present",
+        "/mounts/present"
+      ]
+    ],
+    "state": {
+      "mounts": [
+        {
+          "key": [
+            "/mounts/present"
+          ],
+          "value": [
+            "/mounts/present"
+          ],
+          "masked": false,
+          "origin": {
+            "path": "program.typify",
+            "line": 1
+          }
+        }
+      ]
+    },
+    "bound": {
+      "c": 1,
+      "n": 2,
+      "limit": 2
+    },
+    "modelled": "1 of 1",
+    "facts": "sha256:6a81636b489e6c269f64a3fe47c37f616f8f0d1705d03cf0f541d71383b512b7",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "bind",
+          "/mounts/present",
+          "/mounts/present"
+        ],
+        "file": "program.typify",
+        "line": 1,
+        "rule_line": 15
+      }
+    ],
+    "ensure": []
+  },
+  "plan": [
+    [
+      "bind",
+      "/mounts/present",
+      "/mounts/present"
+    ]
+  ],
+  "predicted_state": {
+    "mounts": [
+      {
+        "key": [
+          "/mounts/present"
+        ],
+        "value": [
+          "/mounts/present"
+        ],
+        "masked": false,
+        "origin": {
+          "path": "program.typify",
+          "line": 1
+        }
+      }
+    ]
+  },
+  "bound": {
+    "c": 1,
+    "k": 1,
+    "n": 2,
+    "limit": 2
+  },
+  "modelled": "1 of 1",
+  "facts_hash": "sha256:6a81636b489e6c269f64a3fe47c37f616f8f0d1705d03cf0f541d71383b512b7",
+  "diagnostics": []
+}

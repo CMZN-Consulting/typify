@@ -1,0 +1,68 @@
+{
+  "case_id": "014-class-ranges-and-negated-ranges",
+  "title": "Slash-delimited character ranges and negated range /[^=]+/ intersecting allowed code points (03:56Z, 05:09Z)",
+  "sections_covered": [
+    "§4",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "ClassRanges",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "pair",
+        "host name",
+        "c0a80101"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "pair",
+      "host name",
+      "c0a80101"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "F",
+    "R",
+    "Y"
+  ]
+}

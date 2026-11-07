@@ -1,0 +1,77 @@
+{
+  "case_id": "071-ask-undeclared-near-damerau-single-edit",
+  "title": "Question form (Amendment I, S): undeclared word 'bindd' returns '? : near : bind' (distance 1 <= threshold 1) and omits 'accepts'",
+  "sections_covered": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "AskNearDemo",
+    "bindd",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : bindd = undeclared",
+    "? : near : bind"
+  ],
+  "stdout_json": {
+    "word": "bindd",
+    "status": "undeclared",
+    "lines": [
+      "? : bindd = undeclared",
+      "? : near : bind"
+    ],
+    "near": [
+      "bind"
+    ],
+    "accepts": []
+  },
+  "ask_json": {
+    "word": "bindd",
+    "status": "undeclared",
+    "lines": [
+      "? : bindd = undeclared",
+      "? : near : bind"
+    ],
+    "near": [
+      "bind"
+    ],
+    "accepts": []
+  },
+  "ask_provenance": [
+    "§6",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

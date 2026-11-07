@@ -1,0 +1,227 @@
+{
+  "case_id": "055-count-one-accepted-and-refused-zero",
+  "title": "Count 1 (Amendment X): accepted when present once, refused when missing (0 occurrences), and withdrawn spelling 'one' rejected",
+  "sections_covered": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "G",
+    "K",
+    "R",
+    "T",
+    "X",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "accepted-one",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountOne",
+        "ok.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "title",
+            "manual"
+          ],
+          [
+            "note",
+            "alpha"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "title",
+          "manual"
+        ],
+        [
+          "note",
+          "alpha"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "G",
+        "R",
+        "T",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "refused-zero",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "CountOne",
+        "zero.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_PROGRAM_COUNT",
+            "file": "zero.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 1,
+                "byteOffset": 0
+              },
+              "end": {
+                "line": 1,
+                "column": 13,
+                "byteOffset": 12
+              }
+            },
+            "data": {
+              "constructor": "title",
+              "expected": "1",
+              "actual": 0
+            },
+            "provenance": [
+              "§4",
+              "G",
+              "K",
+              "X"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_PROGRAM_COUNT",
+          "file": "zero.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 1,
+              "byteOffset": 0
+            },
+            "end": {
+              "line": 1,
+              "column": 13,
+              "byteOffset": 12
+            }
+          },
+          "data": {
+            "constructor": "title",
+            "expected": "1",
+            "actual": 0
+          },
+          "provenance": [
+            "§4",
+            "G",
+            "K",
+            "X"
+          ]
+        }
+      ],
+      "provenance": [
+        "§4",
+        "G",
+        "K",
+        "X",
+        "Y"
+      ]
+    },
+    {
+      "name": "refused-withdrawn-word-one",
+      "invocation": [
+        "typify",
+        "check",
+        "withdrawn.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_CLASS",
+            "file": "withdrawn.typify",
+            "range": {
+              "start": {
+                "line": 9,
+                "column": 17,
+                "byteOffset": 158
+              },
+              "end": {
+                "line": 9,
+                "column": 20,
+                "byteOffset": 161
+              }
+            },
+            "data": {
+              "class": "count",
+              "token": "one"
+            },
+            "provenance": [
+              "§4",
+              "K",
+              "X"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_CLASS",
+          "file": "withdrawn.typify",
+          "range": {
+            "start": {
+              "line": 9,
+              "column": 17,
+              "byteOffset": 158
+            },
+            "end": {
+              "line": 9,
+              "column": 20,
+              "byteOffset": 161
+            }
+          },
+          "data": {
+            "class": "count",
+            "token": "one"
+          },
+          "provenance": [
+            "§4",
+            "K",
+            "X"
+          ]
+        }
+      ],
+      "provenance": [
+        "§4",
+        "K",
+        "X",
+        "Y"
+      ]
+    }
+  ]
+}

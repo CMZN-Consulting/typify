@@ -1,0 +1,102 @@
+{
+  "case_id": "084-err-cell-join-table-not-commutative",
+  "title": "Declaration error (05:28Z U): unordered pair {\"ro\", \"rw\"} listed twice in join table with conflicting results rejected",
+  "sections_covered": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "H",
+    "K",
+    "Q",
+    "U"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_JOIN_LAW",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 13,
+            "column": 1,
+            "byteOffset": 277
+          },
+          "end": {
+            "line": 13,
+            "column": 36,
+            "byteOffset": 312
+          }
+        },
+        "data": {
+          "cell": "perms",
+          "expected": "commutativity",
+          "actual": "\"rw\" \"ro\""
+        },
+        "provenance": [
+          "H",
+          "K",
+          "Q",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_JOIN_LAW",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 13,
+          "column": 1,
+          "byteOffset": 277
+        },
+        "end": {
+          "line": 13,
+          "column": 36,
+          "byteOffset": 312
+        }
+      },
+      "data": {
+        "cell": "perms",
+        "expected": "commutativity",
+        "actual": "\"rw\" \"ro\""
+      },
+      "provenance": [
+        "H",
+        "K",
+        "Q",
+        "U"
+      ]
+    }
+  ]
+}

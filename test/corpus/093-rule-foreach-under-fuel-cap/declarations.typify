@@ -1,0 +1,17 @@
+#lang typify
+
+declare : BoundedForEach
+version : 1
+is : seg = /[a-z0-9_-]+/ except "." | ".."
+is : path = canonical-path
+term : reg-item : seg
+primitive!
+writes : reg-item : items = put 1
+cell : items = shadow
+term : batch : path
+fuel : batch = 3
+form : batch : <path>
+does : batch <path>
+example : batch : /alpha/beta
+rule : batch <p> -> (each <x> in (split <p>) (reg-item <x>))
+end!

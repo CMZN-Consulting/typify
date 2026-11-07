@@ -1,0 +1,909 @@
+{
+  "case_id": "031-hostile-universal-nul-and-esc",
+  "title": "Hostile audit (14 pairs): NUL (U+0000) and ESC (U+001B) refused across all 7 classes",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "path",
+      "token_repr": "'/srv/data\\x00/secret'",
+      "description": "embedded NUL U+0000"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'sub\\x00/file'",
+      "description": "embedded NUL U+0000"
+    },
+    {
+      "class": "days",
+      "token_repr": "'30\\x00'",
+      "description": "embedded NUL U+0000"
+    },
+    {
+      "class": "label",
+      "token_repr": "'hello\\x00world'",
+      "description": "embedded NUL U+0000"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"/bin/sh\\x00\"'",
+      "description": "embedded NUL U+0000"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'app\\x00id'",
+      "description": "embedded NUL U+0000"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'flat\\x00'",
+      "description": "embedded NUL U+0000"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/srv/\\x1b[31mred'",
+      "description": "ANSI escape U+001B"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'sub/\\x1b[2J'",
+      "description": "ANSI escape U+001B"
+    },
+    {
+      "class": "days",
+      "token_repr": "'30\\x1b'",
+      "description": "ANSI escape U+001B"
+    },
+    {
+      "class": "label",
+      "token_repr": "'title\\x1b[0m'",
+      "description": "ANSI escape U+001B"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"/bin/\\x1b\"'",
+      "description": "ANSI escape U+001B"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'id\\x1b'",
+      "description": "ANSI escape U+001B"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'flat\\x1b'",
+      "description": "ANSI escape U+001B"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 8,
+            "byteOffset": 7
+          },
+          "end": {
+            "line": 1,
+            "column": 25,
+            "byteOffset": 24
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/srv/data\u0000/secret"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 11,
+            "byteOffset": 35
+          },
+          "end": {
+            "line": 2,
+            "column": 20,
+            "byteOffset": 44
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "sub\u0000/file"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 8,
+            "byteOffset": 52
+          },
+          "end": {
+            "line": 3,
+            "column": 11,
+            "byteOffset": 55
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "30\u0000"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 9,
+            "byteOffset": 64
+          },
+          "end": {
+            "line": 4,
+            "column": 20,
+            "byteOffset": 75
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "hello\u0000world"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 8,
+            "byteOffset": 83
+          },
+          "end": {
+            "line": 5,
+            "column": 18,
+            "byteOffset": 93
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"/bin/sh\u0000\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 9,
+            "byteOffset": 102
+          },
+          "end": {
+            "line": 6,
+            "column": 15,
+            "byteOffset": 108
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "app\u0000id"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 10,
+            "byteOffset": 118
+          },
+          "end": {
+            "line": 7,
+            "column": 15,
+            "byteOffset": 123
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "flat\u0000"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 8,
+            "byteOffset": 131
+          },
+          "end": {
+            "line": 8,
+            "column": 21,
+            "byteOffset": 144
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/srv/\u001b[31mred"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 9,
+            "column": 11,
+            "byteOffset": 155
+          },
+          "end": {
+            "line": 9,
+            "column": 19,
+            "byteOffset": 163
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "sub/\u001b[2J"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 10,
+            "column": 8,
+            "byteOffset": 171
+          },
+          "end": {
+            "line": 10,
+            "column": 11,
+            "byteOffset": 174
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "30\u001b"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 11,
+            "column": 9,
+            "byteOffset": 183
+          },
+          "end": {
+            "line": 11,
+            "column": 18,
+            "byteOffset": 192
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "title\u001b[0m"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 12,
+            "column": 8,
+            "byteOffset": 200
+          },
+          "end": {
+            "line": 12,
+            "column": 16,
+            "byteOffset": 208
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"/bin/\u001b\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 13,
+            "column": 9,
+            "byteOffset": 217
+          },
+          "end": {
+            "line": 13,
+            "column": 12,
+            "byteOffset": 220
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "id\u001b"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 14,
+            "column": 10,
+            "byteOffset": 230
+          },
+          "end": {
+            "line": 14,
+            "column": 15,
+            "byteOffset": 235
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "flat\u001b"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byteOffset": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 25,
+          "byteOffset": 24
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/srv/data\u0000/secret"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 11,
+          "byteOffset": 35
+        },
+        "end": {
+          "line": 2,
+          "column": 20,
+          "byteOffset": 44
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "sub\u0000/file"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byteOffset": 52
+        },
+        "end": {
+          "line": 3,
+          "column": 11,
+          "byteOffset": 55
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "30\u0000"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 9,
+          "byteOffset": 64
+        },
+        "end": {
+          "line": 4,
+          "column": 20,
+          "byteOffset": 75
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "hello\u0000world"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 8,
+          "byteOffset": 83
+        },
+        "end": {
+          "line": 5,
+          "column": 18,
+          "byteOffset": 93
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"/bin/sh\u0000\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 9,
+          "byteOffset": 102
+        },
+        "end": {
+          "line": 6,
+          "column": 15,
+          "byteOffset": 108
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "app\u0000id"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 10,
+          "byteOffset": 118
+        },
+        "end": {
+          "line": 7,
+          "column": 15,
+          "byteOffset": 123
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "flat\u0000"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 8,
+          "byteOffset": 131
+        },
+        "end": {
+          "line": 8,
+          "column": 21,
+          "byteOffset": 144
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/srv/\u001b[31mred"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 9,
+          "column": 11,
+          "byteOffset": 155
+        },
+        "end": {
+          "line": 9,
+          "column": 19,
+          "byteOffset": 163
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "sub/\u001b[2J"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 8,
+          "byteOffset": 171
+        },
+        "end": {
+          "line": 10,
+          "column": 11,
+          "byteOffset": 174
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "30\u001b"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 9,
+          "byteOffset": 183
+        },
+        "end": {
+          "line": 11,
+          "column": 18,
+          "byteOffset": 192
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "title\u001b[0m"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 12,
+          "column": 8,
+          "byteOffset": 200
+        },
+        "end": {
+          "line": 12,
+          "column": 16,
+          "byteOffset": 208
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"/bin/\u001b\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 13,
+          "column": 9,
+          "byteOffset": 217
+        },
+        "end": {
+          "line": 13,
+          "column": 12,
+          "byteOffset": 220
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "id\u001b"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 10,
+          "byteOffset": 230
+        },
+        "end": {
+          "line": 14,
+          "column": 15,
+          "byteOffset": 235
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "flat\u001b"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}

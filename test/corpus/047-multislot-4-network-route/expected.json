@@ -1,0 +1,74 @@
+{
+  "case_id": "047-multislot-4-network-route",
+  "title": "Multi-slot form 4: Four-slot network route 'route : <ipv4>/<prefix> via <ipv4> dev <iface>'",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "NetRoute",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "route",
+        "172.16.0.0",
+        "12",
+        "10.0.0.1",
+        "wg0"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "route",
+      "172.16.0.0",
+      "12",
+      "10.0.0.1",
+      "wg0"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

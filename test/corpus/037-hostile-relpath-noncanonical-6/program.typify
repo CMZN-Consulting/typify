@@ -1,0 +1,6 @@
+relpath : ../secret
+relpath : a/../../b
+relpath : ./local
+relpath : /abs/path
+relpath : dir//file
+relpath : dir/file/

@@ -1,0 +1,92 @@
+{
+  "case_id": "004-err-line-malformed-empty-colon-verb",
+  "title": "Malformed kernel line: colon line with empty verb before ':'",
+  "sections_covered": [
+    "§2",
+    "§9",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§2",
+    "§9",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "BareLineTest",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§2",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_LINE_SHAPE",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 4,
+            "byteOffset": 3
+          },
+          "end": {
+            "line": 1,
+            "column": 5,
+            "byteOffset": 4
+          }
+        },
+        "data": {
+          "actual": ": argument_without_verb"
+        },
+        "provenance": [
+          "§2",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_LINE_SHAPE",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 4,
+          "byteOffset": 3
+        },
+        "end": {
+          "line": 1,
+          "column": 5,
+          "byteOffset": 4
+        }
+      },
+      "data": {
+        "actual": ": argument_without_verb"
+      },
+      "provenance": [
+        "§2",
+        "K"
+      ]
+    }
+  ]
+}

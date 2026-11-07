@@ -1,0 +1,145 @@
+{
+  "case_id": "012-err-body-invalid-version-and-prose",
+  "title": "Invalid non-integer version and forbidden prose verb inside declaration body",
+  "sections_covered": [
+    "§3",
+    "§9",
+    "K",
+    "L",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§3",
+    "§9",
+    "K",
+    "L",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§3",
+    "K",
+    "L"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 11,
+            "byteOffset": 47
+          },
+          "end": {
+            "line": 4,
+            "column": 15,
+            "byteOffset": 51
+          }
+        },
+        "data": {
+          "class": "version",
+          "token": "zero"
+        },
+        "provenance": [
+          "§3",
+          "K",
+          "R"
+        ]
+      },
+      {
+        "code": "E_FORM_NONE",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 1,
+            "byteOffset": 52
+          },
+          "end": {
+            "line": 5,
+            "column": 57,
+            "byteOffset": 108
+          }
+        },
+        "data": {
+          "actual": "description : English prose is forbidden inside declarations"
+        },
+        "provenance": [
+          "§3",
+          "K",
+          "L"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 11,
+          "byteOffset": 47
+        },
+        "end": {
+          "line": 4,
+          "column": 15,
+          "byteOffset": 51
+        }
+      },
+      "data": {
+        "class": "version",
+        "token": "zero"
+      },
+      "provenance": [
+        "§3",
+        "K",
+        "R"
+      ]
+    },
+    {
+      "code": "E_FORM_NONE",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 1,
+          "byteOffset": 52
+        },
+        "end": {
+          "line": 5,
+          "column": 57,
+          "byteOffset": 108
+        }
+      },
+      "data": {
+        "actual": "description : English prose is forbidden inside declarations"
+      },
+      "provenance": [
+        "§3",
+        "K",
+        "L"
+      ]
+    }
+  ]
+}

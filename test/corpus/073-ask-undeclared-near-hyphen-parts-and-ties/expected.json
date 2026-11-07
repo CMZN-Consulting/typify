@@ -1,0 +1,82 @@
+{
+  "case_id": "073-ask-undeclared-near-hyphen-parts-and-ties",
+  "title": "Question form (Amendment I, S): hyphen-split part matching finds 'mount-point' and 'read-only-mount' (part 'mount' distance 0) with ties broken lexicographically",
+  "sections_covered": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "provenance": [
+    "§6",
+    "§9",
+    "I",
+    "R",
+    "S",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "HyphenPartsAsk",
+    "mount",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§6",
+    "§9",
+    "S",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "S"
+  ],
+  "ask_lines": [
+    "? : mount = undeclared",
+    "? : near : mount-point",
+    "? : near : read-only-mount"
+  ],
+  "stdout_json": {
+    "word": "mount",
+    "status": "undeclared",
+    "lines": [
+      "? : mount = undeclared",
+      "? : near : mount-point",
+      "? : near : read-only-mount"
+    ],
+    "near": [
+      "mount-point",
+      "read-only-mount"
+    ],
+    "accepts": []
+  },
+  "ask_json": {
+    "word": "mount",
+    "status": "undeclared",
+    "lines": [
+      "? : mount = undeclared",
+      "? : near : mount-point",
+      "? : near : read-only-mount"
+    ],
+    "near": [
+      "mount-point",
+      "read-only-mount"
+    ],
+    "accepts": []
+  },
+  "ask_provenance": [
+    "§6",
+    "I",
+    "S",
+    "Y"
+  ],
+  "diagnostics": []
+}

@@ -1,0 +1,10 @@
+#lang typify
+
+declare : BadMetaVerbs
+version : zero
+description : English prose is forbidden inside declarations
+is : word = /[a-z]+/
+term : item : word
+form : item : <word>
+does : item <word>
+end!

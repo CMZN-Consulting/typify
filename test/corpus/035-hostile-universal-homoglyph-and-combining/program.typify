@@ -1,0 +1,14 @@
+path : /srv/аdmin
+relpath : docs/аpi
+days : 10а
+label : Tаsk
+argv : "/bin/cаt"
+ident : аdmin
+layout : flаt
+path : /srv/café
+relpath : docs/résumé
+days : 30́
+label : word nbsp
+argv : "/bin/ls" "-l"
+ident : id́
+layout : dated́

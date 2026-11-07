@@ -1,0 +1,12 @@
+#lang typify
+
+declare : HttpHeaderRule
+version : 1
+is : verb = "GET" | "POST" | "DELETE"
+is : hname = /[A-Za-z0-9-]+/
+is : hval = /[A-Za-z0-9._/-]+/
+term : header-rule : verb hname hval
+form : header : [<verb>] <hname> => <hval>
+does : header-rule <verb> <hname> <hval>
+example : header : [GET] Cache-Control => no-store
+end!

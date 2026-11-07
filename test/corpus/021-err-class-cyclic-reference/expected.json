@@ -1,0 +1,96 @@
+{
+  "case_id": "021-err-class-cyclic-reference",
+  "title": "Declaration error: cyclic class reference rejected",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "K",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS_UNDECLARED",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 14,
+            "byteOffset": 61
+          },
+          "end": {
+            "line": 5,
+            "column": 18,
+            "byteOffset": 65
+          }
+        },
+        "data": {
+          "class": "beta"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS_UNDECLARED",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 14,
+          "byteOffset": 61
+        },
+        "end": {
+          "line": 5,
+          "column": 18,
+          "byteOffset": 65
+        }
+      },
+      "data": {
+        "class": "beta"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

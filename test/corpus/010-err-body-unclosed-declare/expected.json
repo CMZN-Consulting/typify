@@ -1,0 +1,92 @@
+{
+  "case_id": "010-err-body-unclosed-declare",
+  "title": "Unclosed 'declare : UnclosedLang' reaching EOF without 'end!'",
+  "sections_covered": [
+    "§3",
+    "§9",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§3",
+    "§9",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§3",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_DECLARATION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 1,
+            "byteOffset": 110
+          },
+          "end": {
+            "line": 8,
+            "column": 19,
+            "byteOffset": 128
+          }
+        },
+        "data": {
+          "kind": "body",
+          "actual": "UnclosedLang"
+        },
+        "provenance": [
+          "§3",
+          "K"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_DECLARATION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 1,
+          "byteOffset": 110
+        },
+        "end": {
+          "line": 8,
+          "column": 19,
+          "byteOffset": 128
+        }
+      },
+      "data": {
+        "kind": "body",
+        "actual": "UnclosedLang"
+      },
+      "provenance": [
+        "§3",
+        "K"
+      ]
+    }
+  ]
+}

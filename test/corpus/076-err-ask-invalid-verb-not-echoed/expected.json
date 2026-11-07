@@ -1,0 +1,104 @@
+{
+  "case_id": "076-err-ask-invalid-verb-not-echoed",
+  "title": "Question form error: '? : <subject>' with invalid verb token rejected at column 5 without echoing the invalid token",
+  "sections_covered": [
+    "§2",
+    "§6",
+    "I",
+    "K",
+    "R",
+    "S",
+    "Y"
+  ],
+  "provenance": [
+    "§2",
+    "§6",
+    "I",
+    "K",
+    "R",
+    "S",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "Catalog",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "K",
+    "S"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_QUESTION",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 5,
+            "byteOffset": 4
+          },
+          "end": {
+            "line": 1,
+            "column": 12,
+            "byteOffset": 11
+          }
+        },
+        "data": {
+          "actual": "? : 123bad!"
+        },
+        "provenance": [
+          "§2",
+          "§6",
+          "I",
+          "K",
+          "S"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_QUESTION",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 5,
+          "byteOffset": 4
+        },
+        "end": {
+          "line": 1,
+          "column": 12,
+          "byteOffset": 11
+        }
+      },
+      "data": {
+        "actual": "? : 123bad!"
+      },
+      "provenance": [
+        "§2",
+        "§6",
+        "I",
+        "K",
+        "S"
+      ]
+    }
+  ]
+}

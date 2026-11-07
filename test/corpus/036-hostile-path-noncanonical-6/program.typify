@@ -1,0 +1,10 @@
+path : /mounts/../etc/shadow
+path : /mounts/./research
+path : /mounts//research
+path : /mounts/research/
+path : mounts/research
+path : /mounts/research/..
+path : /mounts/research/.
+path : ///
+path : /mounts/res earch
+path : /..

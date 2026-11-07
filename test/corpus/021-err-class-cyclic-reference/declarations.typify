@@ -1,0 +1,10 @@
+#lang typify
+
+declare : CyclicClass
+version : 1
+is : alpha = beta "x"
+is : beta = alpha "y"
+term : item : alpha
+form : item : <alpha>
+does : item <alpha>
+end!

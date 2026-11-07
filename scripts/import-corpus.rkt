@@ -44,7 +44,7 @@
     (error 'import-corpus "source must be an explicit absolute directory"))
   (simplify-path path #t))
 
-(define (snapshot source cases)
+(define (snapshot source cases (metadata '()))
   (define files '())
   (define directories '())
   (define total 0)
@@ -72,6 +72,12 @@
    (unless (eq? (kind (build-path directory "expected.json")) 'file)
      (error 'import-corpus "every case must carry an expected.json file"))
    (walk directory (list name)))
+  (for
+   ((name metadata))
+   (define path (build-path source name))
+   (unless (and (equal? name "MANIFEST.md") (eq? (kind path) 'file))
+     (error 'import-corpus "root metadata must be the regular file MANIFEST.md"))
+   (walk path (list name)))
   (define ordered-files (sort files string<? #:key (lambda (item) (hash-ref item 'path))))
   (define ordered-directories (sort directories string<?))
   (define pairs
@@ -84,27 +90,31 @@
      car))
   (define encoded
     (call-with-output-bytes (lambda (output) (write-json pairs output) (newline output))))
-  (hasheq
-   'cases
-   cases
-   'files
-   ordered-files
-   'directories
-   ordered-directories
-   'bytes
-   total
-   'tree-sha256
-   (bytes->hex-string (sha256-bytes encoded))
-   'tree-hash-format
-   "sha256-sorted-json-pairs-newline-v1"))
+  (define inventory
+    (hasheq
+     'cases
+     cases
+     'files
+     ordered-files
+     'directories
+     ordered-directories
+     'bytes
+     total
+     'tree-sha256
+     (bytes->hex-string (sha256-bytes encoded))
+     'tree-hash-format
+     "sha256-sorted-json-pairs-newline-v1"))
+  (if (null? metadata) inventory (hash-set inventory 'metadata metadata)))
 
 (define (corpus-inventory source)
   (define directory (directory-source source))
-  (define cases (map entry-name (ordered-entries directory)))
+  (define entries (map entry-name (ordered-entries directory)))
+  (define metadata (filter (lambda (name) (equal? name "MANIFEST.md")) entries))
+  (define cases (filter (lambda (name) (not (equal? name "MANIFEST.md"))) entries))
   (when (null? cases) (error 'import-corpus "an empty corpus cannot be imported"))
   (when (member "import.json" cases)
     (error 'import-corpus "a case name collides with the import receipt"))
-  (snapshot directory cases))
+  (snapshot directory cases metadata))
 
 (define (relative-path name) (apply build-path (string-split name "/")))
 
@@ -142,6 +152,8 @@
   (when (link-exists? destination)
     (error 'import-corpus "corpus destination must not be a symlink"))
   (define cases (hash-ref inventory 'cases))
+  (define metadata (hash-ref inventory 'metadata '()))
+  (define imported-entries (append cases metadata))
   (define receipt-path (build-path destination "import.json"))
   (define receipt
     (hash-set*
@@ -159,14 +171,14 @@
     (unless (and
              (eq? (kind receipt-path) 'file)
              (equal? (call-with-input-file receipt-path read-json) receipt)
-             (equal? (snapshot destination cases) inventory))
+             (equal? (snapshot destination cases metadata) inventory))
       (error 'import-corpus "existing import differs or is incomplete; no file was overwritten"))
     receipt)
    (else
     (for
-     ((name cases))
+     ((name imported-entries))
      (when (present? (build-path destination name))
-       (error 'import-corpus "a destination case already exists; no file was overwritten")))
+       (error 'import-corpus "a destination import entry already exists; no file was overwritten")))
     (make-directory* destination)
     (define staging (make-temporary-file "corpus~a" 'directory destination))
     (define committed '())
@@ -177,7 +189,7 @@
        (copy-snapshot directory staging inventory)
        (unless (and
                 (equal? (corpus-inventory directory) inventory)
-                (equal? (snapshot staging cases) inventory))
+                (equal? (snapshot staging cases metadata) inventory))
          (error 'import-corpus "source changed during import or copied tree differs"))
        (define receipt-temporary (make-temporary-file "receipt~a.tmp" #f staging))
        (call-with-output-file
@@ -187,7 +199,7 @@
         'truncate/replace)
        (file-or-directory-permissions receipt-temporary 420)
        (for
-        ((name cases))
+        ((name imported-entries))
         (rename-file-or-directory (build-path staging name) (build-path destination name) #f)
         (set! committed (cons name committed)))
        (rename-file-or-directory receipt-temporary receipt-path #f)

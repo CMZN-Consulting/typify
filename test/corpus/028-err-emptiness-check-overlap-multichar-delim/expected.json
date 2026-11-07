@@ -1,0 +1,104 @@
+{
+  "case_id": "028-err-emptiness-check-overlap-multichar-delim",
+  "title": "Declaration error: product-automaton emptiness check rejects class containing multi-char delimiter ' = '",
+  "sections_covered": [
+    "§4",
+    "F",
+    "J",
+    "K",
+    "R",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "J",
+    "K",
+    "R",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "J",
+    "K"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS_OVERLAP",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 23,
+            "byteOffset": 150
+          },
+          "end": {
+            "line": 8,
+            "column": 42,
+            "byteOffset": 169
+          }
+        },
+        "data": {
+          "form": "item : <tag> : <phrase> = <phrase>",
+          "class": "phrase",
+          "token": " = "
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "J",
+          "K",
+          "R"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS_OVERLAP",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 23,
+          "byteOffset": 150
+        },
+        "end": {
+          "line": 8,
+          "column": 42,
+          "byteOffset": 169
+        }
+      },
+      "data": {
+        "form": "item : <tag> : <phrase> = <phrase>",
+        "class": "phrase",
+        "token": " = "
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "J",
+        "K",
+        "R"
+      ]
+    }
+  ]
+}

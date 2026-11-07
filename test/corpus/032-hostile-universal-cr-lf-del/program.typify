@@ -1,0 +1,14 @@
+path : /srv/data/evil
+relpath : docs/readme
+days : 15
+label : lineoverwrite
+argv : "/bin/cmd"
+ident : node1
+layout : dated
+path : /srv/data
+relpath : docs/
+days : 9
+label : note
+argv : "/bin/"
+ident : user
+layout : named

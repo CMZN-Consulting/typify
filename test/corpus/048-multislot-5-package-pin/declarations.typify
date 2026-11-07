@@ -1,0 +1,12 @@
+#lang typify
+
+declare : PackagePin
+version : 1
+is : pkg = /[a-z][a-z0-9-]*/
+is : ver = /[0-9]+\.[0-9]+\.[0-9]+/
+is : sha = /[0-9a-f]{8}/
+term : pin : pkg ver sha
+form : pin : <pkg>@<ver>#<sha>
+does : pin <pkg> <ver> <sha>
+example : pin : serde@1.0.210#8f3a12c9
+end!

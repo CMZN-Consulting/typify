@@ -1,0 +1,10 @@
+#lang typify
+
+declare : MultiCharDelimOverlap
+version : 1
+is : phrase = /[a-z =]+/
+is : tag = /[a-z]+/
+term : item : tag phrase
+form : item : <tag> : <phrase> = <phrase>
+does : item <tag> <phrase>
+end!

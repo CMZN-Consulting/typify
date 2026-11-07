@@ -1,0 +1,87 @@
+{
+  "case_id": "045-multislot-2-systemd-bind-paths",
+  "title": "Multi-slot form 2: Three-slot 'bind : <path>:<path>:<mode>' with ':' delimiters",
+  "sections_covered": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "Q",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "Q",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "BindMountForm",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "Q",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "bind-mount",
+        "/data/archive",
+        "/mounts/archive",
+        "ro"
+      ],
+      [
+        "bind-mount",
+        "/data/work",
+        "/mounts/work",
+        "rw"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "bind-mount",
+      "/data/archive",
+      "/mounts/archive",
+      "ro"
+    ],
+    [
+      "bind-mount",
+      "/data/work",
+      "/mounts/work",
+      "rw"
+    ]
+  ],
+  "terms_provenance": [
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

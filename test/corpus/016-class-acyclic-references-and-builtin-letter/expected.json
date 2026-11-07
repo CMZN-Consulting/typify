@@ -1,0 +1,142 @@
+{
+  "case_id": "016-class-acyclic-references-and-builtin-letter",
+  "title": "Acyclic bare-name class reference and built-in single-letter class 'letter' juxtaposed with slash pattern (05:09Z)",
+  "sections_covered": [
+    "§4",
+    "§14",
+    "F",
+    "K",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "§14",
+    "F",
+    "K",
+    "R",
+    "T",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "ClassRefs",
+        "ok.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "symbol",
+            "zeta-9"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "symbol",
+          "zeta-9"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§4",
+        "§14",
+        "F",
+        "R",
+        "T",
+        "Y"
+      ]
+    },
+    {
+      "name": "refused",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "ClassRefs",
+        "bad.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_CLASS",
+            "file": "bad.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 10,
+                "byteOffset": 9
+              },
+              "end": {
+                "line": 1,
+                "column": 15,
+                "byteOffset": 14
+              }
+            },
+            "data": {
+              "class": "ident",
+              "token": "9zeta"
+            },
+            "provenance": [
+              "§4",
+              "F",
+              "K",
+              "R"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_CLASS",
+          "file": "bad.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 10,
+              "byteOffset": 9
+            },
+            "end": {
+              "line": 1,
+              "column": 15,
+              "byteOffset": 14
+            }
+          },
+          "data": {
+            "class": "ident",
+            "token": "9zeta"
+          },
+          "provenance": [
+            "§4",
+            "F",
+            "K",
+            "R"
+          ]
+        }
+      ],
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "R",
+        "Y"
+      ]
+    }
+  ]
+}

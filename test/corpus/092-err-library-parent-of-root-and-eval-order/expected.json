@@ -1,0 +1,218 @@
+{
+  "case_id": "092-err-library-parent-of-root-and-eval-order",
+  "title": "Library errors (06:05Z E, 06:36Z K): E_LIBRARY_PARENT on '(parent \"/\")' and E_LIBRARY_DOMAIN on '(join \"/mounts\" \"/abs\")'",
+  "sections_covered": [
+    "§5",
+    "E",
+    "I",
+    "J",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§5",
+    "E",
+    "I",
+    "J",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "parent-of-root",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "LibraryErrors",
+        "parent_root.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "plan": [],
+        "state": {},
+        "bound": {
+          "c": 1,
+          "n": 1,
+          "limit": 1
+        },
+        "modelled": "0 of 0",
+        "facts": "none",
+        "origins": [],
+        "ensure": [],
+        "diagnostics": [
+          {
+            "code": "E_LIBRARY_PARENT",
+            "file": "parent_root.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 16,
+                "byteOffset": 15
+              },
+              "end": {
+                "line": 1,
+                "column": 17,
+                "byteOffset": 16
+              }
+            },
+            "data": {
+              "path": "/"
+            },
+            "provenance": [
+              "§5",
+              "E",
+              "I",
+              "K",
+              "R",
+              "U"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_LIBRARY_PARENT",
+          "file": "parent_root.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 16,
+              "byteOffset": 15
+            },
+            "end": {
+              "line": 1,
+              "column": 17,
+              "byteOffset": 16
+            }
+          },
+          "data": {
+            "path": "/"
+          },
+          "provenance": [
+            "§5",
+            "E",
+            "I",
+            "K",
+            "R",
+            "U"
+          ]
+        }
+      ],
+      "provenance": [
+        "§5",
+        "E",
+        "I",
+        "K",
+        "U",
+        "Y"
+      ]
+    },
+    {
+      "name": "join-second-arg-absolute",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "LibraryErrors",
+        "join_abs.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "plan": [],
+        "state": {},
+        "bound": {
+          "c": 1,
+          "n": 1,
+          "limit": 1
+        },
+        "modelled": "0 of 0",
+        "facts": "none",
+        "origins": [],
+        "ensure": [],
+        "diagnostics": [
+          {
+            "code": "E_LIBRARY_DOMAIN",
+            "file": "join_abs.typify",
+            "range": {
+              "start": {
+                "line": 1,
+                "column": 22,
+                "byteOffset": 21
+              },
+              "end": {
+                "line": 1,
+                "column": 26,
+                "byteOffset": 25
+              }
+            },
+            "data": {
+              "constructor": "join",
+              "expected": "relative-components",
+              "actual": "/abs"
+            },
+            "provenance": [
+              "§5",
+              "E",
+              "I",
+              "K",
+              "R",
+              "U"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_LIBRARY_DOMAIN",
+          "file": "join_abs.typify",
+          "range": {
+            "start": {
+              "line": 1,
+              "column": 22,
+              "byteOffset": 21
+            },
+            "end": {
+              "line": 1,
+              "column": 26,
+              "byteOffset": 25
+            }
+          },
+          "data": {
+            "constructor": "join",
+            "expected": "relative-components",
+            "actual": "/abs"
+          },
+          "provenance": [
+            "§5",
+            "E",
+            "I",
+            "K",
+            "R",
+            "U"
+          ]
+        }
+      ],
+      "provenance": [
+        "§5",
+        "E",
+        "I",
+        "K",
+        "U",
+        "Y"
+      ]
+    }
+  ]
+}

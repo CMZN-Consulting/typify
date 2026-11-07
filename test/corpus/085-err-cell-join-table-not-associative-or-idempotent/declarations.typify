@@ -1,0 +1,17 @@
+#lang typify
+
+declare : BadJoinNonIdempotent
+version : 1
+is : key = /[a-z]+/
+is : lvl = "low" | "high"
+term : set-lvl : key lvl
+primitive!
+writes : set-lvl : cap_cell = put 1
+cell : cap_cell = join bad_lvl
+join : bad_lvl : "low" "low" = "high"
+join : bad_lvl : "low" "high" = "high"
+join : bad_lvl : "high" "high" = "low"
+form : lvl : <key> <lvl>
+does : set-lvl <key> <lvl>
+rule : (set-lvl <k> <l>) -> (set-lvl <k> <l>)
+end!

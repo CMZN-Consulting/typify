@@ -1,0 +1,78 @@
+{
+  "case_id": "050-multislot-7-arrow-rewrite-form",
+  "title": "Multi-slot form 7: Four-slot form with ':' and '->' delimiters",
+  "sections_covered": [
+    "§2",
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "provenance": [
+    "§2",
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R",
+    "T",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "ArrowTransition",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 0,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "accepted",
+  "verdict_provenance": [
+    "§2",
+    "§4",
+    "§5",
+    "F",
+    "J",
+    "R"
+  ],
+  "stdout_json": {
+    "ok": true,
+    "terms": [
+      [
+        "step",
+        "RUNNING",
+        "finish",
+        "DONE",
+        "clean_exit"
+      ]
+    ],
+    "diagnostics": []
+  },
+  "diagnostics": [],
+  "terms": [
+    [
+      "step",
+      "RUNNING",
+      "finish",
+      "DONE",
+      "clean_exit"
+    ]
+  ],
+  "terms_provenance": [
+    "§2",
+    "§4",
+    "§5",
+    "R",
+    "Y"
+  ]
+}

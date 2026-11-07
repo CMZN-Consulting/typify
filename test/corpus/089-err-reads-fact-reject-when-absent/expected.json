@@ -1,0 +1,155 @@
+{
+  "case_id": "089-err-reads-fact-reject-when-absent",
+  "title": "Plan error: 'reads : bind : exists = reject' refuses plan when required path fact '/mounts/research' is absent from facts.json",
+  "sections_covered": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "provenance": [
+    "H",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "V",
+    "W",
+    "Y"
+  ],
+  "command": "plan",
+  "invocation": [
+    "typify",
+    "plan",
+    "declarations.typify",
+    "Mounts",
+    "program.typify",
+    "--facts",
+    "facts.json",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "H",
+    "K",
+    "U",
+    "W",
+    "Y"
+  ],
+  "facts_hash": "sha256:bf7464ac2df3654c31728c04ca3d224396e8c4a2eeed375268f4f2279fde8d87",
+  "stdout_json": {
+    "plan": [
+      [
+        "mask",
+        "/mounts"
+      ],
+      [
+        "bind",
+        "/mounts/research",
+        "rw"
+      ]
+    ],
+    "state": {},
+    "bound": {
+      "c": 2,
+      "n": 1,
+      "limit": 2
+    },
+    "modelled": "2 of 2",
+    "facts": "sha256:bf7464ac2df3654c31728c04ca3d224396e8c4a2eeed375268f4f2279fde8d87",
+    "origins": [
+      {
+        "step": 1,
+        "primitive": [
+          "mask",
+          "/mounts"
+        ],
+        "file": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      },
+      {
+        "step": 2,
+        "primitive": [
+          "bind",
+          "/mounts/research",
+          "rw"
+        ],
+        "file": "program.typify",
+        "line": 1,
+        "rule_line": 19
+      }
+    ],
+    "ensure": [],
+    "diagnostics": [
+      {
+        "code": "E_FACT_REJECT",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 1,
+            "byteOffset": 0
+          },
+          "end": {
+            "line": 1,
+            "column": 28,
+            "byteOffset": 27
+          }
+        },
+        "data": {
+          "fact": "exists",
+          "key": "/mounts/research"
+        },
+        "provenance": [
+          "H",
+          "K",
+          "U",
+          "W",
+          "Y"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_FACT_REJECT",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 1,
+          "byteOffset": 0
+        },
+        "end": {
+          "line": 1,
+          "column": 28,
+          "byteOffset": 27
+        }
+      },
+      "data": {
+        "fact": "exists",
+        "key": "/mounts/research"
+      },
+      "provenance": [
+        "H",
+        "K",
+        "U",
+        "W",
+        "Y"
+      ]
+    }
+  ]
+}

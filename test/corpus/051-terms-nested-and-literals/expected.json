@@ -1,0 +1,144 @@
+{
+  "case_id": "051-terms-nested-and-literals",
+  "title": "First-order terms (04:19Z §5): parenthesized library call (join <path> <seg>) and literal constant \"ro\" accepted; nested user constructor (wrap <path>) at string position rejected",
+  "sections_covered": [
+    "§5",
+    "I",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§5",
+    "I",
+    "K",
+    "Q",
+    "R",
+    "T",
+    "U",
+    "Y"
+  ],
+  "subcases": [
+    {
+      "name": "nested-library-call-accepted",
+      "invocation": [
+        "typify",
+        "check",
+        "declarations.typify",
+        "NestedTerms",
+        "program.typify",
+        "--json"
+      ],
+      "exit_code": 0,
+      "verdict": "accepted",
+      "stdout_json": {
+        "ok": true,
+        "terms": [
+          [
+            "mount-entry",
+            "/mounts/logs",
+            "ro"
+          ]
+        ],
+        "diagnostics": []
+      },
+      "terms": [
+        [
+          "mount-entry",
+          "/mounts/logs",
+          "ro"
+        ]
+      ],
+      "diagnostics": [],
+      "provenance": [
+        "§5",
+        "I",
+        "Q",
+        "R",
+        "T",
+        "U",
+        "Y"
+      ]
+    },
+    {
+      "name": "nested-user-constructor-rejected",
+      "invocation": [
+        "typify",
+        "check",
+        "bad_declarations.typify",
+        "--json"
+      ],
+      "exit_code": 1,
+      "verdict": "refused",
+      "stdout_json": {
+        "ok": false,
+        "terms": [],
+        "diagnostics": [
+          {
+            "code": "E_TERM_NESTED",
+            "file": "bad_declarations.typify",
+            "range": {
+              "start": {
+                "line": 11,
+                "column": 14,
+                "byteOffset": 199
+              },
+              "end": {
+                "line": 11,
+                "column": 27,
+                "byteOffset": 212
+              }
+            },
+            "data": {
+              "constructor": "outer",
+              "actual": "(wrap <path>)"
+            },
+            "provenance": [
+              "§5",
+              "I",
+              "K",
+              "R"
+            ]
+          }
+        ]
+      },
+      "diagnostics": [
+        {
+          "code": "E_TERM_NESTED",
+          "file": "bad_declarations.typify",
+          "range": {
+            "start": {
+              "line": 11,
+              "column": 14,
+              "byteOffset": 199
+            },
+            "end": {
+              "line": 11,
+              "column": 27,
+              "byteOffset": 212
+            }
+          },
+          "data": {
+            "constructor": "outer",
+            "actual": "(wrap <path>)"
+          },
+          "provenance": [
+            "§5",
+            "I",
+            "K",
+            "R"
+          ]
+        }
+      ],
+      "provenance": [
+        "§5",
+        "K",
+        "R",
+        "Y"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+#lang typify
+
+declare : BuiltinLibraryAll8
+version : 1
+is : seg = /[a-z0-9._-]+/ except "." | ".."
+is : path = canonical-path
+term : emit-op : path
+primitive!
+writes : emit-op : out = put 1
+cell : out = shadow
+term : exercise : path seg
+fuel : exercise = 4
+form : run : <path> <seg>
+does : exercise <path> <seg>
+example : run : /mounts/team/docs guide
+rule : exercise <p> <s> -> (if (prefix "/mounts" <p>) (emit-op (join (parent <p>) <s>))) ; (if (suffix "docs" <p>) (emit-op (concat <p> "-archive"))) ; (each <a> in (ancestors <p>) (emit-op <a>)) ; (each <c> in (split <p>) (if (equal <c> "team") (emit-op (join "/" <c>))))
+end!

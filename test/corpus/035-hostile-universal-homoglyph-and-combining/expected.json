@@ -1,0 +1,909 @@
+{
+  "case_id": "035-hostile-universal-homoglyph-and-combining",
+  "title": "Hostile audit (14 pairs): Cyrillic U+0430 homoglyph, combining acute U+0301, and NBSP U+00A0 refused across all 7 classes",
+  "sections_covered": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "provenance": [
+    "§4",
+    "F",
+    "K",
+    "Q",
+    "R",
+    "U",
+    "Y"
+  ],
+  "command": "check",
+  "invocation": [
+    "typify",
+    "check",
+    "declarations.typify",
+    "HostileAudit",
+    "program.typify",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§4",
+    "F",
+    "Q",
+    "R",
+    "U"
+  ],
+  "hostile_pairs_tested": [
+    {
+      "class": "path",
+      "token_repr": "'/srv/аdmin'",
+      "description": "Cyrillic small letter a U+0430"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'docs/аpi'",
+      "description": "Cyrillic small letter a U+0430"
+    },
+    {
+      "class": "days",
+      "token_repr": "'10а'",
+      "description": "Cyrillic small letter a U+0430"
+    },
+    {
+      "class": "label",
+      "token_repr": "'Tаsk'",
+      "description": "Cyrillic small letter a U+0430"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"/bin/cаt\"'",
+      "description": "Cyrillic small letter a U+0430"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'аdmin'",
+      "description": "Cyrillic small letter a U+0430"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'flаt'",
+      "description": "Cyrillic small letter a U+0430"
+    },
+    {
+      "class": "path",
+      "token_repr": "'/srv/café'",
+      "description": "Combining acute U+0301"
+    },
+    {
+      "class": "relpath",
+      "token_repr": "'docs/résumé'",
+      "description": "Combining acute U+0301"
+    },
+    {
+      "class": "days",
+      "token_repr": "'30́'",
+      "description": "Combining acute U+0301"
+    },
+    {
+      "class": "label",
+      "token_repr": "'word\\xa0nbsp'",
+      "description": "Non-breaking space U+00A0"
+    },
+    {
+      "class": "argv",
+      "token_repr": "'\"/bin/ls\"\\xa0\"-l\"'",
+      "description": "Non-breaking space U+00A0"
+    },
+    {
+      "class": "ident",
+      "token_repr": "'id́'",
+      "description": "Combining acute U+0301"
+    },
+    {
+      "class": "layout",
+      "token_repr": "'dated́'",
+      "description": "Combining acute U+0301"
+    }
+  ],
+  "stdout_json": {
+    "ok": false,
+    "terms": [],
+    "diagnostics": [
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 1,
+            "column": 8,
+            "byteOffset": 7
+          },
+          "end": {
+            "line": 1,
+            "column": 18,
+            "byteOffset": 18
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/srv/аdmin"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 11,
+            "byteOffset": 29
+          },
+          "end": {
+            "line": 2,
+            "column": 19,
+            "byteOffset": 38
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "docs/аpi"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 3,
+            "column": 8,
+            "byteOffset": 46
+          },
+          "end": {
+            "line": 3,
+            "column": 11,
+            "byteOffset": 50
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "10а"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 4,
+            "column": 9,
+            "byteOffset": 59
+          },
+          "end": {
+            "line": 4,
+            "column": 13,
+            "byteOffset": 64
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "Tаsk"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 8,
+            "byteOffset": 72
+          },
+          "end": {
+            "line": 5,
+            "column": 18,
+            "byteOffset": 83
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"/bin/cаt\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 6,
+            "column": 9,
+            "byteOffset": 92
+          },
+          "end": {
+            "line": 6,
+            "column": 14,
+            "byteOffset": 98
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "аdmin"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 7,
+            "column": 10,
+            "byteOffset": 108
+          },
+          "end": {
+            "line": 7,
+            "column": 14,
+            "byteOffset": 113
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "flаt"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 8,
+            "column": 8,
+            "byteOffset": 121
+          },
+          "end": {
+            "line": 8,
+            "column": 18,
+            "byteOffset": 132
+          }
+        },
+        "data": {
+          "class": "path",
+          "token": "/srv/café"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 9,
+            "column": 11,
+            "byteOffset": 143
+          },
+          "end": {
+            "line": 9,
+            "column": 24,
+            "byteOffset": 158
+          }
+        },
+        "data": {
+          "class": "relpath",
+          "token": "docs/résumé"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 10,
+            "column": 8,
+            "byteOffset": 166
+          },
+          "end": {
+            "line": 10,
+            "column": 11,
+            "byteOffset": 170
+          }
+        },
+        "data": {
+          "class": "days",
+          "token": "30́"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 11,
+            "column": 9,
+            "byteOffset": 179
+          },
+          "end": {
+            "line": 11,
+            "column": 18,
+            "byteOffset": 189
+          }
+        },
+        "data": {
+          "class": "label",
+          "token": "word nbsp"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 12,
+            "column": 8,
+            "byteOffset": 197
+          },
+          "end": {
+            "line": 12,
+            "column": 22,
+            "byteOffset": 212
+          }
+        },
+        "data": {
+          "class": "argv",
+          "token": "\"/bin/ls\" \"-l\""
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 13,
+            "column": 9,
+            "byteOffset": 221
+          },
+          "end": {
+            "line": 13,
+            "column": 12,
+            "byteOffset": 225
+          }
+        },
+        "data": {
+          "class": "ident",
+          "token": "id́"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      },
+      {
+        "code": "E_CLASS",
+        "file": "program.typify",
+        "range": {
+          "start": {
+            "line": 14,
+            "column": 10,
+            "byteOffset": 235
+          },
+          "end": {
+            "line": 14,
+            "column": 16,
+            "byteOffset": 242
+          }
+        },
+        "data": {
+          "class": "layout",
+          "token": "dated́"
+        },
+        "provenance": [
+          "§4",
+          "F",
+          "K",
+          "Q",
+          "R",
+          "U"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 1,
+          "column": 8,
+          "byteOffset": 7
+        },
+        "end": {
+          "line": 1,
+          "column": 18,
+          "byteOffset": 18
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/srv/аdmin"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 2,
+          "column": 11,
+          "byteOffset": 29
+        },
+        "end": {
+          "line": 2,
+          "column": 19,
+          "byteOffset": 38
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "docs/аpi"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 3,
+          "column": 8,
+          "byteOffset": 46
+        },
+        "end": {
+          "line": 3,
+          "column": 11,
+          "byteOffset": 50
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "10а"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 4,
+          "column": 9,
+          "byteOffset": 59
+        },
+        "end": {
+          "line": 4,
+          "column": 13,
+          "byteOffset": 64
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "Tаsk"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 8,
+          "byteOffset": 72
+        },
+        "end": {
+          "line": 5,
+          "column": 18,
+          "byteOffset": 83
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"/bin/cаt\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 6,
+          "column": 9,
+          "byteOffset": 92
+        },
+        "end": {
+          "line": 6,
+          "column": 14,
+          "byteOffset": 98
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "аdmin"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 7,
+          "column": 10,
+          "byteOffset": 108
+        },
+        "end": {
+          "line": 7,
+          "column": 14,
+          "byteOffset": 113
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "flаt"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 8,
+          "column": 8,
+          "byteOffset": 121
+        },
+        "end": {
+          "line": 8,
+          "column": 18,
+          "byteOffset": 132
+        }
+      },
+      "data": {
+        "class": "path",
+        "token": "/srv/café"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 9,
+          "column": 11,
+          "byteOffset": 143
+        },
+        "end": {
+          "line": 9,
+          "column": 24,
+          "byteOffset": 158
+        }
+      },
+      "data": {
+        "class": "relpath",
+        "token": "docs/résumé"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 10,
+          "column": 8,
+          "byteOffset": 166
+        },
+        "end": {
+          "line": 10,
+          "column": 11,
+          "byteOffset": 170
+        }
+      },
+      "data": {
+        "class": "days",
+        "token": "30́"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 11,
+          "column": 9,
+          "byteOffset": 179
+        },
+        "end": {
+          "line": 11,
+          "column": 18,
+          "byteOffset": 189
+        }
+      },
+      "data": {
+        "class": "label",
+        "token": "word nbsp"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 12,
+          "column": 8,
+          "byteOffset": 197
+        },
+        "end": {
+          "line": 12,
+          "column": 22,
+          "byteOffset": 212
+        }
+      },
+      "data": {
+        "class": "argv",
+        "token": "\"/bin/ls\" \"-l\""
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 13,
+          "column": 9,
+          "byteOffset": 221
+        },
+        "end": {
+          "line": 13,
+          "column": 12,
+          "byteOffset": 225
+        }
+      },
+      "data": {
+        "class": "ident",
+        "token": "id́"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    },
+    {
+      "code": "E_CLASS",
+      "file": "program.typify",
+      "range": {
+        "start": {
+          "line": 14,
+          "column": 10,
+          "byteOffset": 235
+        },
+        "end": {
+          "line": 14,
+          "column": 16,
+          "byteOffset": 242
+        }
+      },
+      "data": {
+        "class": "layout",
+        "token": "dated́"
+      },
+      "provenance": [
+        "§4",
+        "F",
+        "K",
+        "Q",
+        "R",
+        "U"
+      ]
+    }
+  ]
+}
