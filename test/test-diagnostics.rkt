@@ -13,7 +13,8 @@
     (unless (equal? actual expected)
       (error 'test-diagnostics "~a: expected ~s; received ~s" context expected actual)))
   (define registry
-    '(("E_LINE_SHAPE" actual)
+    '(("N_CLASS_EMPTY" class)
+      ("E_LINE_SHAPE" actual)
       ("E_FORM_NONE" actual)
       ("E_FORM_SHADOW" form actual)
       ("E_CLASS" class token)
@@ -196,6 +197,63 @@
     (lambda () (diagnostic->jsexpr (struct-copy diagnostic original (data (hash))))))
    #t
    "direct struct construction cannot bypass required wire fields")
+  (define early-note
+    (make-diagnostic
+     "E_CLASS"
+     "Note"
+     #:severity
+     'note
+     #:span
+     (src-span "a.typify" 1 1 1 2 0 1)
+     #:data
+     (hash 'class "empty" 'token "")))
+  (define later-error
+    (make-diagnostic
+     "E_CLASS"
+     "Error"
+     #:span
+     (src-span "a.typify" 2 1 2 2 2 3)
+     #:data
+     (hash 'class "word" 'token "!")))
+  (define tied-error (struct-copy diagnostic later-error (message "Second")))
+  (check
+   (diagnostics-sort (list tied-error early-note later-error))
+   (list early-note tied-error later-error)
+   "source ordering preserves detection order at tied positions")
+  (check (diagnostics-error? (list early-note)) #f "notes alone are not errors")
+  (check (diagnostics-error? (list early-note later-error)) #t "errors remain visible with notes")
+  (check (void? (raise-diagnostics (list early-note))) #t "notes alone do not throw")
+  (define aggregate
+    (with-handlers
+     ((exn:fail:typify? values))
+     (raise-diagnostics (list later-error early-note tied-error))))
+  (check
+   (exn:fail:typify-diagnostic aggregate)
+   later-error
+   "legacy singular accessor identifies the first error")
+  (check
+   (exn:fail:typify-diagnostics aggregate)
+   (list early-note later-error tied-error)
+   "aggregate retains notes and every independently discovered error")
+  (check
+   (exn:fail:typify-diagnostics (exn:fail:typify "Single" (current-continuation-marks) later-error))
+   (list later-error)
+   "singular exceptions remain compatible")
+  (for
+   ((code '("E_REQUIRED" "E_FILE" "E_USAGE")))
+   (define item
+     (make-diagnostic
+      code
+      "No position"
+      #:span
+      (src-span "source.typify" 3 4 3 7 9 12)
+      #:data
+      (if (equal? code "E_USAGE") (hash 'actual "x") (hash 'path "x"))))
+   (check
+    (hash-ref (diagnostic->jsexpr item) 'range)
+    'null
+    "non-source diagnostics carry a null range")
+   (check (diagnostic-file item) "source.typify" "null range preserves the source file"))
   (hash 'suite "diagnostics" 'count checks 'pass checks 'fail 0))
 
 (module+

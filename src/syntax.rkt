@@ -12,6 +12,7 @@
          span-slice
          line-left-span
          line-right-span
+         verb-word?
          parse-template
          match-template
          match-template/located
@@ -52,10 +53,13 @@
       (after-cr? #f)
       #:result
       (list line column byte))
-     ((char (in-string text 0 limit)))
+     ((char (in-string text 0 limit)) (index (in-naturals)))
      (define next-byte (+ byte (bytes-length (string->bytes/utf-8 (string char)))))
      (cond
-      ((char=? char #\return) (values (add1 line) 1 next-byte #t))
+      ((and (char=? char #\return)
+            (< (add1 index) (string-length text))
+            (char=? (string-ref text (add1 index)) #\newline))
+       (values (add1 line) 1 next-byte #t))
       ((char=? char #\newline) (values (if after-cr? line (add1 line)) 1 next-byte #f))
       (else (values line (add1 column) next-byte #f)))))
   (define left (position start))
@@ -85,6 +89,16 @@
     (starts-at? source literal index))
    index))
 
+(define (verb-word? text)
+  (define (alphanumeric? character)
+    (or (char<=? #\A character #\Z) (char<=? #\a character #\z) (char<=? #\0 character #\9)))
+  (and (string? text)
+       (positive? (string-length text))
+       (alphanumeric? (string-ref text 0))
+       (for/and
+        ((character (in-string text)))
+        (or (alphanumeric? character) (char=? character #\-)))))
+
 (define (classify raw line byte file prefix)
   (define-values (start end) (trim-bounds raw))
   (define source (substring raw start end))
@@ -93,28 +107,30 @@
   (define colon (find-literal source ":"))
   (define arrow (find-literal source "->"))
   (cond
+   ((find-literal raw "\r") (line-record 'unclassified source "" span raw))
    ((string=? source "") (line-record 'blank "" "" span raw))
    ((and prefix (not (string=? prefix "")) (string-prefix? source prefix))
     (line-record 'comment "" "" span raw))
-   (colon
+   ((and colon (not (string=? (trim (substring source 0 colon)) "")))
     (line-record
      'colon
      (trim (substring source 0 colon))
      (trim (substring source (add1 colon)))
      span
      raw))
-   (arrow
+   (colon (line-record 'unclassified source "" span raw))
+   ((and arrow
+         (not (string=? (trim (substring source 0 arrow)) ""))
+         (not (string=? (trim (substring source (+ arrow 2))) "")))
     (line-record
      'arrow
      (trim (substring source 0 arrow))
      (trim (substring source (+ arrow 2)))
      span
      raw))
+   (arrow (line-record 'unclassified source "" span raw))
    ((and (string-suffix? source "!")
-         (> (string-length source) 1)
-         (for/and
-          ((char (in-string source 0 (sub1 (string-length source)))))
-          (not (or (char-whitespace? char) (char=? char #\!)))))
+         (verb-word? (substring source 0 (sub1 (string-length source)))))
     (line-record 'bang (substring source 0 (sub1 (string-length source))) "" span raw))
    (else (line-record 'unclassified source "" span raw))))
 
@@ -125,18 +141,16 @@
       (for/first
        ((index (in-range start (string-length source)))
         #:when
-        (memv (string-ref source index) '(#\return #\newline)))
+        (char=? (string-ref source index) #\newline))
        index))
-    (define end (or ending (string-length source)))
+    (define end
+      (if (and ending (> ending start) (char=? (string-ref source (sub1 ending)) #\return))
+        (sub1 ending)
+        (or ending (string-length source))))
     (define raw (substring source start end))
     (define entry (classify raw line byte normalized-file prefix))
     (if ending
-      (let ((next
-             (if (and (char=? (string-ref source end) #\return)
-                      (< (add1 end) (string-length source))
-                      (char=? (string-ref source (add1 end)) #\newline))
-               (+ end 2)
-               (add1 end))))
+      (let ((next (add1 ending)))
         (loop
          next
          (add1 line)

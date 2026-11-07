@@ -64,6 +64,61 @@
     (checks "/[\\u0041-\\u005A]+/" '("A" "AZ") '("a"))
     (checks "/\"\\U00010400\"/" (list (string (integer->char 66560))) '("A")))
    (test-case
+    "pattern shorthand ranges and braced escapes are host-independent"
+    (checks "/\\d+/" '("0" "902") '("" "A" "١"))
+    (checks "/\\w+/" '("A_z09" "_") '("é" "-" " "))
+    (checks "/\\s+/" '(" " "  ") (list "" "a" "\t" "\n" "\r"))
+    (checks "/[\\dA-F]+/" '("F09" "3A") '("G" "a"))
+    (checks "/[^\\s]+/" '("abc" "_") '(" a" "a "))
+    (checks "/\\x41\\u0042\\u{1F600}/" '("AB😀") '("AB" "ABx"))
+    (check-exn (error-code "class-syntax") (lambda () (one "/\\x+1/")))
+    (check-exn (error-code "class-syntax") (lambda () (one "/\\u{}/")))
+    (check-exn (error-code "class-syntax") (lambda () (one "/[\\d-z]/")))
+    (check-exn (error-code "class-syntax") (lambda () (one "/\\u{D800}/"))))
+   (test-case
+    "unsafe-only and length-empty languages remain legal class definitions"
+    (define unsafe (one "/[\\x00-\\x1f]/"))
+    (check-true (class-empty? unsafe))
+    (check-false (class-accepts? unsafe (string #\nul)))
+    (check-false (class-empty? (one "/\\s/")))
+    (check-false (class-empty? (one "/a*/")))
+    (check-true (class-empty? (one "/a{4}/" (hash 'length 3)))))
+   (test-case
+    "batch class errors preserve declaring definitions and independent successes"
+    (define errors '())
+    (define classes
+      (compile-classes
+       (hash
+        "bad-pattern"
+        "/[/"
+        "bad-reference"
+        "unknown"
+        "dependent"
+        "bad-pattern"
+        "good"
+        "\"ok\"")
+       #:caps
+       small-caps
+       #:order
+       '("bad-reference" "bad-pattern" "dependent" "good")
+       #:on-error
+       (lambda (error) (set! errors (append errors (list error))))))
+    (check-equal? (map class-error-code errors) '("class-reference" "class-syntax"))
+    (check-equal?
+     (map (lambda (error) (hash-ref (class-error-data error) 'definition-name)) errors)
+     '("bad-reference" "bad-pattern"))
+    (check-equal? (hash-ref (class-error-data (car errors)) 'class) "unknown")
+    (check-equal? (hash-ref (class-error-data (car errors)) 'definition-source) "unknown")
+    (check-false (hash-has-key? classes "dependent"))
+    (check-true (class-accepts? (hash-ref classes "good") "ok"))
+    (define failure
+      (with-handlers
+       ((class-error? values))
+       (compile-classes (hash "owner" "missing") #:caps small-caps)
+       #f))
+    (check-true (class-error? failure))
+    (check-equal? (hash-ref (class-error-data failure) 'definition-name) "owner"))
+   (test-case
     "reference semantics include referenced literal exclusions"
     (define classes
       (compile-classes
@@ -127,8 +182,10 @@
      (hash 'except (hash 'node (hash 'ref "Body.choice") 'literals '("book"))))
     (check-equal? (description "letter") (hash 'builtin "letter"))
     (check-equal? (description "canonical-path") (hash 'builtin "canonical-path"))
+    (check-equal? (description "relative-path") (hash 'builtin "relative-path"))
     (check-equal? (class->references (hash-ref classes "references")) '("choice" "pattern"))
     (check-equal? (class->references (hash-ref classes "letter")) '())
+    (check-equal? (class->references (hash-ref classes "relative-path")) '())
     (check-equal?
      (class->description (hash-ref classes "open"))
      (hash 'repeat (hash 'node (hash 'ref "choice") 'min 1 'max 'null)))
@@ -144,6 +201,19 @@
        (compiled-class-alphabet escaped)))
     (check-exn (error-code "class-description") (lambda () (class->description foreign)))
     (check-exn (error-code "class-description") (lambda () (class->references foreign))))
+   (test-case
+    "relative paths are a separate reserved built-in language"
+    (define relative (one "relative-path"))
+    (for
+     ((text '("a" "a/b" ".hidden" "a..b" "α/β")))
+     (check-true (class-accepts? relative text) text))
+    (for
+     ((text '("" "/" "/a" "a/" "a//b" "." ".." "a/./b" "a/../b")))
+     (check-false (class-accepts? relative text) text))
+    (check-equal? (class->description relative) (hash 'ref "relative-path"))
+    (check-exn
+     (error-code "class-reserved")
+     (lambda () (compile-classes (hash "relative-path" "\"x\"") #:caps small-caps))))
    (test-case
     "pattern membership is independent of the receiving capture length"
     (define path (one "canonical-path" (hash 'length 1)))

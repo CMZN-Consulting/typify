@@ -101,40 +101,41 @@
    (hash
     'kind
     "default"
-    'file
+    'path
     "defaults-language.typify"
-    'range
-    (src-span->jsexpr (line-record-span declaration-record))
-    'source
-    "item : fallback")
-   "default origins retain the declaring file, full range and source payload")
+    'line
+    (src-span-start-line (line-record-span declaration-record)))
+   "default origins retain the declaring file and line")
   (define mixed (check-program "middle : own" shared #:file "program.typify"))
   (define own-origin (car (hash-ref mixed 'origins)))
-  (check (src-span? own-origin) #t "ordinary program origins keep their original representation")
-  (check (src-span-file own-origin) "program.typify" "own origins identify the program file")
-  (check (src-span-start-line own-origin) 1 "own origins retain the program line")
+  (check (hash-ref own-origin 'kind) "program" "ordinary origins share the documented shape")
+  (check (hash-ref own-origin 'path) "program.typify" "own origins identify the program file")
+  (check (hash-ref own-origin 'line) 1 "own origins retain the program line")
   (check
-   (hash-ref (cadr (hash-ref mixed 'origins)) 'source)
-   "first : alpha"
+   (hash-ref (cadr (hash-ref mixed 'origins)) 'kind)
+   "default"
    "defaults follow own origins in the same order as their terms")
   (define multiple-under-one
-    (body
-     '("is : word = /[a-z]+/"
-       "primitive : output : word"
-       "form : item : <word>"
-       "does : output <word>"
-       "default : item : alpha"
-       "default : item : beta"
-       "count : output = 1")))
+    '("is : word = /[a-z]+/"
+      "primitive : output : word"
+      "form : item : <word>"
+      "does : output <word>"
+      "default : item : alpha"
+      "default : item : beta"
+      "count : output = 1"))
   (define count-error
     (reject
-     (lambda () (check-program "" multiple-under-one))
-     "E_PROGRAM_COUNT"
-     "multiple activated defaults are not truncated to satisfy a count"))
+     (lambda () (body multiple-under-one))
+     "E_DECLARATION"
+     "defaults exceeding their count are rejected at declaration time"))
   (check
    (hash-ref (diagnostic-data count-error) 'actual)
-   2
-   "the count includes every activated default")
+   "default : item : beta"
+   "the conflict names the first excessive default line")
+  (check
+   (hash-ref (diagnostic-data count-error) 'kind)
+   "conflict"
+   "excessive defaults use the declaration conflict kind")
   (define optional (body (append '("file : program.typify" "optional!") single-lines)))
   (check
    (hash-ref (check-program "" optional) 'terms)

@@ -22,6 +22,7 @@
     "test/test-diagnostics.rkt"
     "test/test-declaration-diagnostics.rkt"
     "test/test-program-diagnostics.rkt"
+    "test/test-reader-routed.rkt"
     "test/blind-corpus.rkt"
     "test/test-language.rkt"
     "test/test-language-edge.rkt"
@@ -72,7 +73,7 @@
    ((or (string? value) (boolean? value) (real? value)) value)
    (else (format "~a" value))))
 
-(define (run-test root name)
+(define (run-test root name #:blind? (blind? #t))
   (fprintf (current-error-port) "Running ~a\n" name)
   (define output (open-output-string))
   (define errors (open-output-string))
@@ -105,7 +106,10 @@
    (define result
      (parameterize
       ((current-output-port output) (current-error-port errors))
-      ((dynamic-require (build-path root name) 'run-tests))))
+      (define runner (dynamic-require (build-path root name) 'run-tests))
+      (if (member name '("test/test-language.rkt" "test/test-meta-mutation.rkt"))
+        (runner #:blind? blind?)
+        (runner))))
    (define check-style?
      (and (positive? (field result 'checks)) (member (field result 'status) '("passed" passed))))
    (define count (if check-style? (field result 'checks) (field result 'count)))
@@ -137,6 +141,7 @@
   (define total (field evidence 'total))
   (define failures (field evidence 'failures))
   (and (positive? total)
+       (not (equal? (field evidence 'status) "deferred-blind"))
        (natural? failures)
        (zero? failures)
        (case name
@@ -239,7 +244,10 @@
       'source
       source
       'status
-      (if passed? "measured" "failed-evidence")
+      (cond
+       (passed? "measured")
+       ((equal? (field evidence 'status) "deferred-blind") "deferred-blind")
+       (else "failed-evidence"))
       'evidence
       evidence)))))
 
@@ -270,7 +278,12 @@
     'dependencies
     dependencies)))
 
-(define (run-kernel-check (given-root (current-directory)) #:checkpoint (checkpoint #f))
+(define (run-kernel-check
+         (given-root (current-directory))
+         #:checkpoint
+         (checkpoint #f)
+         #:blind?
+         (blind? #t))
   (define root (simplify-path (path->complete-path given-root)))
   (define completed '())
   (define (save-progress phase)
@@ -283,6 +296,10 @@
            (hasheq
             'schema
             "typify-ci-v1"
+            'measurement-mode
+            (if blind? "full" "kernel-only")
+            'blind-deferred
+            (not blind?)
             'phase
             phase
             'kernel
@@ -297,7 +314,7 @@
     (for/list
      ((name test-modules))
      (save-progress name)
-     (define result (run-test root name))
+     (define result (run-test root name #:blind? blind?))
      (set! completed (append completed (list result)))
      (save-progress "between-suites")
      result))
@@ -323,6 +340,10 @@
    (hasheq
     'schema
     "typify-ci-v1"
+    'measurement-mode
+    (if blind? "full" "kernel-only")
+    'blind-deferred
+    (not blind?)
     'runtime
     runtime
     'kernel
@@ -346,16 +367,27 @@
     'stage1
     (hasheq
      'pass
-     (and kernel-pass? (andmap (lambda (gate) (hash-ref gate 'pass)) gates))
+     (and blind? kernel-pass? (andmap (lambda (gate) (hash-ref gate 'pass)) gates))
+     'status
+     (if blind? "measured" "deferred-blind")
      'gates
      gates))))
 
 (module+
  main
  (define arguments (vector->list (current-command-line-arguments)))
- (unless (or (null? arguments) (and (= (length arguments) 2) (equal? (car arguments) "--output")))
-   (displayln "usage: racket scripts/ci.rkt [--output FILE]" (current-error-port))
+ (define (usage)
+   (displayln "usage: racket scripts/ci.rkt [--output FILE] [--defer-blind]" (current-error-port))
    (exit 2))
+ (define-values
+  (output-path blind?)
+  (let loop ((remaining arguments) (output #f) (blind? #t))
+    (match
+     remaining
+     ('() (values output blind?))
+     ((list* "--defer-blind" rest) (if blind? (loop rest output #f) (usage)))
+     ((list* "--output" path rest) (if output (usage) (loop rest path blind?)))
+     (_ (usage)))))
  (define result
    (with-handlers
     ((exn:fail?
@@ -367,10 +399,10 @@
          (hasheq 'pass #f 'error (exn-message error))
          'stage1
          (hasheq 'pass #f 'status "kernel-unavailable")))))
-    (run-kernel-check #:checkpoint (and (pair? arguments) (cadr arguments)))))
- (when (pair? arguments)
+    (run-kernel-check #:checkpoint output-path #:blind? blind?)))
+ (when output-path
    (call-with-output-file
-    (cadr arguments)
+    output-path
     (lambda (output) (write-json result output) (newline output))
     #:exists
     'truncate/replace))

@@ -68,10 +68,10 @@
      "Nodes"
      (append
       '("is : literal = \"a\" | \"b\""
-        "is : suffix = /[0-9]/"
+        "is : digit-tail = /[0-9]/"
         "is : aliased = literal"
-        "is : sequence = literal suffix"
-        "is : alternative = literal | suffix"
+        "is : sequence = literal digit-tail"
+        "is : alternative = literal | digit-tail"
         "is : bounded = literal{1,2}"
         "is : unbounded = literal*"
         "is : excluded = literal except \"a\""
@@ -90,10 +90,10 @@
    ((case (in-list
            (list
             (cons "Nodes.literal" (hash 'literals '("a" "b")))
-            (cons "Nodes.suffix" (hash 'pattern "[0-9]"))
+            (cons "Nodes.digit-tail" (hash 'pattern "[0-9]"))
             (cons "Nodes.aliased" (ref "literal"))
-            (cons "Nodes.sequence" (hash 'seq (list (ref "literal") (ref "suffix"))))
-            (cons "Nodes.alternative" (hash 'alt (list (ref "literal") (ref "suffix"))))
+            (cons "Nodes.sequence" (hash 'seq (list (ref "literal") (ref "digit-tail"))))
+            (cons "Nodes.alternative" (hash 'alt (list (ref "literal") (ref "digit-tail"))))
             (cons "Nodes.bounded" (hash 'repeat (hash 'node (ref "literal") 'min 1 'max 2)))
             (cons "Nodes.unbounded" (hash 'repeat (hash 'node (ref "literal") 'min 0 'max 'null)))
             (cons "Nodes.excluded" (hash 'except (hash 'node (ref "literal") 'literals '("a"))))
@@ -106,7 +106,7 @@
    (sort (hash-keys node-classes) string<?)
    (sort
     '("Nodes.literal"
-      "Nodes.suffix"
+      "Nodes.digit-tail"
       "Nodes.aliased"
       "Nodes.sequence"
       "Nodes.alternative"
@@ -121,26 +121,17 @@
     string<?)
    "all and only transitively reachable definitions are emitted")
   (define shadow
-    (body
-     "Shadow"
-     '("is : name = \"local\""
-       "is : inherited = constructor"
-       "term : record : value"
-       "form : inherited : <inherited>"
-       "does : record <inherited>")))
-  (define shadow-classes (hash-ref (language->grammar shadow) 'classes))
+    (with-handlers
+     ((exn:fail:typify? exn:fail:typify-diagnostic))
+     (body "Shadow" '("is : name = \"local\""))))
   (check
-   (hash-ref shadow-classes "Typify.constructor")
-   (hash 'ref "Shadow.name")
-   "inherited references retain the reader's flat local override binding")
+   (diagnostic-code shadow)
+   "E_DECLARATION"
+   "meta class names cannot acquire a local override")
   (check
-   (hash-ref shadow-classes "Shadow.name")
-   (hash 'literals '("local"))
-   "the actual local override definition is reachable")
-  (check
-   (hash-has-key? shadow-classes "Typify.name")
-   #f
-   "a shadowed inherited definition is not substituted into the wire")
+   (diagnostic-data-projection (diagnostic-code shadow) (diagnostic-data shadow))
+   (hash 'kind "duplicate" 'actual "name")
+   "a forbidden override identifies the reserved name")
   (define shapes
     (body
      "Shapes"

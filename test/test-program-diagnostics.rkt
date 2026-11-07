@@ -37,10 +37,10 @@
        "form : item : [<word>]"
        "does : output <word>")))
   (for
-   ((text '("unshaped" "!" "two words!" "item")))
+   ((text '("unshaped" "!" "two words!" "item" ":")))
    (reject (lambda () (check-program text bracket)) "E_LINE_SHAPE" (hash 'actual text)))
   (for
-   ((text '("unknown!" "other : [a]" "item : missing-brackets" "item : [a" ":")))
+   ((text '("unknown!" "other : [a]" "item : missing-brackets" "item : [a")))
    (reject (lambda () (check-program text bracket)) "E_FORM_NONE" (hash 'actual text)))
   (define outer-raw " \tother : [a]\t ")
   (reject (lambda () (check-program outer-raw bracket)) "E_FORM_NONE" (hash 'actual outer-raw))

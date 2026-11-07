@@ -19,7 +19,7 @@
      code))
   (define lines
     (read-lines
-     "  # annotation\r\n a : b -> c \r\nleft -> right\rflag!\ninvalid\n"
+     "  # annotation\r\n a : b -> c \r\nleft -> right\nflag!\ninvalid\n"
      #:file
      "input.txt"))
   (check (map line-record-kind lines) '(comment colon arrow bang unclassified blank))
@@ -33,6 +33,21 @@
   (check (line-record-kind (car (read-lines "a -> b!"))) 'arrow)
   (check (line-record-kind (car (read-lines "!"))) 'unclassified)
   (check (line-record-kind (car (read-lines "a b!"))) 'unclassified)
+  (for
+   ((source '(":" " : value" "-> right" "left ->" " -> " "_bad!" "-bad!" "é!")))
+   (check (line-record-kind (car (read-lines source))) 'unclassified))
+  (for ((source '("0!" "A-b-9!"))) (check (line-record-kind (car (read-lines source))) 'bang))
+  (check (line-record-kind (car (read-lines "verb :"))) 'colon)
+  (check (verb-word? "0Alpha-beta") #t)
+  (check (verb-word? "Alpha_beta") #f)
+  (check (verb-word? "") #f)
+  (define lone-cr (read-lines "a : x\rb : y\nnext!" #:file "cr.txt"))
+  (check (map line-record-kind lone-cr) '(unclassified bang))
+  (check (line-record-raw (car lone-cr)) "a : x\rb : y")
+  (check (line-record-span (car lone-cr)) (src-span "cr.txt" 1 1 1 12 0 11))
+  (check (line-record-span (second lone-cr)) (src-span "cr.txt" 2 1 2 6 12 17))
+  (check (line-record-kind (car (read-lines "# comment\rhidden"))) 'unclassified)
+  (check (line-record-kind (car (read-lines "\r"))) 'unclassified)
   (check (line-record-kind (car (read-lines "// note" #:comment-prefix "//"))) 'comment)
   (check (line-record-kind (car (read-lines "# literal : value" #:comment-prefix #f))) 'colon)
   (define unicode-lines (read-lines "  item : 😀x\r\nnext!" #:file "folder\\input.txt"))
@@ -46,6 +61,7 @@
   (define anchor (src-span "input.txt" 1 1 1 1 0 0))
   (check (span-slice anchor "α😀\r\nz" 1 2) (src-span "input.txt" 1 2 1 3 2 6))
   (check (span-slice anchor "α😀\r\nz" 0 5) (src-span "input.txt" 1 1 2 2 0 9))
+  (check (span-slice anchor "α\rz" 0 3) (src-span "input.txt" 1 1 1 4 0 4))
   (define parts (parse-template "item : <category> = <title>"))
   (check (map slot-name (filter slot? parts)) '("category" "title"))
   (check (match-template parts "item : book = Algebra") (hash "category" "book" "title" "Algebra"))

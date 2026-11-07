@@ -22,6 +22,20 @@
    "/0|[1-9][0-9]*/"
    "ordering"
    "\"strict\" | \"free\""
+   "order-mode"
+   "\"strict\" | \"free\""
+   "prefix"
+   "/.*/"
+   "production"
+   "/.*/"
+   "term"
+   "/.*/"
+   "pattern"
+   "/.*/"
+   "law"
+   "/(shadow|first|join [A-Za-z][A-Za-z0-9_-]*)( stacking)?/"
+   "width"
+   "/0|[1-9][0-9]*/"
    "limit"
    "\"states\" | \"repetition\" | \"depth\" | \"length\""
    "scope-mode"
@@ -58,15 +72,15 @@
    (entry 'declare "declare : <name>" "declare-language" '("name") "declare : Catalog")
    (entry 'end "end!" "close-language" '() "end!")
    (entry 'version "version : <number>" "set-version" '("number") "version : 1")
-   (entry 'comment "comment : <value>" "set-comment" '("value") "comment : #")
+   (entry 'comment "comment : <prefix>" "set-comment" '("prefix") "comment : #")
    (entry
     'class
-    "is : <name> = <value>"
+    "is : <name> = <pattern>"
     "declare-class"
-    '("name" "value")
+    '("name" "pattern")
     "is : category = \"book\" | \"journal\"")
-   (entry 'form "form : <value>" "declare-form" '("value") "form : item : <category>")
-   (entry 'does "does : <value>" "declare-meaning" '("value") "does : item <category>")
+   (entry 'form "form : <production>" "declare-form" '("production") "form : item : <category>")
+   (entry 'does "does : <term>" "declare-meaning" '("term") "does : item <category>")
    (entry 'example "example : <value>" "declare-example" '("value") "example : item : book")
    (entry
     'term
@@ -88,14 +102,14 @@
     "declare-nullary-primitive"
     '("name")
     "primitive : stop")
-   (entry 'rule "rule : <value>" "declare-rule" '("value") "rule : item <x> -> output <x>")
+   (entry 'rule "rule : <term>" "declare-rule" '("term") "rule : item <x> -> output <x>")
    (entry
     'count
     "count : <name> = <multiplicity>"
     "declare-count"
     '("name" "multiplicity")
     "count : item = 1..*")
-   (entry 'order "order : <ordering>" "set-order" '("ordering") "order : free")
+   (entry 'order "order : <order-mode>" "set-order" '("order-mode") "order : free")
    (entry 'file "file : <value>" "set-file" '("value") "file : catalog.typify")
    (entry 'required "required!" "require-file" '() "required!")
    (entry 'optional "optional!" "allow-missing-file" '() "optional!")
@@ -104,7 +118,7 @@
    (entry 'sees "sees : <name>" "declare-reference" '("name") "sees : Catalog")
    (entry 'note "note : <name>" "declare-note" '("name") "note : quoting")
    (entry 'cap "cap : <limit> = <number>" "declare-cap" '("limit" "number") "cap : states = 4096")
-   (entry 'cell "cell : <name> = <value>" "declare-cell" '("name" "value") "cell : mounts = shadow")
+   (entry 'cell "cell : <name> = <law>" "declare-cell" '("name" "law") "cell : mounts = shadow")
    (entry
     'writes
     "writes : <name> : <value>"

@@ -5,6 +5,7 @@
 (provide compile-classes
          class-accepts?
          class-pattern-accepts?
+         class-empty?
          class->description
          class->references
          class-witnesses
@@ -24,6 +25,7 @@
          class-check-count-bounds
          class-host-guards
          class-error-message
+         builtin-class-names
          default-class-caps
          unicode-version
          unicode-source
@@ -44,6 +46,8 @@
 (struct boundary-choice (distance point target))
 
 (define class-error-message exn-message)
+
+(define builtin-class-names '("letter" "canonical-path" "relative-path"))
 
 (define default-class-caps
   (hash 'states 4096 'repetition 256 'reference-depth 8 'token-length 4096 'allow-ascii-space #t))
@@ -309,15 +313,33 @@
              (char=? (string-ref source (+ at 6)) #\"))))
   (define (hex! width)
     (unless (<= (+ at width) size) (syntax-error "incomplete code-point escape"))
+    (unless (for/and
+             ((point (in-string source at (+ at width))))
+             (or (char<=? #\0 point #\9) (char<=? #\a point #\f) (char<=? #\A point #\F)))
+      (syntax-error "invalid hexadecimal escape"))
     (define value (string->number (substring source at (+ at width)) 16))
     (unless (and value (scalar? value)) (syntax-error "invalid Unicode scalar escape"))
     (set! at (+ at width))
+    value)
+  (define (braced-hex!)
+    (take!)
+    (define begin at)
+    (let loop ()
+      (when (and (peek) (not (char=? (peek) #\})))
+        (unless (or (char<=? #\0 (peek) #\9) (char<=? #\a (peek) #\f) (char<=? #\A (peek) #\F))
+          (syntax-error "invalid braced code-point escape"))
+        (take!)
+        (loop)))
+    (unless (and (> at begin) (peek)) (syntax-error "unclosed or empty code-point escape"))
+    (define value (string->number (substring source begin at) 16))
+    (unless (and value (scalar? value)) (syntax-error "invalid Unicode scalar escape"))
+    (take!)
     value)
   (define (escaped!)
     (unless (peek) (syntax-error "incomplete escape"))
     (define value (take!))
     (case value
-      ((#\u) (hex! 4))
+      ((#\u) (if (and (peek) (char=? (peek) #\{)) (braced-hex!) (hex! 4)))
       ((#\U) (hex! 8))
       ((#\x) (hex! 2))
       ((#\n) 10)
@@ -325,6 +347,9 @@
       ((#\t) 9)
       ((#\b) 8)
       ((#\f) 12)
+      ((#\d) '((48 . 57)))
+      ((#\w) '((48 . 57) (65 . 90) (95 . 95) (97 . 122)))
+      ((#\s) '((9 . 13) (32 . 32)))
       (else
        (unless (memv
                 value
@@ -338,7 +363,11 @@
       (define value (take!))
       (cond
        ((char=? value #\") (list 'text (list->string (reverse result))))
-       ((char=? value #\\) (loop (cons (integer->char (escaped!)) result)))
+       ((char=? value #\\)
+        (define point (escaped!))
+        (unless (exact-integer? point)
+          (syntax-error "a quoted literal requires a single code point"))
+        (loop (cons (integer->char point) result)))
        (else (loop (cons value result))))))
   (define (range-point!)
     (unless (peek) (syntax-error "unclosed range"))
@@ -355,15 +384,21 @@
          ((char=? (peek) #\]) (take!) (reverse result))
          (else
           (define lower (range-point!))
-          (define upper
-            (if (and (peek)
-                     (char=? (peek) #\-)
-                     (< (add1 at) size)
-                     (not (char=? (string-ref source (add1 at)) #\])))
-              (begin (take!) (range-point!))
-              lower))
-          (when (> lower upper) (syntax-error "reversed range"))
-          (loop (cons (cons lower upper) result))))))
+          (define interval?
+            (and (peek)
+                 (char=? (peek) #\-)
+                 (< (add1 at) size)
+                 (not (char=? (string-ref source (add1 at)) #\]))))
+          (cond
+           (interval?
+            (take!)
+            (define upper (range-point!))
+            (unless (and (exact-integer? lower) (exact-integer? upper))
+              (syntax-error "range endpoints must be single code points"))
+            (when (> lower upper) (syntax-error "reversed range"))
+            (loop (cons (cons lower upper) result)))
+           ((exact-integer? lower) (loop (cons (cons lower lower) result)))
+           (else (loop (append lower result))))))))
     (when (null? ranges) (syntax-error "empty range"))
     (define normalized (intersect-intervals (normalize-intervals ranges) scalar-intervals))
     (list 'characters (if negate? (subtract-intervals scalar-intervals normalized) normalized)))
@@ -405,7 +440,8 @@
       ((#\\)
        (unless pattern? (syntax-error "escape a literal inside quotes or a slash pattern"))
        (take!)
-       (list 'text (string (integer->char (escaped!)))))
+       (define point (escaped!))
+       (list 'characters (if (exact-integer? point) (list (cons point point)) point)))
       ((#\/) (if pattern? (syntax-error "escape a literal slash") (slash!)))
       ((#\()
        (take!)
@@ -848,23 +884,35 @@
          (edge (edge-ranges transition) (cons (edge-target transition) (add1 (cdr key)))))))
     caps)))
 
-(define (canonical-path-pattern)
+(define (relative-path-pattern)
   (define component
     (list
      'except
      (list 'repeat (list 'characters (subtract-intervals scalar-intervals '((47 . 47)))) 1 #f)
      '("." "..")))
-  (rx-alternation
-   (list
-    (list 'text "/")
-    (rx-sequence
-     (list
-      (list 'text "/")
-      component
-      (list 'repeat (rx-sequence (list (list 'text "/") component)) 0 #f))))))
+  (rx-sequence
+   (list component (list 'repeat (rx-sequence (list (list 'text "/") component)) 0 #f))))
 
-(define (compile-classes sources #:caps (raw-caps (hash)))
+(define (canonical-path-pattern)
+  (rx-alternation
+   (list (list 'text "/") (rx-sequence (list (list 'text "/") (relative-path-pattern))))))
+
+(define (compile-classes
+         sources
+         #:caps
+         (raw-caps (hash))
+         #:order
+         (source-order #f)
+         #:on-error
+         (on-error #f))
   (unless (hash? sources) (fail "class-source" "classes must be a map"))
+  (unless (or (not on-error) (and (procedure? on-error) (procedure-arity-includes? on-error 1)))
+    (fail "class-source" "the class error callback accepts one error"))
+  (unless (or
+           (not source-order)
+           (and (list? source-order)
+                (andmap (lambda (name) (or (string? name) (symbol? name))) source-order)))
+    (fail "class-source" "class order must be a list of names"))
   (define caps (normalize-caps raw-caps))
   (define alphabet (safe-alphabet caps))
   (define raw
@@ -872,23 +920,73 @@
      (((name source) (in-hash sources)))
      (unless (or (string? name) (symbol? name)) (fail "class-name" "class name must be text"))
      (values (if (symbol? name) (symbol->string name) name) source)))
+  (define failed (make-hash))
+  (define (attempt name thunk)
+    (with-handlers
+     ((class-error?
+       (lambda (error)
+         (define detailed
+           (struct-copy
+            class-error
+            error
+            (data
+             (hash-set*
+              (class-error-data error)
+              'definition-name
+              name
+              'definition-source
+              (hash-ref raw name name)))))
+         (if on-error (begin (hash-set! failed name #t) (on-error detailed) #f) (raise detailed)))))
+     (thunk)))
   (for
-   ((name (in-list '("letter" "canonical-path"))))
+   ((name (in-list builtin-class-names)))
    (when (hash-has-key? raw name)
-     (fail "class-reserved" "a built-in class cannot be redeclared" (hash 'class name))))
-  (define known (list->set (append '("letter" "canonical-path") (hash-keys raw))))
+     (attempt
+      name
+      (lambda ()
+        (fail "class-reserved" "a built-in class cannot be redeclared" (hash 'class name))))
+     (hash-remove! failed name)
+     (set! raw (hash-remove raw name))))
+  (define ordered
+    (remove-duplicates
+     (append
+      (if source-order
+        (filter
+         (lambda (name) (hash-has-key? raw name))
+         (map (lambda (name) (if (symbol? name) (symbol->string name) name)) source-order))
+        '())
+      (sort (hash-keys raw) string<?))))
+  (define known (list->set (append builtin-class-names (hash-keys raw))))
   (define trees
     (make-hash
      (list
       (cons "letter" (list 'characters unicode-letter-intervals))
-      (cons "canonical-path" (canonical-path-pattern)))))
+      (cons "canonical-path" (canonical-path-pattern))
+      (cons "relative-path" (relative-path-pattern)))))
   (define exclusions (make-hash))
   (for
-   ((name (in-list (sort (hash-keys raw) string<?))))
+   ((name (in-list ordered)))
    (define source (hash-ref raw name))
-   (define-values (tree excluded) (read-class-source source known caps))
-   (hash-set! trees name tree)
-   (hash-set! exclusions name excluded))
+   (define parsed
+     (attempt
+      name
+      (lambda ()
+        (define-values (tree excluded) (read-class-source source known caps))
+        (cons tree excluded))))
+   (when parsed (hash-set! trees name (car parsed)) (hash-set! exclusions name (cdr parsed))))
+  (define (blocked? node (seen (make-hash)))
+    (match
+     node
+     ((list 'reference name)
+      (or (hash-ref failed name #f)
+          (and (not (hash-has-key? seen name))
+               (begin (hash-set! seen name #t) (blocked? (hash-ref trees name) seen)))))
+     ((list (or 'sequence 'alternation) children)
+      (ormap (lambda (child) (blocked? child seen)) children))
+     ((list 'repeat child _ _) (blocked? child seen))
+     ((list 'except child _) (blocked? child seen))
+     ((list 'pattern _ child) (blocked? child seen))
+     (_ #f)))
   (define (resolve name)
     (hash-ref
      trees
@@ -921,25 +1019,39 @@
      ((list 'except child literals) (list 'except (expand child stack) literals))
      ((list 'pattern source child) (list 'pattern source (expand child stack)))
      (_ node)))
-  (for/hash
-   ((name (in-list (sort (hash-keys trees) string<?))))
-   (set! expanded-nodes 0)
-   (define-values
-    (start end epsilon transitions)
-    (make-nfa (expand (list 'reference name) '()) resolve caps alphabet))
-   (define machine (minimize-machine (determinize start end epsilon transitions caps)))
-   (define controls (vector-length (automaton-transitions machine)))
-   (when (> controls (caps-ref caps 'states))
-     (fail
-      "class-state-cap"
-      "minimal pattern automaton exceeds the declared state cap"
-      (hash 'cap (caps-ref caps 'states) 'states controls 'phase "minimal-pattern")))
-   (define class (compiled-class name (hash-ref raw name name) machine caps alphabet))
-   (hash-set!
-    class-original-trees
-    class
-    (if (hash-has-key? raw name) (hash-ref trees name) (list 'builtin name)))
-   (values name class)))
+  (for/fold
+   ((result (hash)))
+   ((name
+     (in-list
+      (if source-order
+        (append
+         ordered
+         (sort (filter (lambda (name) (not (member name ordered))) (hash-keys trees)) string<?))
+        (sort (hash-keys trees) string<?))))
+    #:unless
+    (or (hash-ref failed name #f) (blocked? (hash-ref trees name))))
+   (define class
+     (attempt
+      name
+      (lambda ()
+        (set! expanded-nodes 0)
+        (define-values
+         (start end epsilon transitions)
+         (make-nfa (expand (list 'reference name) '()) resolve caps alphabet))
+        (define machine (minimize-machine (determinize start end epsilon transitions caps)))
+        (define controls (vector-length (automaton-transitions machine)))
+        (when (> controls (caps-ref caps 'states))
+          (fail
+           "class-state-cap"
+           "minimal pattern automaton exceeds the declared state cap"
+           (hash 'cap (caps-ref caps 'states) 'states controls 'phase "minimal-pattern")))
+        (define compiled (compiled-class name (hash-ref raw name name) machine caps alphabet))
+        (hash-set!
+         class-original-trees
+         compiled
+         (if (hash-has-key? raw name) (hash-ref trees name) (list 'builtin name)))
+        compiled)))
+   (if class (hash-set result name class) result)))
 
 (define (original-class-tree class)
   (unless (compiled-class? class)
@@ -1015,6 +1127,31 @@
             ((character (in-string text)))
             (machine-step machine state (char->integer character))))
          (and final (vector-ref (automaton-accepting machine) final)))))
+
+(define (class-empty? class)
+  (define machine (compiled-class-machine class))
+  (define limit (caps-ref (compiled-class-caps class) 'token-length))
+  (define seen (make-hasheqv))
+  (hash-set! seen (automaton-start machine) #t)
+  (let loop ((front (list (cons (automaton-start machine) 0))) (back '()))
+    (cond
+     ((and (null? front) (null? back)) #t)
+     ((null? front) (loop (reverse back) '()))
+     (else
+      (define state (caar front))
+      (define length (cdar front))
+      (cond
+       ((vector-ref (automaton-accepting machine) state) #f)
+       (else
+        (define next back)
+        (when (< length limit)
+          (for
+           ((transition (in-list (vector-ref (automaton-transitions machine) state))))
+           (define target (edge-target transition))
+           (unless (hash-has-key? seen target)
+             (hash-set! seen target #t)
+             (set! next (cons (cons target (add1 length)) next)))))
+        (loop (cdr front) next)))))))
 
 (define (search-witness initial accepting? outgoing cap (bounds #f))
   (define seen (make-hash))

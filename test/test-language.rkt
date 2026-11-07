@@ -185,7 +185,7 @@
      (reverse records))
     (reverse models))))
 
-(define (run-tests)
+(define (run-tests #:blind? (blind? #t))
   (define checks 0)
   (define (check actual expected)
     (set! checks (add1 checks))
@@ -283,7 +283,7 @@
      "form : item : book = <title>\ndoes : item book <title>\ncount : item = 1..*"))
   (reject (lambda () (read-declarations overlap)) "E_FORM_SHADOW")
   (define swallowed
-    "#lang typify\ndeclare : Demo\ncomment : go\nis : value = \"yes\" | \"no\"\nprimitive : output : value\nform : go : <value>\ndoes : output <value>\nexample : go : yes\nend!\n")
+    "#lang typify\ndeclare : Demo\ncomment : go\nis : choice = \"yes\" | \"no\"\nprimitive : output : choice\nform : go : <choice>\ndoes : output <choice>\nexample : go : yes\nend!\n")
   (reject (lambda () (read-declarations swallowed)) "E_EXAMPLE")
   (define nullary
     "#lang typify\ndeclare : Flags\nprimitive : ready\nform : ready!\ndoes : ready\nexample : ready!\ncount : ready = 1\nend!\n")
@@ -358,9 +358,54 @@
   (for
    ((model (in-list public-models)))
    (check (model-data (read-declarations (emit-declarations model))) (model-data model)))
-  (define blind (run-blind-corpus))
-  (define scoped-blind (blind-command-scope blind '("check" "emit")))
-  (define-values (blind-coverage blind-models) (measure-blind-declarations))
+  (define deferred
+    (hash
+     'available
+     #f
+     'complete
+     #f
+     'deferred
+     #t
+     'status
+     "deferred-blind"
+     'total
+     0
+     'failures
+     0
+     'case-total
+     0
+     'case-failures
+     0
+     'results
+     '()
+     'mismatches
+     '()))
+  (define blind (if blind? (run-blind-corpus) deferred))
+  (define scoped-blind (if blind? (blind-command-scope blind '("check" "emit") #:stage 1) deferred))
+  (define-values
+   (blind-coverage blind-models)
+   (if blind?
+     (measure-blind-declarations)
+     (values
+      (hash-set*
+       deferred
+       'inputs
+       0
+       'admitted
+       0
+       'refused
+       0
+       'unavailable
+       0
+       'infrastructure
+       0
+       'roundtrips
+       0
+       'successful-roundtrips
+       0
+       'declarations
+       '())
+      '())))
   (define custody-verified?
     (and (eq? (hash-ref blind 'available #f) #t)
          (eq? (hash-ref blind 'complete #f) #t)
@@ -380,14 +425,17 @@
     (+
      (hash-ref blind-declarations 'failures)
      (hash-ref declaration-witnesses 'failures)
-     (if (hash-ref blind-declarations 'complete) 0 1)))
+     (if (or (not blind?) (hash-ref blind-declarations 'complete)) 0 1)))
   (define count
     (+
      checks
-     (max 1 (hash-ref blind 'total 0))
-     (max 1 (hash-ref blind-declarations 'inputs))
-     (hash-ref blind-declarations 'roundtrips)
-     1
+     (if blind?
+       (+
+        (max 1 (hash-ref blind 'total 0))
+        (max 1 (hash-ref blind-declarations 'inputs))
+        (hash-ref blind-declarations 'roundtrips)
+        1)
+       0)
      (hash-ref declaration-witnesses 'checks)))
   (define failures (+ blind-failures law-failures))
   (hash
@@ -401,6 +449,8 @@
    failures
    'status
    (if (zero? failures) "passed" "failed")
+   'blind-deferred
+   (not blind?)
    'blind-baseline-failures
    blind-failures
    'blind-full-baseline
@@ -443,10 +493,11 @@
      'complete
      (hash-ref blind-declarations 'complete)
      'status
-     (if (and (hash-ref blind-declarations 'complete)
-              (zero? (hash-ref blind-declarations 'failures)))
-       "measured"
-       "incomplete-or-failed"))
+     (cond
+      ((not blind?) "deferred-blind")
+      ((and (hash-ref blind-declarations 'complete) (zero? (hash-ref blind-declarations 'failures)))
+       "measured")
+      (else "incomplete-or-failed")))
     'byte-smoke
     (hash 'total 1 'failures 0)
     'declaration-witnesses
@@ -463,7 +514,9 @@
      'blind-unavailable
      (hash-ref blind-declarations 'unavailable)
      'blind-infrastructure
-     (hash-ref blind-declarations 'infrastructure))
+     (hash-ref blind-declarations 'infrastructure)
+     'status
+     (if blind? "measured" "deferred-blind"))
     'worked-example-classes
     (hash 'total (length worked-coverage) 'failures 0 'host-predicates 0 'coverage worked-coverage)
     'meta-selfcheck

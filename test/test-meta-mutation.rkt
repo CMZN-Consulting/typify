@@ -370,13 +370,32 @@
 
 (define (field data name (default #f)) (if (hash? data) (hash-ref data name default) default))
 
-(define (run-tests)
+(define (run-tests #:blind? (blind? #t))
   (define forms (current-meta-forms))
   (define classes (current-meta-classes))
   (define baseline (map evaluate-oracle internal-oracles))
   (define baseline-failures (count (lambda (result) (not (hash-ref result 'pass))) baseline))
-  (define blind-full-baseline (blind-oracle))
-  (define blind-baseline (blind-command-scope blind-full-baseline '("check" "emit")))
+  (define deferred
+    (hasheq
+     'available
+     #f
+     'complete
+     #f
+     'deferred
+     #t
+     'status
+     "deferred-blind"
+     'total
+     0
+     'failures
+     0
+     'results
+     '()
+     'mismatches
+     '()))
+  (define blind-full-baseline (if blind? (blind-oracle) deferred))
+  (define blind-baseline
+    (if blind? (blind-command-scope blind-full-baseline '("check" "emit") #:stage 1) deferred))
   (define blind-baseline-results (field blind-baseline 'results '()))
   (define blind-baseline-shape?
     (and (for/and
@@ -389,7 +408,8 @@
           (length blind-baseline-results)
           (length
            (remove-duplicates (map (lambda (result) (field result 'id)) blind-baseline-results))))))
-  (define blind-available? (and (eq? (field blind-baseline 'available) #t) blind-baseline-shape?))
+  (define blind-available?
+    (and blind? (eq? (field blind-baseline 'available) #t) blind-baseline-shape?))
   (define blind-passing-ids
     (for/list
      ((result (in-list blind-baseline-results)) #:when (eq? (field result 'pass) #t))
@@ -501,14 +521,14 @@
   (define checks
     (+
      (length baseline)
-     (max 1 (field blind-baseline 'total 0))
+     (if blind? (max 1 (field blind-baseline 'total 0)) 0)
      (length measurements)
      blind-invocations
      internal-invocations))
   (define failures
     (+
      baseline-failures
-     (field blind-baseline 'failures 1)
+     (if blind? (field blind-baseline 'failures 1) 0)
      (- (length measurements) killed)
      blind-measurement-errors))
   (define gate
@@ -543,9 +563,12 @@
      #t
      'blind-corpus
      blind-valid?
+     'blind-deferred
+     (not blind?)
      'status
      (cond
       ((not (zero? baseline-failures)) "invalid-baseline")
+      ((not blind?) "deferred-blind")
       ((not blind-available?) "missing-blind-evidence")
       ((not blind-valid?) "invalid-blind-baseline")
       ((positive? blind-measurement-errors) "blind-measurement-infrastructure-failure")
@@ -563,6 +586,8 @@
    failures
    'status
    (if (zero? failures) "passed" "failed")
+   'blind-deferred
+   (not blind?)
    'gates
    (hasheq 'meta-mutation gate)
    'baseline
@@ -576,7 +601,9 @@
    'denominator
    "One application of each registered operator at every eligible field of the current immutable meta table and class sources; no equivalent-mutant filtering."
    'blind-algorithm
-   "Run the frozen baseline first; only baseline-passing invocation IDs are eligible. For each registered mutation, stop at its first newly failing eligible blind invocation; otherwise run the independent internal oracles until their first failure. A non-clean blind baseline invalidates the overall gate, and baseline-failing invocations never kill mutants. Roundtrip and witness laws are excluded."
+   (if blind?
+     "Run the frozen baseline first; only baseline-passing stage-one check/emit invocation IDs are eligible. For each registered mutation, stop at its first newly failing eligible blind invocation; otherwise run the independent internal oracles until their first failure. A non-clean blind baseline invalidates the overall gate, and baseline-failing invocations never kill mutants. Roundtrip and witness laws are excluded."
+     "Blind evidence is deferred without opening or executing frozen cases. Run every registered mutation against the independent internal oracles until its first failure. Internal results do not satisfy the blind-dependent acceptance gate. Roundtrip and witness laws are excluded.")
    'measurements
    measurements))
 

@@ -5,6 +5,11 @@
 (provide (struct-out src-span)
          (struct-out diagnostic)
          (struct-out exn:fail:typify)
+         (struct-out exn:fail:typify:aggregate)
+         exn:fail:typify-diagnostics
+         diagnostics-sort
+         diagnostics-error?
+         raise-diagnostics
          make-diagnostic
          raise-typify
          diagnostic->jsexpr
@@ -25,8 +30,47 @@
 
 (struct exn:fail:typify exn:fail (diagnostic) #:transparent)
 
+(struct exn:fail:typify:aggregate exn:fail:typify (diagnostics) #:transparent)
+
+(define (exn:fail:typify-diagnostics error)
+  (if (exn:fail:typify:aggregate? error)
+    (exn:fail:typify:aggregate-diagnostics error)
+    (list (exn:fail:typify-diagnostic error))))
+
+(define (diagnostics-error? items)
+  (ormap (lambda (item) (equal? (diagnostic-severity item) "error")) items))
+
+(define (diagnostics-sort items)
+  (define (position item)
+    (define span (diagnostic-range item))
+    (list
+     (diagnostic-file item)
+     (if span (src-span-start-line span) 0)
+     (if span (src-span-start-column span) 0)))
+  (define (position<? left right)
+    (cond
+     ((string<? (car left) (car right)) #t)
+     ((string<? (car right) (car left)) #f)
+     ((< (cadr left) (cadr right)) #t)
+     ((> (cadr left) (cadr right)) #f)
+     (else (< (caddr left) (caddr right)))))
+  (sort items position<? #:key position #:cache-keys? #t))
+
+(define (raise-diagnostics items)
+  (define ordered (diagnostics-sort items))
+  (define first-error (findf (lambda (item) (equal? (diagnostic-severity item) "error")) ordered))
+  (when first-error
+    (raise
+     (exn:fail:typify:aggregate
+      (diagnostic-message first-error)
+      (current-continuation-marks)
+      first-error
+      ordered))))
+
 (define diagnostic-data-fields
   (hash
+   "N_CLASS_EMPTY"
+   '(class)
    "E_LINE_SHAPE"
    '(actual)
    "E_FORM_NONE"
@@ -185,7 +229,7 @@
    (text code)
    (text severity)
    (portable-file (src-span-file span))
-   span
+   (if (member (text code) '("E_REQUIRED" "E_FILE" "E_USAGE")) #f span)
    message
    related
    fix
@@ -248,23 +292,25 @@
      content))))
 
 (define (src-span->jsexpr span)
-  (hasheq
-   'start
-   (hasheq
-    'line
-    (src-span-start-line span)
-    'column
-    (src-span-start-column span)
-    'byteOffset
-    (src-span-start-byte span))
-   'end
-   (hasheq
-    'line
-    (src-span-end-line span)
-    'column
-    (src-span-end-column span)
-    'byteOffset
-    (src-span-end-byte span))))
+  (if (not span)
+    'null
+    (hasheq
+     'start
+     (hasheq
+      'line
+      (src-span-start-line span)
+      'column
+      (src-span-start-column span)
+      'byteOffset
+      (src-span-start-byte span))
+     'end
+     (hasheq
+      'line
+      (src-span-end-line span)
+      'column
+      (src-span-end-column span)
+      'byteOffset
+      (src-span-end-byte span)))))
 
 (define (diagnostic->jsexpr item)
   (diagnostic-data-projection (diagnostic-code item) (diagnostic-data item))

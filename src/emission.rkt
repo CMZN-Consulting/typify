@@ -135,7 +135,7 @@
     "spacing ("
     (string-join
      (append
-      (list "\"\"")
+      (list "\"\"" "\"?\" spacing \":\" spacing [A-Za-z0-9] [A-Za-z0-9-]*")
       (if (positive? (string-length (language-comment body)))
         (list (string-append (quoted (language-comment body)) " [^\\r\\n]*"))
         '())

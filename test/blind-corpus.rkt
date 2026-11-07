@@ -268,22 +268,29 @@
     (with-handlers
      ((exn:fail:typify?
        (lambda (error)
-         (define item (exn:fail:typify-diagnostic error))
-         (set! native (list (diagnostic->jsexpr item)))
-         (set! exit-code (if (member (diagnostic-code item) '("E_USAGE" "E_FILE")) 2 1))
+         (define items (exn:fail:typify-diagnostics error))
+         (set! native (map diagnostic->jsexpr items))
+         (set! exit-code
+           (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items)
+             2
+             1))
          (if (member "--json" arguments)
            (displayln (canonical-json (hash 'ok #f 'terms '() 'diagnostics native)))
-           (fprintf
-            (current-error-port)
-            "~a:~a:~a: ~a: ~a [~a]\n"
-            (diagnostic-file item)
-            (src-span-start-line (diagnostic-range item))
-            (src-span-start-column (diagnostic-range item))
-            (diagnostic-severity item)
-            (diagnostic-message item)
-            (diagnostic-code item))))))
+           (for
+            ((item (in-list items)))
+            (define span (diagnostic-range item))
+            (fprintf
+             (current-error-port)
+             "~a:~a:~a: ~a: ~a [~a]\n"
+             (diagnostic-file item)
+             (if span (src-span-start-line span) 0)
+             (if span (src-span-start-column span) 0)
+             (diagnostic-severity item)
+             (diagnostic-message item)
+             (diagnostic-code item)))))))
      (define-values (result json? gbnf?) (run-command arguments))
      (set! native (if (hash? result) (hash-ref result 'diagnostics '()) '()))
+     (unless json? (display-diagnostics native))
      (cond
       ((equal? arguments '("--version")) (displayln (hash-ref result 'version)))
       ((and (member "--bounds" arguments) (not json?)) (display (render-bounds result)))
@@ -463,6 +470,37 @@
     "unsupported-projection"))
   (reverse differences))
 
+(define (expected-stage entry)
+  (define expected (hash-ref entry 'expected))
+  (define diagnostics
+    (append
+     (hash-ref expected 'diagnostics '())
+     (let ((output (hash-ref expected 'stdout_json #f)))
+       (if (hash? output) (hash-ref output 'diagnostics '()) '()))))
+  (define (model-diagnostic? item)
+    (or (member
+         (hash-ref item 'code "")
+         '("E_JOIN_LAW" "E_KEY_CANONICAL" "E_ENSURE" "E_FACT_REJECT"))
+        (equal? (hash-ref (hash-ref item 'data (hash)) 'kind #f) "effect")
+        (let* ((file (hash-ref item 'file #f))
+               (range (hash-ref item 'range #f))
+               (line (and (hash? range) (hash-ref (hash-ref range 'start (hash)) 'line #f))))
+          (and (string? file)
+               (exact-positive-integer? line)
+               (let ((path (safe-path (hash-ref entry 'directory) file)))
+                 (and (file-exists? path)
+                      (let ((lines (regexp-split #rx"\r?\n" (file->string path))))
+                        (and (<= line (length lines))
+                             (regexp-match?
+                              #px"^[ \t]*(?:cell|writes|join|reads|ensure|effect)[ \t]*:"
+                              (list-ref lines (sub1 line)))))))))))
+  (cond
+   ((or (hash-has-key? expected 'sarif_projection)
+        (hash-has-key? expected 'lsp_range_utf16_zero_based))
+    4)
+   ((ormap model-diagnostic? diagnostics) 2)
+   (else 1)))
+
 (define (run-blind-corpus
          #:root
          (root default-blind-root)
@@ -562,6 +600,8 @@
        'command
        (let ((invocation (hash-ref expected 'invocation '())))
          (if (>= (length invocation) 2) (cadr invocation) "unknown"))
+       'stage
+       (expected-stage entry)
        'kind
        (if infrastructure "infrastructure" "compared")
        'expected
@@ -673,10 +713,12 @@
    'mismatches
    all-differences))
 
-(define (blind-command-scope observed commands)
+(define (blind-command-scope observed commands #:stage (stage +inf.0))
   (define results
     (filter
-     (lambda (result) (member (hash-ref result 'command "unknown") commands))
+     (lambda (result)
+       (and (member (hash-ref result 'command "unknown") commands)
+            (<= (hash-ref result 'stage 1) stage)))
      (hash-ref observed 'results '())))
   (define ids (map (lambda (result) (hash-ref result 'id)) results))
   (define cases (remove-duplicates (map (lambda (result) (hash-ref result 'case-id)) results)))
@@ -686,6 +728,8 @@
    observed
    'scope
    commands
+   'stage-limit
+   (if (equal? stage +inf.0) 'null stage)
    'full-invocations
    (hash-ref observed 'total 0)
    'full-case-total
@@ -871,6 +915,38 @@
   (check (hash-ref scoped 'mismatches) (list (hash 'id "b/emit")))
   (check (hash-ref scoped 'full-invocations) 3)
   (check (hash-ref scoped 'complete) #t)
+  (define staged
+    (blind-command-scope
+     (hash
+      'complete
+      #t
+      'total
+      4
+      'case-total
+      4
+      'results
+      (list
+       (hash 'id "kernel" 'case-id "kernel" 'command "check" 'stage 1 'pass #t)
+       (hash 'id "model" 'case-id "model" 'command "check" 'stage 2 'pass #f)
+       (hash 'id "projection" 'case-id "projection" 'command "check" 'stage 4 'pass #f)
+       (hash 'id "grammar" 'case-id "grammar" 'command "emit" 'stage 1 'pass #t))
+      'mismatches
+      (list (hash 'id "model") (hash 'id "projection")))
+     '("check" "emit")
+     #:stage
+     1))
+  (check (hash-ref staged 'total) 2)
+  (check (hash-ref staged 'failures) 0)
+  (check (hash-ref staged 'mismatches) '())
+  (check (map (lambda (item) (hash-ref item 'id)) (hash-ref staged 'results)) '("kernel" "grammar"))
+  (check (expected-stage (hash 'expected (hash 'diagnostics (list (hash 'code "E_JOIN_LAW"))))) 2)
+  (check
+   (expected-stage
+    (hash
+     'expected
+     (hash 'diagnostics (list (hash 'code "E_DECLARATION" 'data (hash 'kind "effect"))))))
+   2)
+  (check (expected-stage (hash 'expected (hash 'diagnostics (list (hash 'code "E_CLASS"))))) 1)
   (hash 'suite "blind-comparison" 'checks checks 'status "passed"))
 
 (module+ test-support (provide compare-observation missing missing-json))

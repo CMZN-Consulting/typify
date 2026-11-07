@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require racket/string "../src/language.rkt" "../src/diagnostics.rkt")
+(require racket/file racket/string "../src/main.rkt" "../src/language.rkt" "../src/diagnostics.rkt")
 
 (provide run-tests)
 
@@ -76,6 +76,60 @@
    (diagnostic-data-projection (diagnostic-code cap-error) (diagnostic-data cap-error))
    (hash 'cap "states" 'limit 4096 'actual 4097)
    "declared cap compares limit and attempted value")
+  (define directory (make-temporary-file "typify-declaration-order~a" 'directory))
+  (dynamic-wind
+   void
+   (lambda ()
+     (define declaration-path (build-path directory "broken.typify"))
+     (call-with-output-file
+      declaration-path
+      (lambda (output)
+        (display
+         "#lang typify\ndeclare : Demo\nversion : nope\ncap : states = zero\nend!\n"
+         output)))
+     (define missing-program (build-path directory "must-not-be-read.typify"))
+     (define items
+       (with-handlers
+        ((exn:fail:typify? exn:fail:typify-diagnostics))
+        (call-with-values
+         (lambda ()
+           (run-command
+            (list
+             "check"
+             (path->string declaration-path)
+             "Demo"
+             (path->string missing-program)
+             "--json")))
+         (lambda _ '()))))
+     (check
+      (map diagnostic-code items)
+      '("E_CLASS" "E_CLASS")
+      "failed declaration reports all errors without opening the missing program")
+     (check
+      (map (lambda (item) (src-span-start-line (diagnostic-range item))) items)
+      '(3 4)
+      "declaration diagnostics are sorted by source position"))
+   (lambda () (delete-directory/files directory)))
+  (define note
+    (make-diagnostic
+     "N_CLASS_EMPTY"
+     "Class language is empty"
+     #:severity
+     'note
+     #:span
+     (src-span "source.typify" 3 1 3 17 20 36)
+     #:data
+     (hash 'class "empty")))
+  (define notice-output (open-output-string))
+  (parameterize
+   ((current-error-port notice-output))
+   (display-diagnostics (list (diagnostic->jsexpr note))))
+  (check
+   (regexp-match?
+    #rx"note: Class language is empty.*N_CLASS_EMPTY"
+    (get-output-string notice-output))
+   #t
+   "successful text commands can display nonfatal notes")
   (hash 'suite "declaration-diagnostics" 'checks checks 'status "passed"))
 
 (module+ main (displayln (canonical-json (run-tests))))

@@ -11,7 +11,7 @@
          "language.rkt"
          "meta.rkt")
 
-(provide run-command render-bounds)
+(provide run-command render-bounds display-diagnostics)
 
 (define typify-version "1.0")
 
@@ -35,7 +35,32 @@
         (hash 'path (string-replace path "\\" "/"))))))
    (file->string path)))
 
-(define (load-declarations path) (read-declarations (read-source path) #:file path))
+(define (load-declarations/diagnostics path)
+  (define-values
+   (declarations diagnostics)
+   (read-declarations/diagnostics (read-source path) #:file path))
+  (raise-diagnostics diagnostics)
+  (values declarations diagnostics))
+
+(define (with-diagnostics result diagnostics)
+  (if (null? diagnostics)
+    result
+    (hash-set result 'diagnostics (map diagnostic->jsexpr diagnostics))))
+
+(define (display-diagnostics items)
+  (for
+   ((item (in-list items)))
+   (define span (hash-ref item 'range 'null))
+   (define start (if (hash? span) (hash-ref span 'start) (hash)))
+   (fprintf
+    (current-error-port)
+    "~a:~a:~a: ~a: ~a [~a]\n"
+    (hash-ref item 'file)
+    (hash-ref start 'line 0)
+    (hash-ref start 'column 0)
+    (hash-ref item 'severity)
+    (hash-ref item 'message)
+    (hash-ref item 'code))))
 
 (define (select-language declarations name)
   (hash-ref
@@ -142,7 +167,16 @@
   (when (and gbnf? (not (and (pair? positional) (equal? (car positional) "emit"))))
     (raise-typify "E_USAGE" "--gbnf is available only with emit" #:data (hash 'actual "--gbnf")))
   (define (checked-response checked (body #f))
-    (define response (hash 'ok #t 'terms (hash-ref checked 'terms '()) 'diagnostics '()))
+    (define diagnostics (hash-ref checked 'diagnostics '()))
+    (raise-diagnostics diagnostics)
+    (define response
+      (hash
+       'ok
+       #t
+       'terms
+       (hash-ref checked 'terms '())
+       'diagnostics
+       (map diagnostic->jsexpr diagnostics)))
     (if (and body (ormap constructor-rule (hash-values (language-constructors body))))
       (hash-set response 'bound (declaration-bound body))
       response))
@@ -151,17 +185,31 @@
      positional
      ((list "--version") (hash 'version typify-version))
      ((list "check" path)
-      (define declarations (load-declarations path))
-      (if bounds? (bounds-report (hash-values declarations)) (checked-response (hash))))
+      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+      (if bounds?
+        (with-diagnostics (bounds-report (hash-values declarations)) diagnostics)
+        (checked-response (hash 'diagnostics diagnostics))))
      ((list "check" path name program)
-      (define body (select-language (load-declarations path) name))
-      (define checked (check-program (read-source program) body #:file program))
-      (if bounds? (bounds-report (list body)) (checked-response checked body)))
+      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+      (define body (select-language declarations name))
+      (define checked (check-program/diagnostics (read-source program) body #:file program))
+      (define complete
+        (hash-set
+         checked
+         'diagnostics
+         (diagnostics-sort (append diagnostics (hash-ref checked 'diagnostics '())))))
+      (raise-diagnostics (hash-ref complete 'diagnostics))
+      (if bounds?
+        (with-diagnostics (bounds-report (list body)) (hash-ref complete 'diagnostics))
+        (checked-response complete body)))
      ((list "emit" "Typify")
       (if gbnf? (hash 'text (language->gbnf (meta-language))) (language->grammar (meta-language))))
      ((list "emit" path name)
-      (define body (select-language (load-declarations path) name))
-      (if gbnf? (hash 'text (language->gbnf body)) (language->grammar body)))
+      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+      (define body (select-language declarations name))
+      (with-diagnostics
+       (if gbnf? (hash 'text (language->gbnf body)) (language->grammar body))
+       diagnostics))
      (_
       (raise-typify
        "E_USAGE"
@@ -177,21 +225,28 @@
  (with-handlers
   ((exn:fail:typify?
     (lambda (error)
-      (define item (exn:fail:typify-diagnostic error))
+      (define items (exn:fail:typify-diagnostics error))
       (if json?
         (displayln
-         (canonical-json (hash 'ok #f 'terms '() 'diagnostics (list (diagnostic->jsexpr item)))))
-        (fprintf
-         (current-error-port)
-         "~a:~a:~a: ~a: ~a [~a]\n"
-         (diagnostic-file item)
-         (src-span-start-line (diagnostic-range item))
-         (src-span-start-column (diagnostic-range item))
-         (diagnostic-severity item)
-         (diagnostic-message item)
-         (diagnostic-code item)))
-      (exit (if (member (diagnostic-code item) '("E_USAGE" "E_FILE")) 2 1)))))
+         (canonical-json (hash 'ok #f 'terms '() 'diagnostics (map diagnostic->jsexpr items))))
+        (for
+         ((item (in-list items)))
+         (define span (diagnostic-range item))
+         (fprintf
+          (current-error-port)
+          "~a:~a:~a: ~a: ~a [~a]\n"
+          (diagnostic-file item)
+          (if span (src-span-start-line span) 0)
+          (if span (src-span-start-column span) 0)
+          (diagnostic-severity item)
+          (diagnostic-message item)
+          (diagnostic-code item))))
+      (exit
+       (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items)
+         2
+         1)))))
   (define-values (result json-output? grammar?) (run-command arguments))
+  (unless json-output? (display-diagnostics (hash-ref result 'diagnostics '())))
   (cond
    ((equal? arguments '("--version")) (displayln typify-version))
    ((and (member "--bounds" arguments) (not json-output?)) (display (render-bounds result)))

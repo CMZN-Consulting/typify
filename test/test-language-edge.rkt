@@ -224,7 +224,7 @@
     'recorded)
    #f
    "a manually constructed body does not inherit a checked declaration receipt")
-  (reject-declaration '("is : word = /[a-z]+/" "primitive : output : <word>") "E_CLASS_UNDECLARED")
+  (reject-declaration '("is : word = /[a-z]+/" "primitive : output : <word>") "E_DECLARATION")
   (reject-declaration
    '("is : a = \"x\" | \"y\""
      "is : b = \"y\" | \"z\""
@@ -311,12 +311,9 @@
   (define ordering
     (declaration-verdict
      (source '("primitive : earlier : missing-a" "primitive : later : missing-b"))))
+  (check (hash-ref ordering 'code "accepted") "E_DECLARATION" "stable constructor validation code")
   (check
-   (hash-ref ordering 'code "accepted")
-   "E_CLASS_UNDECLARED"
-   "stable constructor validation code")
-  (check
-   (hash-ref (hash-ref ordering 'data (hash)) 'class #f)
+   (hash-ref (hash-ref ordering 'data (hash)) 'actual #f)
    "missing-a"
    "first declared invalid constructor wins")
   (define path-lines
