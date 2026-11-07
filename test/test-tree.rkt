@@ -332,6 +332,78 @@
          (hash-ref child 'raw-terms)
          (hash-ref (car (hash-ref child 'skips)) 'args)))
       '("guarded" () (("act" "item")) ("/vaults/item")))
+     (write-file relative-root "C1/identity.data" "identify : Alpha\n")
+     (define capture-body
+       (string-append
+        "declare : Captured\ncap : length = 64\nis : area = /[0-9]+/\nis : word = /[A-Za-z]+/\n"
+        "primitive : identify : area word\neffect : identify = external\n"
+        "form : identify : <word>\ndoes : identify <area> <word>\n"
+        "file : C<area>/identity.data\nend!\n"))
+     (check
+      "file-template-captures-are-bound-in-does"
+      (lambda () (hash-ref (car (read-tree (declarations capture-body) relative-root)) 'terms))
+      '(("identify" "1" "Alpha")))
+     (check
+      "file-template-captures-reach-rule-right-sides-at-plan-time"
+      (lambda ()
+        (define source
+          (string-replace
+           capture-body
+           "form : identify : <word>\ndoes : identify <area> <word>"
+           (string-append
+            "term : announce : word\nrule : announce <entry> -> identify <area> <entry>\n"
+            "form : identify : <word>\ndoes : announce <word>")))
+        (define-values
+         (report events)
+         (plan-programs/details (read-tree (declarations source) relative-root)))
+        (map (lambda (event) (hash-ref event 'term)) events))
+      '(("identify" "1" "Alpha")))
+     (define inherited-root (build-path temporary "inheritance"))
+     (make-directory inherited-root)
+     (write-file inherited-root "root.data" "deny : Far\ndeny : FarLast\n")
+     (write-file inherited-root "nested/settings.data" "deny : Near\ndeny : NearLast\n")
+     (write-file inherited-root "nested/deep/use.data" "gather!\n")
+     (define (denials name file (guard ""))
+       (string-append
+        "declare : "
+        name
+        "\ncap : length = 64\nis : word = /[A-Za-z]+/\n"
+        "term : deny : word\nform : deny : <word>\ndoes : deny <word>\n"
+        guard
+        "\nfile : "
+        file
+        "\nend!\n"))
+     (define gather-body
+       (string-append
+        "declare : Gather\ncap : length = 64\nis : word = /[A-Za-z]+/\n"
+        "primitive : use : word\neffect : use = external\nterm : deny : word\nfact : deny\n"
+        "term : gather\nfuel : gather = 4\n"
+        "rule : gather -> (each <entry> in (inherited deny) use <entry>)\n"
+        "form : gather!\ndoes : gather\nfile : nested/deep/use.data\nend!\n"))
+     (define (inherited-programs (guard ""))
+       (read-tree
+        (declarations
+         (denials "Far" "root.data")
+         (denials "Near" "nested/settings.data" guard)
+         gather-body)
+        inherited-root
+        #:facts
+        (hash 'collector "typify 1.0" 'root "/" 'facts '())))
+     (check
+      "inherited-terms-preserve-nearest-program-and-own-line-order"
+      (lambda ()
+        (define-values (report events) (plan-programs/details (inherited-programs)))
+        (map (lambda (event) (hash-ref event 'term)) events))
+      '(("use" "Near") ("use" "NearLast") ("use" "Far") ("use" "FarLast")))
+     (check
+      "guarded-ancestor-terms-never-enter-inherited-lists"
+      (lambda ()
+        (define programs (inherited-programs "guard : deny = (exists /absent)"))
+        (define-values (report events) (plan-programs/details programs))
+        (list
+         (hash-ref (second programs) 'status)
+         (map (lambda (event) (hash-ref event 'term)) events)))
+      '("guarded" (("use" "Far") ("use" "FarLast"))))
      (unless (eq? (system-type 'os) 'windows)
        (define outside (build-path temporary "outside"))
        (make-directory outside)

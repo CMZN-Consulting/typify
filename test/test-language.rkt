@@ -185,7 +185,8 @@
      (reverse records))
     (reverse models))))
 
-(define (run-tests #:blind? (blind? #t))
+(define (run-tests #:blind? (blind? #t) #:stage (stage 1))
+  (blind-stage-commands stage)
   (define checks 0)
   (define (check actual expected)
     (set! checks (add1 checks))
@@ -391,7 +392,7 @@
      'mismatches
      '()))
   (define blind (if blind? (run-blind-corpus) deferred))
-  (define scoped-blind (if blind? (blind-command-scope blind '("check" "emit") #:stage 1) deferred))
+  (define scoped-blind (if blind? (blind-stage-scope blind stage) deferred))
   (define-values
    (blind-coverage blind-models)
    (if blind?
@@ -451,6 +452,8 @@
   (hash
    'suite
    "language"
+   'acceptance-stage
+   stage
    'count
    count
    'pass

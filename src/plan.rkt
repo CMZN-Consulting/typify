@@ -53,18 +53,21 @@
 
 (define (fact-callback data) (lambda (name arguments origin) (fact-query data name arguments)))
 
+(define (inherited-callback program)
+  (lambda (constructor origin)
+    (for*/list
+     ((record (in-list (hash-ref program 'enclosing '())))
+      #:unless
+      (equal? (hash-ref record 'status "present") "guarded")
+      (value (in-list (hash-ref record 'terms '())))
+      #:when
+      (and (equal? (car value) constructor) (pair? (cdr value))))
+     (cadr value))))
+
 (define (context-callback program)
   (lambda (constructor origin)
-    (define found
-      (for*/first
-       ((record (in-list (hash-ref program 'enclosing '())))
-        #:unless
-        (equal? (hash-ref record 'status "present") "guarded")
-        (value (in-list (hash-ref record 'terms '())))
-        #:when
-        (and (equal? (car value) constructor) (pair? (cdr value))))
-       (cadr value)))
-    (unless found
+    (define found ((inherited-callback program) constructor origin))
+    (when (null? found)
       (raise-typify
        "E_CONTEXT"
        "No enclosing program provides this constructor"
@@ -72,7 +75,7 @@
        (origin-span origin program (hash-ref program 'body))
        #:data
        (hash 'constructor constructor 'key "")))
-    found))
+    (car found)))
 
 (define (directory-depth program)
   (max
@@ -135,6 +138,10 @@
         (hash)
         #:context
         (context-callback program)
+        #:inherited
+        (inherited-callback program)
+        #:captures
+        (hash-ref program 'placeholders (hash))
         #:fact
         (fact-callback #f)
         #:origin
@@ -213,7 +220,8 @@
               (not
                (for/or
                 (((other-key other-entry) (in-hash entries)))
-                (and (path-ancestor? (car other-key) (car key))
+                (and (equal? (drop-right other-key 1) (drop-right key 1))
+                     (path-ancestor? (last other-key) (last key))
                      (> (hash-ref other-entry 'sequence) (hash-ref entry 'sequence))))))))
     (else (raise-argument-error 'state-query "bound, masked, visible or absent" name))))
 
@@ -280,7 +288,8 @@
        #:span
        (model-write-span write)
        #:data
-       (hash 'kind "conflict" 'actual (model-write-constructor write))))))
+       (hash 'kind "conflict" 'actual (model-write-constructor write))))
+    (model-check-stacking-write! model write (hash-ref widths (model-write-cell write)))))
   (values cells widths))
 
 (define (state->jsexpr state)
@@ -362,6 +371,10 @@
      path
      #:context
      (context-callback initial)
+     #:inherited
+     (inherited-callback initial)
+     #:captures
+     (hash-ref initial 'placeholders (hash))
      #:guard-resolver
      (lambda (raw-terms raw-origins) (program-resolver (hash-set initial 'terms raw-terms)))
      #:facts
@@ -441,6 +454,10 @@
         (hash-ref program 'origins '())
         #:context
         (context-callback program)
+        #:inherited
+        (inherited-callback program)
+        #:captures
+        (hash-ref program 'placeholders (hash))
         #:fact
         query-fact
         #:spans
@@ -500,6 +517,10 @@
          bindings
          #:context
          (context-callback program)
+         #:inherited
+         (inherited-callback program)
+         #:captures
+         (hash-ref program 'placeholders (hash))
          #:fact
          query-read
          #:origin
@@ -612,6 +633,10 @@
       (ensure-bindings clause)
       #:context
       (context-callback program)
+      #:inherited
+      (inherited-callback program)
+      #:captures
+      (hash-ref program 'placeholders (hash))
       #:fact
       query
       #:origin

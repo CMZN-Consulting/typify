@@ -14,6 +14,8 @@
 
 (provide run-blind-corpus
          blind-command-scope
+         blind-stage-commands
+         blind-stage-scope
          blind-case-inventory
          blind-declaration-inputs
          default-blind-root
@@ -266,39 +268,9 @@
     ((current-directory (hash-ref entry 'directory))
      (current-output-port output)
      (current-error-port errors))
-    (with-handlers
-     ((exn:fail:typify?
-       (lambda (error)
-         (define items (exn:fail:typify-diagnostics error))
-         (set! native (map diagnostic->jsexpr items))
-         (set! exit-code
-           (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items)
-             2
-             1))
-         (if (member "--json" arguments)
-           (displayln (canonical-json (hash 'ok #f 'terms '() 'diagnostics native)))
-           (for
-            ((item (in-list items)))
-            (define span (diagnostic-range item))
-            (fprintf
-             (current-error-port)
-             "~a:~a:~a: ~a: ~a [~a]\n"
-             (diagnostic-file item)
-             (if span (src-span-start-line span) 0)
-             (if span (src-span-start-column span) 0)
-             (diagnostic-severity item)
-             (diagnostic-message item)
-             (diagnostic-code item)))))))
-     (define-values (result json? gbnf?) (run-command arguments))
-     (set! native (if (hash? result) (hash-ref result 'diagnostics '()) '()))
-     (unless json? (display-diagnostics native))
-     (cond
-      ((equal? arguments '("--version")) (displayln (hash-ref result 'version)))
-      ((and (member "--bounds" arguments) (not json?)) (display (render-bounds result)))
-      ((and (pair? arguments) (equal? (car arguments) "check") (not json?)) (void))
-      ((and (hash? result) (hash-has-key? result 'text) (not json?))
-       (display (hash-ref result 'text)))
-      (else (displayln (canonical-json result)))))))
+    (define-values (status diagnostics) (execute-command arguments))
+    (set! exit-code status)
+    (set! native diagnostics)))
   (define stdout (get-output-string output))
   (define parsed
     (with-handlers
@@ -779,6 +751,15 @@
    'mismatches
    all-differences))
 
+(define (blind-stage-commands stage)
+  (case stage
+    ((1) '("check" "emit"))
+    ((2) '("check" "emit" "tree" "plan"))
+    (else (raise-argument-error 'blind-stage-commands "1 or 2" stage))))
+
+(define (blind-stage-scope observed stage)
+  (blind-command-scope observed (blind-stage-commands stage) #:stage stage))
+
 (define (blind-command-scope observed commands #:stage (stage +inf.0))
   (define results
     (filter
@@ -833,6 +814,46 @@
     (set! checks (add1 checks))
     (unless (equal? actual expected)
       (error 'blind-comparison "expected ~s, got ~s" expected actual)))
+  (define usage
+    (observe
+     (hash
+      'directory
+      (current-directory)
+      'expected
+      (hash 'invocation '("typify" "unknown-fixture" "--json")))))
+  (check (hash-ref usage 'infrastructure) #f)
+  (check (hash-ref usage 'exit_code) 2)
+  (check (hash-ref (hash-ref usage 'stdout_json) 'ok) #f)
+  (check (map (lambda (item) (hash-ref item 'code)) (hash-ref usage 'diagnostics)) '("E_USAGE"))
+  (define execution-root (make-temporary-file "cli-observation~a" 'directory))
+  (dynamic-wind
+   void
+   (lambda ()
+     (display-to-file
+      (string-append
+       "#lang typify\ndeclare : Failure\ncap : length = 64\n"
+       "primitive : put : canonical-path\ncell : entries = shadow\n"
+       "writes : put : entries = put 1\nensure : put : must-bind = (bound entries <1>)\n"
+       "form : put : <canonical-path>\ndoes : put <canonical-path>\nend!\n")
+      (build-path execution-root "declaration.typify"))
+     (display-to-file "put : /example\n" (build-path execution-root "program.data"))
+     (define refusal
+       (observe
+        (hash
+         'directory
+         execution-root
+         'expected
+         (hash
+          'invocation
+          '("typify" "plan" "declaration.typify" "Failure" "program.data" "--json")))))
+     (check (hash-ref refusal 'infrastructure) #f)
+     (check (hash-ref refusal 'exit_code) 1)
+     (check (hash-ref (hash-ref refusal 'stdout_json) 'status) "failed")
+     (check (length (hash-ref (hash-ref refusal 'stdout_json) 'plan)) 1)
+     (check
+      (map (lambda (item) (hash-ref item 'code)) (hash-ref refusal 'diagnostics))
+      '("E_ENSURE")))
+   (lambda () (delete-directory/files execution-root)))
   (define invocation '("typify" "check" "language.typify" "Sample" "program.typify" "--json"))
   (define diagnostic
     (hash
@@ -1005,6 +1026,31 @@
   (check (hash-ref staged 'failures) 0)
   (check (hash-ref staged 'mismatches) '())
   (check (map (lambda (item) (hash-ref item 'id)) (hash-ref staged 'results)) '("kernel" "grammar"))
+  (define second-stage
+    (blind-stage-scope
+     (hash
+      'complete
+      #t
+      'total
+      7
+      'case-total
+      7
+      'results
+      (for/list
+       ((id '("check" "emit" "tree" "plan" "ask" "later-plan" "later-check"))
+        (command '("check" "emit" "tree" "plan" "ask" "plan" "check"))
+        (stage '(1 1 2 2 3 3 4)))
+       (hash 'id id 'case-id id 'command command 'stage stage 'pass #t))
+      'mismatches
+      '())
+     2))
+  (check
+   (map (lambda (item) (hash-ref item 'id)) (hash-ref second-stage 'results))
+   '("check" "emit" "tree" "plan"))
+  (check (hash-ref second-stage 'stage-limit) 2)
+  (check (hash-ref second-stage 'scope) '("check" "emit" "tree" "plan"))
+  (check (hash-ref second-stage 'total) 4)
+  (check (with-handlers ((exn:fail? (lambda (_) #t))) (blind-stage-commands 3) #f) #t)
   (check (expected-stage (hash 'expected (hash 'diagnostics (list (hash 'code "E_JOIN_LAW"))))) 2)
   (check
    (expected-stage

@@ -16,6 +16,7 @@
          model-key-widths
          model-key-width
          model-check-notes
+         model-check-stacking-write!
          model-host-guards
          (struct-out compiled-model)
          (struct-out model-cell)
@@ -111,7 +112,7 @@
                 (not
                  (member
                   (term-constructor expression)
-                  '("parent" "join" "split" "ancestors" "concat" "context"))))
+                  '("parent" "join" "split" "ancestors" "concat" "context" "inherited"))))
            (ormap expression-needs-facts? (term-arguments expression)))))
 
 (define (model-needs-facts? model)
@@ -252,6 +253,33 @@
    ((capture? value) (hash 'capture (capture-name value)))
    ((literal? value) (literal-value value))
    (else value)))
+
+(define (check-stacking-key! cell write width classes constructors)
+  (when (and (model-cell-stacking? cell) (positive? width) (= (model-write-width write) width))
+    (define signature (hash-ref (hash-ref constructors (model-write-constructor write)) 'signature))
+    (define class-name (list-ref signature (sub1 width)))
+    (when (hash-has-key? classes class-name)
+      (define witness
+        (and (not (relative-path-role? classes class-name))
+             (class-difference-witness
+              (hash-ref classes class-name)
+              (hash-ref classes "canonical-path"))))
+      (when witness
+        (raise-typify
+         "E_KEY_CANONICAL"
+         "The last stacking key component is not canonical"
+         #:span
+         (model-write-span write)
+         #:data
+         (hash 'cell (model-cell-name cell) 'class class-name 'witness witness))))))
+
+(define (model-check-stacking-write! model write width)
+  (check-stacking-key!
+   (hash-ref (compiled-model-cells model) (model-write-cell write))
+   write
+   width
+   (compiled-model-classes model)
+   (compiled-model-constructors model)))
 
 (define (compile-model rows constructors classes span #:on-error (on-error #f))
   (unless (or (not on-error) (and (procedure? on-error) (procedure-arity-includes? on-error 1)))
@@ -535,33 +563,11 @@
           "A delete prefix is wider than its cell key"
           (model-write-span write)))
        (when (model-cell-stacking? cell)
-         (unless (or
-                  (and (eq? (model-write-operation write) 'delete)
-                       (zero? (model-write-width write)))
-                  (= (model-write-width write) 1))
-           (decl-fail
-            "arity"
-            name
-            "A stacking key has exactly one path argument"
-            (model-write-span write)))
-         (for
-          ((class-name
-            (in-list
-             (take (hash-ref (hash-ref constructors name) 'signature) (model-write-width write)))))
-          (define witness
-            (and (hash-has-key? classes class-name)
-                 (and (not (relative-path-role? classes class-name))
-                      (class-difference-witness
-                       (hash-ref classes class-name)
-                       (hash-ref classes "canonical-path")))))
-          (when witness
-            (raise-typify
-             "E_KEY_CANONICAL"
-             "A stacking key class is not canonical"
-             #:span
-             (model-write-span write)
-             #:data
-             (hash 'cell (model-cell-name cell) 'class class-name 'witness witness)))))
+         (define width
+           (if (eq? (model-write-operation write) 'put)
+             (model-write-width write)
+             (hash-ref key-widths (model-write-cell write) #f)))
+         (when width (check-stacking-key! cell write width classes constructors)))
        (when (and (eq? (model-cell-law cell) 'join) (eq? (model-write-operation write) 'put))
          (define signature (hash-ref (hash-ref constructors name) 'signature))
          (unless (= (- (length signature) (model-write-width write)) 1)

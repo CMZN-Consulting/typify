@@ -82,9 +82,18 @@
      #f
      'result
      (cond
-      ((equal? name "test/test-language.rkt") (hash 'blind-full-baseline baseline 'gates (hash)))
+      ((equal? name "test/test-language.rkt")
+       (hash 'acceptance-stage 1 'blind-full-baseline baseline 'gates (hash)))
       ((equal? name "test/test-meta-mutation.rkt")
-       (hash 'blind-full-baseline baseline 'blind-baseline scoped 'gates (hash)))
+       (hash
+        'acceptance-stage
+        1
+        'blind-full-baseline
+        baseline
+        'blind-baseline
+        scoped
+        'gates
+        (hash)))
       (else (hash 'gates (hash))))))
   (define (with-tests report tests)
     (hash-set
@@ -109,6 +118,8 @@
       "typify-ci-v1"
       'source-revision
       revision
+      'acceptance-stage
+      1
       'suite-group
       group
       'report-complete
@@ -137,7 +148,29 @@
       (lambda (output) (write-json value output))
       #:exists
       'truncate/replace)))
-  (define (aggregate reports) (write-reports reports) (apply run-stage1-aggregate paths))
+  (define (aggregate reports #:stage (stage 1))
+    (write-reports reports)
+    (keyword-apply run-stage-aggregate '(#:stage) (list stage) paths))
+  (define (at-stage report stage)
+    (with-tests
+     (hash-set report 'acceptance-stage stage)
+     (for/list
+      ((test (in-list (hash-ref (hash-ref report 'kernel) 'tests))))
+      (define result (hash-ref test 'result))
+      (hash-set
+       test
+       'result
+       (cond
+        ((equal? (hash-ref test 'name) "test/test-language.rkt")
+         (hash-set result 'acceptance-stage stage))
+        ((equal? (hash-ref test 'name) "test/test-meta-mutation.rkt")
+         (hash-set*
+          result
+          'acceptance-stage
+          stage
+          'blind-baseline
+          (blind-stage-scope (hash-ref result 'blind-full-baseline) stage)))
+        (else result))))))
   (dynamic-wind
    void
    (lambda ()
@@ -152,6 +185,137 @@
       (hash-ref (hash-ref matched 'execution) 'count)
       (+ (length (group-modules "kernel")) 2)
       "all actually executed reported checks retain their count")
+     (define stage-two (map (lambda (report) (at-stage report 2)) (list kernel language mutation)))
+     (define second (aggregate stage-two #:stage 2))
+     (check (hash-ref second 'acceptance-stage) 2 "stage is explicit in acceptance report")
+     (check
+      (hash-has-key? second 'stage1)
+      #f
+      "stage two does not relabel the accepted stage-one result")
+     (check
+      (hash-ref (hash-ref second 'replay-validation) 'pass)
+      #t
+      "matching stage-two baselines remain valid observations")
+     (check
+      (hash-ref (hash-ref second 'stage2) 'pass)
+      #f
+      "complete replay without stage-two measurement gates cannot pass acceptance")
+     (check
+      (map
+       (lambda (gate) (hash-ref gate 'name))
+       (filter
+        (lambda (gate)
+          (member
+           (hash-ref gate 'name)
+           '("house-mount-state"
+             "house-primitive-audit"
+             "house-rule-mutation"
+             "plan-state-bounds"
+             "facts-collector-agreement")))
+        (hash-ref (hash-ref second 'stage2) 'gates)))
+      '("house-mount-state"
+        "house-primitive-audit"
+        "house-rule-mutation"
+        "plan-state-bounds"
+        "facts-collector-agreement")
+      "stage two requires all five new gates beyond the original fourteen")
+     (check
+      (refuses? (lambda () (aggregate (list kernel (cadr stage-two) (caddr stage-two)) #:stage 2)))
+      #t
+      "reports from different acceptance stages cannot be combined")
+     (check
+      (refuses? (lambda () (aggregate stage-two)))
+      #t
+      "default stage one cannot consume stage-two reports")
+     (check (refuses? (lambda () (gate-names 3))) #t "unsupported acceptance stages are refused")
+     (define bounds
+       (hash
+        'total
+        10000
+        'distinct-declarations
+        10000
+        'failures
+        0
+        'plan-violations
+        0
+        'state-violations
+        0
+        'canary-found
+        #t
+        'complete
+        #t))
+     (check
+      (gate-valid? 'plan-state-bounds bounds)
+      #t
+      "bounds evidence has all required measured fields")
+     (check
+      (gate-valid? 'plan-state-bounds (hash-remove bounds 'canary-found))
+      #f
+      "a missing bounds canary cannot pass")
+     (check
+      (gate-valid? 'plan-state-bounds (hash-set bounds 'complete #f))
+      #f
+      "partial generated coverage cannot pass")
+     (check
+      (gate-valid? 'plan-state-bounds (hash-set* bounds 'total 9999 'distinct-declarations 9999))
+      #f
+      "fewer than ten thousand declarations cannot pass")
+     (define rule-mutation
+       (hash
+        'total
+        10
+        'failures
+        0
+        'seeded
+        10
+        'killed
+        9
+        'registered
+        #t
+        'complete
+        #t
+        'baseline-valid
+        #t))
+     (check
+      (gate-valid? 'house-rule-mutation rule-mutation)
+      #t
+      "rule mutation accepts ninety percent")
+     (check
+      (gate-valid? 'house-rule-mutation (hash-set rule-mutation 'killed 8))
+      #f
+      "rule mutation below ninety percent is refused")
+     (check
+      (gate-valid? 'house-rule-mutation (hash-set rule-mutation 'baseline-valid #f))
+      #f
+      "invalid baseline never validates rule mutation")
+     (check
+      (gate-valid?
+       'house-mount-state
+       (hash 'total 17 'failures 0 'seats 17 'mismatches 0 'independent-observations #f))
+      #f
+      "mount states require independent observations")
+     (check
+      (gate-valid?
+       'house-primitive-audit
+       (hash
+        'total
+        16
+        'failures
+        0
+        'effect-forms
+        16
+        'primitives
+        17
+        'form-specific-except-keygen
+        0
+        'deriving-effects
+        0))
+      #f
+      "an audit cannot exceed sixteen primitives")
+     (check
+      (gate-valid? 'facts-collector-agreement (hash 'total 1 'failures 0 'independent #f))
+      #f
+      "facts agreement must use an independent collector")
      (delete-file (caddr paths))
      (check
       (refuses? (lambda () (apply run-stage1-aggregate paths)))
@@ -272,7 +436,7 @@
            (hash-set
             (car (hash-ref (hash-ref language 'kernel) 'tests))
             'result
-            (hash 'blind-full-baseline changed 'gates (hash)))))
+            (hash 'acceptance-stage 1 'blind-full-baseline changed 'gates (hash)))))
          (mutation-with-result
           (hash-set*
            mutation-result

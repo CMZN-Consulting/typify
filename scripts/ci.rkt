@@ -13,7 +13,7 @@
          "format.rkt"
          "leak-check.rkt")
 
-(provide run-kernel-check run-stage1-aggregate)
+(provide run-kernel-check run-stage1-aggregate run-stage-aggregate)
 
 (define test-modules
   '("test/smoke.rkt"
@@ -37,6 +37,7 @@
     "test/test-bounds.rkt"
     "test/test-rules.rkt"
     "test/test-plan.rkt"
+    "test/test-plan-generated.rkt"
     "test/test-model-rulings.rkt"
     "test/test-tree.rkt"
     "test/test-facts.rkt"
@@ -59,7 +60,7 @@
    ((equal? group "mutation") (list mutation-module))
    (else (raise-argument-error 'group-modules "all, kernel, language or mutation" group))))
 
-(define gate-names
+(define stage-one-gate-names
   '(blind-verdict
     structural-round-trip
     decoder-differential
@@ -74,6 +75,23 @@
     worked-example-classes
     emission-contract
     meta-selfcheck))
+
+(define stage-two-gate-names
+  '(house-mount-state
+    house-primitive-audit
+    house-rule-mutation
+    plan-state-bounds
+    facts-collector-agreement))
+
+(define (acceptance-stage? stage) (and (exact-integer? stage) (member stage '(1 2)) #t))
+
+(define (stage-key stage)
+  (unless (acceptance-stage? stage) (raise-argument-error 'stage-key "1 or 2" stage))
+  (if (= stage 1) 'stage1 'stage2))
+
+(define (gate-names stage)
+  (stage-key stage)
+  (append stage-one-gate-names (if (= stage 2) stage-two-gate-names '())))
 
 (define (field data key (default #f))
   (if (hash? data)
@@ -141,7 +159,7 @@
    ((or (string? value) (boolean? value) (real? value)) value)
    (else (format "~a" value))))
 
-(define (run-test root name #:blind? (blind? #t))
+(define (run-test root name #:blind? (blind? #t) #:stage (stage 1))
   (fprintf (current-error-port) "Running ~a\n" name)
   (define output (open-output-string))
   (define errors (open-output-string))
@@ -182,7 +200,7 @@
       ((current-output-port output) (current-error-port errors))
       (define runner (dynamic-require (build-path root name) 'run-tests))
       (if (member name '("test/test-language.rkt" "test/test-meta-mutation.rkt"))
-        (runner #:blind? blind?)
+        (runner #:blind? blind? #:stage stage)
         (runner))))
    (define check-style?
      (and (positive? (field result 'checks)) (member (field result 'status) '("passed" passed))))
@@ -288,15 +306,46 @@
           (and (eq? (field evidence 'term-normalization) #t)
                (equal? (field evidence 'exemptions) 0)
                (positive? (field evidence 'primitive-count))))
+         ((house-mount-state)
+          (and (= total 17)
+               (equal? (field evidence 'seats) 17)
+               (equal? (field evidence 'mismatches) 0)
+               (eq? (field evidence 'independent-observations) #t)))
+         ((house-primitive-audit)
+          (and (equal? (field evidence 'effect-forms) 16)
+               (positive? (field evidence 'primitives))
+               (<= (field evidence 'primitives) 16)
+               (equal? (field evidence 'form-specific-except-keygen) 0)
+               (equal? (field evidence 'deriving-effects) 0)))
+         ((house-rule-mutation)
+          (define seeded (field evidence 'seeded))
+          (define killed (field evidence 'killed))
+          (and (eq? (field evidence 'registered) #t)
+               (eq? (field evidence 'complete) #t)
+               (eq? (field evidence 'baseline-valid) #t)
+               (positive? seeded)
+               (natural? killed)
+               (<= killed seeded)
+               (>= (* killed 100) (* seeded 90))))
+         ((plan-state-bounds)
+          (and (eq? (field evidence 'complete) #t)
+               (natural? (field evidence 'distinct-declarations))
+               (>= (field evidence 'distinct-declarations) 10000)
+               (= total (field evidence 'distinct-declarations))
+               (equal? (field evidence 'plan-violations) 0)
+               (equal? (field evidence 'state-violations) 0)
+               (eq? (field evidence 'canary-found) #t)))
+         ((facts-collector-agreement) (eq? (field evidence 'independent) #t))
          (else #t))))
 
-(define (measure-gates tests)
+(define (measure-gates tests #:stage (stage 1))
   (for/list
-   ((name gate-names))
+   ((name (in-list (gate-names stage))))
+   (define evidence-name (if (eq? name 'facts-collector-agreement) 'facts-collector name))
    (define supplied
      (for/list
-      ((test tests) #:when (field (field (field test 'result) 'gates) name))
-      (cons (field test 'name) (field (field (field test 'result) 'gates) name))))
+      ((test tests) #:when (field (field (field test 'result) 'gates) evidence-name))
+      (cons (field test 'name) (field (field (field test 'result) 'gates) evidence-name))))
    (cond
     ((null? supplied) (hasheq 'name (symbol->string name) 'pass #f 'status "missing-evidence"))
     ((pair? (cdr supplied))
@@ -364,7 +413,10 @@
          #:blind?
          (blind? #t)
          #:group
-         (group "all"))
+         (group "all")
+         #:stage
+         (stage 1))
+  (define acceptance-key (stage-key stage))
   (define modules (group-modules group))
   (when (and (equal? group "kernel") blind?)
     (raise-arguments-error 'run-kernel-check "the kernel group requires --defer-blind"))
@@ -382,6 +434,8 @@
             "typify-ci-v1"
             'source-revision
             (or (getenv "GITHUB_SHA") 'null)
+            'acceptance-stage
+            stage
             'suite-group
             group
             'report-complete
@@ -394,7 +448,7 @@
             phase
             'kernel
             (hasheq 'pass #f 'tests completed)
-            'stage1
+            acceptance-key
             (hasheq 'pass #f 'status "measurement-incomplete")))
           output)
          (newline output))
@@ -404,14 +458,14 @@
     (for/list
      ((name modules))
      (save-progress name)
-     (define result (run-test root name #:blind? blind?))
+     (define result (run-test root name #:blind? blind? #:stage stage))
      (set! completed (append completed (list result)))
      (save-progress "between-suites")
      result))
   (define formatting (format-repository root))
   (define publication (check-repository root))
   (define package (package-metadata root))
-  (define gates (measure-gates tests))
+  (define gates (measure-gates tests #:stage stage))
   (define runtime
     (hasheq
      'version
@@ -434,6 +488,8 @@
     "typify-ci-v1"
     'source-revision
     (or (getenv "GITHUB_SHA") 'null)
+    'acceptance-stage
+    stage
     'suite-group
     group
     'report-complete
@@ -466,7 +522,7 @@
      (length aborted-suites)
      'aborted-suites
      aborted-suites)
-    'stage1
+    acceptance-key
     (hasheq
      'pass
      (and blind? kernel-pass? (andmap (lambda (gate) (hash-ref gate 'pass)) gates))
@@ -476,6 +532,10 @@
      gates))))
 
 (define (run-stage1-aggregate kernel-path language-path mutation-path)
+  (run-stage-aggregate kernel-path language-path mutation-path #:stage 1))
+
+(define (run-stage-aggregate kernel-path language-path mutation-path #:stage (stage 1))
+  (define acceptance-key (stage-key stage))
   (define reports
     (for/list
      ((path (in-list (list kernel-path language-path mutation-path))))
@@ -497,6 +557,7 @@
             (eq? (field report 'report-complete) #t)
             (equal? (field report 'suite-group) group)
             (equal? (field report 'source-revision) revision)
+            (equal? (field report 'acceptance-stage) stage)
             (equal? (field report 'blind-deferred) (equal? group "kernel"))
             (equal?
              (field report 'measurement-mode)
@@ -508,6 +569,8 @@
             (for/and
              ((test (in-list tests)))
              (and (boolean? (field test 'pass))
+                  (or (not (member (field test 'name) (list language-module mutation-module)))
+                      (equal? (field (field test 'result) 'acceptance-stage) stage))
                   (natural? (field test 'count))
                   (natural? (field test 'passed))
                   (natural? (field test 'failed))
@@ -537,9 +600,8 @@
   (define language-baseline (field language-result 'blind-full-baseline))
   (define mutation-baseline (field mutation-result 'blind-full-baseline))
   (define mutation-scoped (field mutation-result 'blind-baseline))
-  (define scope (dynamic-require blind-runner-path 'blind-command-scope))
-  (define language-scoped
-    (and (hash? language-baseline) (scope language-baseline '("check" "emit") #:stage 1)))
+  (define scope (dynamic-require blind-runner-path 'blind-stage-scope))
+  (define language-scoped (and (hash? language-baseline) (scope language-baseline stage)))
   (define baselines-present?
     (and (hash? language-baseline)
          (hash? mutation-baseline)
@@ -563,7 +625,7 @@
       (field (field kernel-report 'kernel) 'tests))
      (field (field (cadr reports) 'kernel) 'tests)
      (field (field (caddr reports) 'kernel) 'tests)))
-  (define gates (measure-gates selected-tests))
+  (define gates (measure-gates selected-tests #:stage stage))
   (define reports-pass?
     (for/and
      ((report (in-list reports)))
@@ -592,6 +654,8 @@
     "typify-ci-v1"
     'source-revision
     revision
+    'acceptance-stage
+    stage
     'suite-group
     "aggregate"
     'report-complete
@@ -653,7 +717,7 @@
      (total 'failed)
      'scope
      "All reported checks across the internal job and both replay jobs; repeated internal checks are included. The kernel test list uses replay results for language and mutation gate evidence.")
-    'stage1
+    acceptance-key
     (hash
      'pass
      (and reports-pass? (andmap (lambda (gate) (field gate 'pass)) gates))
@@ -662,33 +726,45 @@
      'gates
      gates))))
 
-(module+ test-support (provide group-modules baseline-complete?))
+(module+ test-support (provide group-modules baseline-complete? gate-valid? gate-names stage-key))
 
 (module+
  main
  (define arguments (vector->list (current-command-line-arguments)))
  (define (usage)
    (displayln
-    "usage: racket scripts/ci.rkt [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--output FILE]"
+    "usage: racket scripts/ci.rkt [--stage 1|2] [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--stage 1|2] [--output FILE]"
     (current-error-port))
    (exit 2))
  (define-values
-  (output-path blind? group aggregate-paths)
-  (let loop ((remaining arguments) (output #f) (blind? #t) (group "all") (aggregate-paths #f))
+  (output-path blind? group aggregate-paths stage)
+  (let loop ((remaining arguments)
+             (output #f)
+             (blind? #t)
+             (group "all")
+             (aggregate-paths #f)
+             (stage #f))
     (match
      remaining
      ('()
       (when (and aggregate-paths (or (not blind?) (not (equal? group "all")))) (usage))
-      (values output blind? group aggregate-paths))
-     ((list* "--defer-blind" rest) (if blind? (loop rest output #f group aggregate-paths) (usage)))
+      (values output blind? group aggregate-paths (or stage 1)))
+     ((list* "--defer-blind" rest)
+      (if blind? (loop rest output #f group aggregate-paths stage) (usage)))
+     ((list* "--stage" value rest)
+      (if (and (not stage) (member value '("1" "2")))
+        (loop rest output blind? group aggregate-paths (if (equal? value "1") 1 2))
+        (usage)))
      ((list* "--group" name rest)
       (if (and (equal? group "all") (member name '("all" "kernel" "language" "mutation")))
-        (loop rest output blind? name aggregate-paths)
+        (loop rest output blind? name aggregate-paths stage)
         (usage)))
      ((list* "--aggregate" kernel language mutation rest)
-      (if aggregate-paths (usage) (loop rest output blind? group (list kernel language mutation))))
+      (if aggregate-paths
+        (usage)
+        (loop rest output blind? group (list kernel language mutation) stage)))
      ((list* "--output" path rest)
-      (if output (usage) (loop rest path blind? group aggregate-paths)))
+      (if output (usage) (loop rest path blind? group aggregate-paths stage)))
      (_ (usage)))))
  (define result
    (with-handlers
@@ -697,17 +773,19 @@
         (hasheq
          'schema
          "typify-ci-v1"
+         'acceptance-stage
+         stage
          'kernel
          (hasheq 'pass #f 'error (exn-message error))
-         'stage1
+         (stage-key stage)
          (hasheq
           'pass
           #f
           'status
           (if aggregate-paths "evidence-unavailable" "kernel-unavailable"))))))
     (if aggregate-paths
-      (apply run-stage1-aggregate aggregate-paths)
-      (run-kernel-check #:checkpoint output-path #:blind? blind? #:group group))))
+      (keyword-apply run-stage-aggregate '(#:stage) (list stage) aggregate-paths)
+      (run-kernel-check #:checkpoint output-path #:blind? blind? #:group group #:stage stage))))
  (when output-path
    (call-with-output-file
     output-path
@@ -716,4 +794,4 @@
     'truncate/replace))
  (write-json result)
  (newline)
- (exit (if (field (field result (if aggregate-paths 'stage1 'kernel)) 'pass) 0 1)))
+ (exit (if (field (field result (if aggregate-paths (stage-key stage) 'kernel)) 'pass) 0 1)))

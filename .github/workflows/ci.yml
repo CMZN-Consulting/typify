@@ -10,6 +10,7 @@ permissions:
 
 env:
   TYPIFY_BLIND_MODE: deferred
+  TYPIFY_ACCEPTANCE_STAGE: "2"
   TYPIFY_GBNF_VALIDATOR_REVISION: fd27b2034905f8dadd8bd6d2cc44595f4929d391
 
 jobs:
@@ -28,7 +29,7 @@ jobs:
             deferred|full) printf 'mode=%s\n' "$TYPIFY_BLIND_MODE" >> "$GITHUB_OUTPUT" ;;
             *) printf 'Unknown frozen replay mode\n' >&2; exit 2 ;;
           esac
-          printf 'Frozen corpus replay: %s. Deferred mode does not claim stage-one acceptance.\n' "$TYPIFY_BLIND_MODE" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Frozen corpus replay: %s. Deferred mode does not claim acceptance.\n' "$TYPIFY_BLIND_MODE" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
@@ -65,7 +66,7 @@ jobs:
           cmake --build "$RUNNER_TEMP/decoder-build" --target test-gbnf-validator --parallel 4
           printf 'TYPIFY_GBNF_VALIDATOR=%s\n' "$RUNNER_TEMP/decoder-build/bin/test-gbnf-validator" >> "$GITHUB_ENV"
       - name: Measure internal kernel checks without frozen corpus replay
-        run: racket scripts/ci.rkt --group kernel --defer-blind --output "${{ runner.temp }}/kernel-check.json"
+        run: racket scripts/ci.rkt --group kernel --stage "$TYPIFY_ACCEPTANCE_STAGE" --defer-blind --output "${{ runner.temp }}/kernel-check.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -97,7 +98,7 @@ jobs:
           sh "$RUNNER_TEMP/racket-installer.sh" --create-dir --in-place --dest "$RUNNER_TEMP/racket"
           printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
       - name: Replay language verdicts, declarations and witnesses
-        run: racket scripts/ci.rkt --group language --output "${{ runner.temp }}/language-replay.json"
+        run: racket scripts/ci.rkt --group language --stage "$TYPIFY_ACCEPTANCE_STAGE" --output "${{ runner.temp }}/language-replay.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -129,7 +130,7 @@ jobs:
           sh "$RUNNER_TEMP/racket-installer.sh" --create-dir --in-place --dest "$RUNNER_TEMP/racket"
           printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
       - name: Replay the unchanged mutation operator set and independent oracles
-        run: racket scripts/ci.rkt --group mutation --output "${{ runner.temp }}/mutation-replay.json"
+        run: racket scripts/ci.rkt --group mutation --stage "$TYPIFY_ACCEPTANCE_STAGE" --output "${{ runner.temp }}/mutation-replay.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -138,8 +139,8 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  stage1:
-    name: Stage one acceptance
+  acceptance:
+    name: Acceptance
     needs: [kernel, language-replay, mutation-replay]
     if: ${{ always() && needs.kernel.outputs.blind-mode == 'full' }}
     runs-on: ubuntu-22.04
@@ -172,18 +173,18 @@ jobs:
         with:
           name: mutation-replay
           path: ${{ runner.temp }}/evidence/mutation
-      - name: Require complete evidence and every registered stage-one gate
+      - name: Require complete evidence and every registered gate for the selected stage
         if: always()
         run: |
-          racket scripts/ci.rkt --aggregate \
+          racket scripts/ci.rkt --stage "$TYPIFY_ACCEPTANCE_STAGE" --aggregate \
             "${{ runner.temp }}/evidence/kernel/kernel-check.json" \
             "${{ runner.temp }}/evidence/language/language-replay.json" \
             "${{ runner.temp }}/evidence/mutation/mutation-replay.json" \
-            --output "${{ runner.temp }}/stage1-acceptance.json"
+            --output "${{ runner.temp }}/acceptance.json"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: stage1-acceptance
-          path: ${{ runner.temp }}/stage1-acceptance.json
+          name: acceptance
+          path: ${{ runner.temp }}/acceptance.json
           if-no-files-found: error
           retention-days: 30

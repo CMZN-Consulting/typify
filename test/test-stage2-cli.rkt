@@ -24,7 +24,7 @@
      "writes : store : entries = put 1"
      "primitive : clear : canonical-path"
      "writes : clear : entries = delete 1"
-     "form : store : <canonical-path> = <payload>"
+     "form : store : <payload> = <canonical-path>"
      "does : store <canonical-path> <payload>"
      "form : clear : <canonical-path>"
      "does : clear <canonical-path>"
@@ -71,7 +71,7 @@
        (display-to-file text declarations #:exists 'truncate/replace))
      (define (write-program text) (display-to-file text program #:exists 'truncate/replace))
      (write-declaration declaration)
-     (write-program "store : /sample = blue")
+     (write-program "store : blue = /sample")
      (define good-arguments (list "plan" declarations "Records" program))
      (define good (request good-arguments))
      (check (hash-ref good 'status) "ok" "fully modelled plan status")
@@ -82,8 +82,9 @@
       good
       "an unused explicit facts file is not opened")
      (check (hash-ref (car (hash-ref good 'ensure)) 'ok) #t "successful ensure is retained")
-     (write-program "store : /sample = blue\nclear : /sample")
+     (write-program "store : blue = /sample\nclear : /sample")
      (define failed (request good-arguments))
+     (check (hash-ref failed 'status) "failed" "an error diagnostic fails the plan status")
      (check
       (hash-ref failed 'plan)
       '(("store" "/sample" "blue") ("clear" "/sample"))
@@ -103,7 +104,7 @@
       (hash-has-key? (string->jsexpr (hash-ref failed-execution 'stdout)) 'state)
       #t
       "failed JSON invocation retains the state wire")
-     (write-program "store : /sample = blue")
+     (write-program "store : blue = /sample")
      (write-declaration (string-replace declaration "end!" "file : data.typify\nend!"))
      (define tree (request (list "tree" declarations (path->string root) "--facts" absent)))
      (check (hash-ref tree 'ok) #t "tree has an ok field")

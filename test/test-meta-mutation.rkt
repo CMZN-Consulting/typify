@@ -396,7 +396,8 @@
 
 (define (field data name (default #f)) (if (hash? data) (hash-ref data name default) default))
 
-(define (run-tests #:blind? (blind? #t))
+(define (run-tests #:blind? (blind? #t) #:stage (stage 1))
+  (blind-stage-commands stage)
   (define forms (current-meta-forms))
   (define classes (current-meta-classes))
   (define baseline (map evaluate-oracle internal-oracles))
@@ -420,8 +421,7 @@
      'mismatches
      '()))
   (define blind-full-baseline (if blind? (blind-oracle) deferred))
-  (define blind-baseline
-    (if blind? (blind-command-scope blind-full-baseline '("check" "emit") #:stage 1) deferred))
+  (define blind-baseline (if blind? (blind-stage-scope blind-full-baseline stage) deferred))
   (define blind-baseline-results (field blind-baseline 'results '()))
   (define blind-baseline-shape?
     (and (for/and
@@ -604,6 +604,8 @@
   (hasheq
    'suite
    "meta-mutation"
+   'acceptance-stage
+   stage
    'count
    checks
    'pass
@@ -628,7 +630,10 @@
    "One application of each registered operator at every eligible field of the current immutable meta table and class sources; no equivalent-mutant filtering."
    'blind-algorithm
    (if blind?
-     "Run the frozen baseline first; only baseline-passing stage-one check/emit invocation IDs are eligible. For each registered mutation, stop at its first newly failing eligible blind invocation; otherwise run the independent internal oracles until their first failure. A non-clean blind baseline invalidates the overall gate, and baseline-failing invocations never kill mutants. Roundtrip and witness laws are excluded."
+     (format
+      "Run the frozen baseline first; only baseline-passing invocation IDs of commands ~s at stage <= ~a are eligible. For each registered mutation, stop at its first newly failing eligible blind invocation; otherwise run the independent internal oracles until their first failure. A non-clean scoped blind baseline invalidates the overall gate, and baseline-failing invocations never kill mutants. Roundtrip and witness laws are excluded."
+      (blind-stage-commands stage)
+      stage)
      "Blind evidence is deferred without opening or executing frozen cases. Run every registered mutation against the independent internal oracles until its first failure. Internal results do not satisfy the blind-dependent acceptance gate. Roundtrip and witness laws are excluded.")
    'measurements
    measurements))

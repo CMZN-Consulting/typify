@@ -653,7 +653,9 @@
         'class
         "string"
         'actual
-        (if (member (term-constructor expression) '("split" "ancestors")) "list" "predicate"))))
+        (if (member (term-constructor expression) '("split" "ancestors" "inherited"))
+          "list"
+          "predicate"))))
     (validate-term! expression constructors classes captures upper #:record-check record-check))
    (else
     (declaration-fail
@@ -692,11 +694,6 @@
        (if (pair? args) (term-data (car args)) "")
        "The state predicate names no declared cell"
        (term-span expression))))
-  (when (and
-         (member name state-predicate-names)
-         (model-cell-stacking? (hash-ref (compiled-model-cells model) (literal-value (car args))))
-         (not (= (length args) 2)))
-    (expression-arity-fail expression "cell canonical-path"))
   (when (member name state-predicate-names)
     (define width (model-key-width model (literal-value (car args))))
     (when (and width (not (= (length args) (add1 width))))
@@ -716,11 +713,13 @@
     name)))
 
 (define (validate-list-expression! expression constructors classes captures upper record-check)
-  (unless (and (term? expression) (member (term-constructor expression) '("split" "ancestors")))
+  (unless (and
+           (term? expression)
+           (member (term-constructor expression) '("split" "ancestors" "inherited")))
     (declaration-fail
      "syntax"
      (term-data expression)
-     "A list source must be split or ancestors"
+     "A list source must be split, ancestors or inherited"
      (cond
       ((term? expression) (term-span expression))
       ((literal? expression) (literal-span expression))
@@ -729,6 +728,8 @@
          (member (term-constructor expression) '("split" "ancestors"))
          (not (= (length (term-arguments expression)) 1)))
     (expression-arity-fail expression "canonical-path"))
+  (when (equal? (term-constructor expression) "inherited")
+    (validate-term! expression constructors classes captures upper #:record-check record-check))
   (for
    ((argument (in-list (term-arguments expression))))
    (validate-string-expression!
@@ -1031,6 +1032,40 @@
          "The referenced language is not declared"
          (row-span row)
          (hash 'kind "reference" 'actual name))))))
+  (define declared-constructors
+    (for*/hash
+     ((body (in-list ordered-bodies)) (name (in-list (hash-keys (language-constructors body)))))
+     (values name #t)))
+  (define (check-lookups expression)
+    (when (term? expression)
+      (when (and
+             (member (term-constructor expression) '("context" "inherited"))
+             (= (length (term-arguments expression)) 1)
+             (literal? (car (term-arguments expression))))
+        (define name (literal-value (car (term-arguments expression))))
+        (unless (hash-has-key? declared-constructors name)
+          (recover
+           (lambda ()
+             (declaration-fail
+              "reference"
+              name
+              "The lookup names no declared constructor"
+              (term-span expression))))))
+      (for-each check-lookups (term-arguments expression))))
+  (for
+   ((body (in-list ordered-bodies)))
+   (for ((candidate (in-list (language-forms body)))) (check-lookups (form-meaning candidate)))
+   (for
+    ((item (in-list (ordered-constructors (language-constructors body)))))
+    (when (constructor-rule item) (for-each check-lookups (cdr (constructor-rule item)))))
+   (define model (language-model body))
+   (for*
+    ((clauses (in-hash-values (compiled-model-ensures model))) (clause (in-list clauses)))
+    (check-lookups (model-ensure-expression clause)))
+   (for*
+    ((clauses (in-hash-values (compiled-model-reads model))) (clause (in-list clauses)))
+    (check-lookups (model-read-fact clause)))
+   (for ((expression (in-hash-values (compiled-model-guards model)))) (check-lookups expression)))
   result)
 
 (define (compile-body name rows opening)
@@ -1278,6 +1313,28 @@
         (row-span row)
         #:data
         (hash 'class key))))))
+  (define template-captures
+    (let ((file (hash-ref properties 'file #f)))
+      (if file
+        (let* ((row (for/first ((row (in-list rows)) #:when (eq? (hash-ref row 'kind) 'file)) row))
+               (parts
+                (recover
+                 (lambda () (parse-template file #:span (line-right-span (hash-ref row 'record))))
+                 '())))
+          (for/fold
+           ((bindings (hash)))
+           ((part (in-list parts)) #:when (slot? part))
+           (define key (slot-name part))
+           (unless (or (hash-has-key? classes key) (hash-has-key? class-sources key))
+             (recover
+              (lambda ()
+                (declaration-fail
+                 "capture"
+                 (string-append "<" key ">")
+                 "A file-template placeholder has no class"
+                 (row-span row)))))
+           (hash-set bindings key (hash-ref classes key #f))))
+        (hash))))
   (for
    ((item (in-list (ordered-constructors constructors))))
    (for
@@ -1420,10 +1477,12 @@
          (hash 'constructor (constructor-name item))))))
    (when (constructor-rule item)
      (define captures
-       (for/hash
+       (for/fold
+        ((bindings template-captures))
         ((name (in-list (car (constructor-rule item))))
          (class-name (in-list (constructor-signature item))))
-        (values
+        (hash-set
+         bindings
          name
          (hash-ref
           classes
@@ -1495,6 +1554,14 @@
           (string-append "<" (check-duplicates (map slot-name slots)) ">")
           "A placeholder occurs on both sides of the line"
           span))
+       (for
+        ((placeholder (in-list slots)))
+        (when (hash-has-key? template-captures (slot-name placeholder))
+          (declaration-fail
+           "duplicate"
+           (string-append "<" (slot-name placeholder) ">")
+           "A form placeholder repeats a file-template placeholder"
+           span)))
        (define missing-placeholder? #f)
        (for
         ((placeholder (in-list slots)))
@@ -1572,7 +1639,7 @@
              'actual
              (cond
               ((member (term-constructor meaning) '("prefix" "suffix" "equal")) "predicate")
-              ((member (term-constructor meaning) '("ancestors" "split")) "list")
+              ((member (term-constructor meaning) '("ancestors" "split" "inherited")) "list")
               (else "string"))))
            (declaration-fail
             "reference"
@@ -1583,9 +1650,10 @@
         meaning
         constructors
         classes
-        (for/hash
+        (for/fold
+         ((bindings template-captures))
          ((part (in-list slots)))
-         (values (slot-name part) (hash-ref classes (slot-name part) #f)))
+         (hash-set bindings (slot-name part) (hash-ref classes (slot-name part) #f)))
         #f
         #:record-check
         (lambda (entry) (record-signature! (hash 'kind "form" 'ordinal index) entry)))
@@ -1751,7 +1819,7 @@
          "An example does not reach its intended form"
          (cdr pair)
          (hash 'form (form-source candidate) 'actual (car pair))))
-      (term-value (form-meaning candidate) (cdr hit) body))))
+      (void))))
   (define checks
     (hash
      'recorded
@@ -1829,11 +1897,11 @@
         (string-join (make-list (car arities) "string") " "))
       'actual
       (length args))))
-  (when (and (equal? name "context") (not (literal? (car args))))
+  (when (and (member name '("context" "inherited")) (not (literal? (car args))))
     (declaration-fail
      "syntax"
      (term-source expression)
-     "context names one literal constructor"
+     "The lookup names one literal constructor"
      (term-span expression)))
   (for
    ((argument (in-list args)) (index (in-naturals)))
@@ -1858,7 +1926,7 @@
         "A string-class position permits a library call, not a nested user constructor"
         (term-span argument)
         (hash 'constructor name 'actual (term-source argument))))
-     (when (member (term-constructor argument) '("ancestors" "split"))
+     (when (member (term-constructor argument) '("ancestors" "split" "inherited"))
        (fail
         "E_TERM_CLASS"
         "A string-class position cannot receive a list-valued library call"
@@ -2098,6 +2166,23 @@
    span
    (hash 'constructor constructor 'key "")))
 
+(define (inherited-values inherited context constructor origin)
+  (define result
+    (cond
+     (inherited (inherited constructor origin))
+     ((eq? context missing-context) '())
+     (else (list (context constructor origin)))))
+  (unless (and (list? result) (andmap string? result))
+    (raise-arguments-error 'inherited "the lookup must return a list of strings" "result" result))
+  result)
+
+(define (context-value inherited context constructor origin)
+  (define values (inherited-values inherited context constructor origin))
+  (if (pair? values) (car values) (missing-context constructor origin)))
+
+(define (merge-captures inherited local)
+  (for/fold ((bindings inherited)) (((name value) (in-hash local))) (hash-set bindings name value)))
+
 (define (producing-spans body terms spans)
   (define result
     (or spans
@@ -2129,6 +2214,10 @@
          bindings
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
+         #:captures
+         (captures (hash))
          #:fact
          (fact absent-fact)
          #:sort
@@ -2143,7 +2232,7 @@
      ((capture? value)
       (define bound
         (hash-ref
-         bindings
+         (merge-captures captures bindings)
          (capture-name value)
          (lambda ()
            (declaration-fail
@@ -2157,7 +2246,8 @@
       (define name (term-constructor value))
       (define arguments (map evaluate (term-arguments value)))
       (cond
-       ((equal? name "context") (context (car arguments) origin))
+       ((equal? name "context") (context-value inherited context (car arguments) origin))
+       ((equal? name "inherited") (inherited-values inherited context (car arguments) origin))
        ((hash-has-key? library-arities name) (library-call name arguments (term-span value)))
        ((member name fact-names) (query-fact fact name arguments origin (equal? sort "list")))
        ((member name state-predicate-names) (fact name arguments origin))
@@ -2183,6 +2273,10 @@
          (fact absent-fact)
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
+         #:captures
+         (captures (hash))
          #:origins
          (origins
           (for/list ((value (in-list terms))) (hash 'kind "program" 'path "<input>" 'line 1)))
@@ -2213,6 +2307,10 @@
                 (hash)
                 #:context
                 context
+                #:inherited
+                inherited
+                #:captures
+                captures
                 #:fact
                 fact
                 #:origin
@@ -2248,6 +2346,10 @@
                  (positional-bindings arguments)
                  #:context
                  context
+                 #:inherited
+                 inherited
+                 #:captures
+                 captures
                  #:fact
                  fact
                  #:origin
@@ -2285,6 +2387,10 @@
          (fact absent-fact)
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
+         #:captures
+         (captures (hash))
          #:origins
          (origins
           (for/list ((value (in-list terms))) (hash 'kind "program" 'path "<input>" 'line 1)))
@@ -2299,6 +2405,10 @@
         fact
         #:context
         context
+        #:inherited
+        inherited
+        #:captures
+        captures
         #:origins
         origins
         #:spans
@@ -2310,9 +2420,14 @@
 (define (language-needs-facts? body)
   (define (external? expression)
     (and (term? expression)
-         (or (member (term-constructor expression) fact-names)
+         (or (and (equal? (term-constructor expression) "if")
+                  (pair? (term-arguments expression))
+                  (term? (car (term-arguments expression)))
+                  (member (term-constructor (car (term-arguments expression))) fact-names))
              (ormap external? (term-arguments expression)))))
-  (or (model-needs-facts? (language-model body))
+  (define model (language-model body))
+  (or (positive? (hash-count (compiled-model-guards model)))
+      (for/or ((reads (in-hash-values (compiled-model-reads model)))) (pair? reads))
       (for/or
        ((item (in-list (ordered-constructors (language-constructors body)))))
        (and (constructor-rule item) (ormap external? (cdr (constructor-rule item))) #t))))
@@ -2323,6 +2438,10 @@
          origins
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
+         #:captures
+         (captures (hash))
          #:fact
          (fact absent-fact)
          #:spans
@@ -2343,6 +2462,10 @@
      bindings
      #:context
      context
+     #:inherited
+     inherited
+     #:captures
+     captures
      #:fact
      fact
      #:origin
@@ -2449,9 +2572,16 @@
        ((argument (in-list supplied-args))
         (class-name (in-list (constructor-signature item)))
         (index (in-naturals)))
+       (define evaluated
+         (if (list? argument)
+           (expression-value
+            (json-expression argument (or use-span (constructor-span item)))
+            captures
+            origin)
+           argument))
        (define-values
         (received receiving-class)
-        (resolve body name index class-name argument origin scope scope-constructor))
+        (resolve body name index class-name evaluated origin scope scope-constructor))
        (unless (and
                 (string? received)
                 (class-accepts? (hash-ref (language-classes body) receiving-class) received))
@@ -2486,9 +2616,10 @@
     (cond
      ((constructor-rule item)
       (define rule-bindings
-        (for/hash
+        (for/fold
+         ((bindings captures))
          ((name (in-list (car (constructor-rule item)))) (argument (in-list args)))
-         (values name argument)))
+         (hash-set bindings name argument)))
       (for
        ((right (in-list (cdr (constructor-rule item)))))
        (expand-effect
@@ -2554,12 +2685,15 @@
          body
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
          #:origin
          (origin (hash 'kind "program" 'path "<input>" 'line 1)))
   (define (evaluate item)
     (if (list? item)
       (cond
-       ((equal? (car item) "context") (context (cadr item) origin))
+       ((equal? (car item) "context") (context-value inherited context (cadr item) origin))
+       ((equal? (car item) "inherited") (inherited-values inherited context (cadr item) origin))
        ((hash-has-key? library-arities (car item))
         (library-call (car item) (map evaluate (cdr item)) (term-span expression)))
        (else (cons (car item) (map evaluate (cdr item)))))
@@ -2593,6 +2727,10 @@
          (file "<input>")
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
+         #:captures
+         (captures (hash))
          #:facts
          (facts #f)
          #:guard
@@ -2609,6 +2747,10 @@
      file
      #:context
      context
+     #:inherited
+     inherited
+     #:captures
+     captures
      #:facts
      facts
      #:guard
@@ -2627,6 +2769,10 @@
          (file "<input>")
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
+         #:captures
+         (captures (hash))
          #:facts
          (facts #f)
          #:guard
@@ -2653,7 +2799,7 @@
      ((record (in-list records)))
      (values (src-span-start-line (line-record-span record)) (line-record-span record))))
   (define (add-term! hit span kind)
-    (define value (instantiate-term (form-meaning (car hit)) (cdr hit)))
+    (define value (instantiate-term (form-meaning (car hit)) (merge-captures captures (cdr hit))))
     (define origin (hash 'kind kind 'path (src-span-file span) 'line (src-span-start-line span)))
     (hash-set! value-origin-cache value span)
     (hash-set! value-meaning-spans value (term-span (form-meaning (car hit))))
@@ -2781,6 +2927,10 @@
               facts
               #:context
               context
+              #:inherited
+              inherited
+              #:captures
+              captures
               #:origins
               raw-origins
               #:spans
@@ -2803,10 +2953,12 @@
           (define value
             (term-value
              (form-meaning (car entry))
-             (cdr entry)
+             (merge-captures captures (cdr entry))
              body
              #:context
              context
+             #:inherited
+             inherited
              #:origin
              origin))
           (hash-set! value-origin-cache value span)
@@ -2917,6 +3069,10 @@
          terms
          #:context
          (context missing-context)
+         #:inherited
+         (inherited #f)
+         #:captures
+         (captures (hash))
          #:fact
          (fact absent-fact)
          #:spans
@@ -2939,6 +3095,10 @@
     origins
     #:context
     context
+    #:inherited
+    inherited
+    #:captures
+    captures
     #:fact
     fact
     #:spans

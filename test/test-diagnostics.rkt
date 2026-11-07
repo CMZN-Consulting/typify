@@ -254,7 +254,10 @@
     (hash-ref (diagnostic->jsexpr item) 'range)
     'null
     "non-source diagnostics carry a null range")
-   (check (diagnostic-file item) "source.typify" "null range preserves the source file"))
+   (check
+    (diagnostic-file item)
+    (if (equal? code "E_USAGE") "" "source.typify")
+    "usage has no file; file and required diagnostics preserve their source file"))
   (hash 'suite "diagnostics" 'count checks 'pass checks 'fail 0))
 
 (module+

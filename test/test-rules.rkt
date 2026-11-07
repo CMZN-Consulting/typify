@@ -183,6 +183,8 @@
     (body
      '("primitive : emit : value"
        "effect : emit = external"
+       "term : base : value"
+       "fact : base"
        "term : wrapper : value"
        "rule : wrapper <x> -> emit (context base)"
        "form : run : <value>"
@@ -208,6 +210,8 @@
     (body
      '("primitive : emit : value"
        "effect : emit = external"
+       "term : missing : value"
+       "fact : missing"
        "term : guarded : value value"
        "guard : guarded = exists"
        "rule : guarded <key> <x> -> emit (parent /)"
@@ -444,6 +448,8 @@
     (body
      '("primitive : emit : value"
        "effect : emit = external"
+       "term : hidden : value"
+       "fact : hidden"
        "term : request : relative-path value"
        "guard : request = (exists <1>)"
        "rule : request <p> <x> -> emit <x>"
@@ -487,6 +493,194 @@
    (hash-ref (car (hash-ref relative-guarded 'skips)) 'args)
    '("/work/cache")
    "skip evidence records the exact resolved guard key")
+  (define inherited-body
+    (body
+     '("primitive : emit : value"
+       "effect : emit = external"
+       "term : source : value"
+       "fact : source"
+       "term : collect : value"
+       "fuel : collect = 3"
+       "rule : collect <x> -> (each <item> in (inherited source) (emit <item>))"
+       "form : collect : <value>"
+       "does : collect <value>"
+       "example : collect : sample")))
+  (define inherited-checked (check-program "collect : sample" inherited-body))
+  (define inherited-values '("near-first" "near-second" "far-first"))
+  (define (inherit name origin)
+    (check name "source" "inherited names the declared constructor")
+    inherited-values)
+  (define inherited-events
+    (primitive-events
+     inherited-body
+     (hash-ref inherited-checked 'terms)
+     (hash-ref inherited-checked 'origins)
+     #:spans
+     (hash-ref inherited-checked '_term-spans)
+     #:inherited
+     inherit))
+  (check
+   (map (lambda (event) (hash-ref event 'term)) (hash-ref inherited-events 'events))
+   '(("emit" "near-first") ("emit" "near-second") ("emit" "far-first"))
+   "inherited expands every ordered first argument")
+  (check
+   (declaration-bound inherited-body)
+   (hash 'c 3 'k 1)
+   "inherited loops contribute their declared fuel bound")
+  (check
+   (hash-ref
+    (primitive-events
+     inherited-body
+     (hash-ref inherited-checked 'terms)
+     (hash-ref inherited-checked 'origins)
+     #:spans
+     (hash-ref inherited-checked '_term-spans)
+     #:inherited
+     (lambda (name origin) '()))
+    'events)
+   '()
+   "an empty inheritance list emits no terms")
+  (reject
+   (lambda ()
+     (primitive-events
+      inherited-body
+      (hash-ref inherited-checked 'terms)
+      (hash-ref inherited-checked 'origins)
+      #:spans
+      (hash-ref inherited-checked '_term-spans)
+      #:inherited
+      (lambda (name origin) '("a" "b" "c" "d"))))
+   "E_RULE_FUEL")
+  (define nearest
+    (primitive-events
+     contextual
+     '(("wrapper" "unused"))
+     (list (hash 'kind "program" 'path "near.typify" 'line 1))
+     #:inherited
+     (lambda (name origin) '("nearest" "later"))))
+  (check
+   (map (lambda (event) (hash-ref event 'term)) (hash-ref nearest 'events))
+   '(("emit" "nearest"))
+   "context is the first element of inherited")
+  (define declared-example
+    (body
+     '("primitive : emit : value"
+       "effect : emit = external"
+       "term : source : value"
+       "fact : source"
+       "form : run!"
+       "does : emit (context source)"
+       "example : run!")))
+  (check
+   (length (language-forms declared-example))
+   1
+   "examples validate formation without executing context lookups")
+  (check
+   (hash-ref
+    (check-program "run!" declared-example #:inherited (lambda (name origin) '("ancestor")))
+    'terms)
+   '(("emit" "ancestor"))
+   "located programs execute the deferred lookup")
+  (for
+   ((name (in-list '("context" "inherited"))))
+   (define reference
+     (reject
+      (lambda ()
+        (body
+         (list
+          "primitive : emit : value"
+          "effect : emit = external"
+          "term : collect : value"
+          "fuel : collect = 2"
+          (if (equal? name "context")
+            "rule : collect <x> -> emit (context unknown)"
+            "rule : collect <x> -> (each <item> in (inherited unknown) (emit <item>))"))))
+      "E_DECLARATION"))
+   (check
+    (diagnostic-data-projection "E_DECLARATION" (diagnostic-data reference))
+    (hash 'kind "reference" 'actual "unknown")
+    "lookup constructors must be declared before any program is read"))
+  (define cross-language
+    (read-declarations
+     (string-join
+      '("#lang typify"
+        "declare : Child"
+        "primitive : emit : value"
+        "effect : emit = external"
+        "form : run!"
+        "does : emit (context global-source)"
+        "example : run!"
+        "end!"
+        "declare : Parent"
+        "term : global-source : value"
+        "form : source : <value>"
+        "does : global-source <value>"
+        "end!")
+      "\n")))
+  (check
+   (sort (hash-keys cross-language) string<?)
+   '("Child" "Parent")
+   "lookup references may name constructors declared in another body")
+  (define template-body
+    (body
+     '("is : slot = /[0-9]+/"
+       "file : SEAT[<slot>]/SEAT.typify"
+       "primitive : emit : value value"
+       "effect : emit = external"
+       "term : request : value"
+       "rule : request <x> -> emit <slot> <x>"
+       "form : direct : <value>"
+       "does : emit <slot> <value>"
+       "example : direct : sample"
+       "form : rule : <value>"
+       "does : request <value>")))
+  (define template-values (hash "slot" "4"))
+  (define direct-template
+    (check-program "direct : sample" template-body #:captures template-values))
+  (check
+   (hash-ref direct-template 'terms)
+   '(("emit" "4" "sample"))
+   "a template placeholder is bound in does")
+  (define rule-template (check-program "rule : sample" template-body #:captures template-values))
+  (check
+   (normalize-terms template-body (hash-ref rule-template 'terms) #:captures template-values)
+   '(("emit" "4" "sample"))
+   "a template placeholder is bound in a rule right side")
+  (define duplicate-template
+    (reject
+     (lambda ()
+       (body
+        '("is : slot = /[0-9]+/"
+          "file : SEAT[<slot>]/SEAT.typify"
+          "term : item : slot"
+          "form : item : <slot>"
+          "does : item <slot>")))
+     "E_DECLARATION"))
+  (check
+   (diagnostic-data-projection "E_DECLARATION" (diagnostic-data duplicate-template))
+   (hash 'kind "duplicate" 'actual "<slot>")
+   "a form cannot shadow a template placeholder")
+  (reject
+   (lambda () (normalize-terms sequence '(("emit" ("concat" ("parent" "/") ("join" "/a" "/b"))))))
+   "E_LIBRARY_PARENT")
+  (reject
+   (lambda () (normalize-terms sequence '(("emit" ("concat" ("join" "/a" "/b") ("parent" "/"))))))
+   "E_LIBRARY_DOMAIN")
+  (check
+   (language-needs-facts? inherited-body)
+   #f
+   "inheritance alone does not require a facts file")
+  (define ensure-only-fact
+    (body
+     '("primitive : emit : value"
+       "effect : emit = external"
+       "ensure : emit : present = (exists <1>)"
+       "form : run : <value>"
+       "does : emit <value>")))
+  (check
+   (language-needs-facts? ensure-only-fact)
+   #f
+   "only guard, reads and fact calls inside if require facts")
   (hash 'suite "rules" 'checks checks 'status "passed"))
 
 (module+ main (displayln (canonical-json (run-tests))))

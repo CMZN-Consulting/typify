@@ -18,7 +18,7 @@
          "plan.rkt"
          "tree.rkt")
 
-(provide run-command render-bounds render-tree render-plan display-diagnostics)
+(provide run-command execute-command render-bounds render-tree render-plan display-diagnostics)
 
 (define typify-version "1.0")
 
@@ -161,6 +161,7 @@
   (get-output-string output))
 
 (define (read-facts path)
+  (define portable-path (string-replace path "\\" "/"))
   (define bytes
     (with-handlers
      ((exn:fail:filesystem?
@@ -184,7 +185,7 @@
           #:span
           (src-span path 1 1 1 1 0 0)
           #:data
-          (hash 'path path)))))
+          (hash 'path portable-path)))))
      (define value (read-json input))
      (unless (eof-object? (read-json input))
        (raise-typify
@@ -193,10 +194,10 @@
         #:span
         (src-span path 1 1 1 1 0 0)
         #:data
-        (hash 'path path)))
+        (hash 'path portable-path)))
      value))
   (values
-   (validate-facts data #:path path)
+   (validate-facts data #:path portable-path)
    (string-append "sha256:" (bytes->hex-string (sha256-bytes bytes)))))
 
 (define (facts-input required? path root)
@@ -302,8 +303,15 @@
       response))
   (define (planned-response report events declaration-diagnostics ensure-diagnostics)
     (define diagnostics (diagnostics-sort (append declaration-diagnostics ensure-diagnostics)))
-    (set! text-output (render-plan report events))
-    (hash-set report 'diagnostics (map diagnostic->jsexpr diagnostics)))
+    (define complete
+      (hash-set*
+       report
+       'diagnostics
+       (map diagnostic->jsexpr diagnostics)
+       'status
+       (if (diagnostics-error? diagnostics) "failed" (hash-ref report 'status))))
+    (set! text-output (render-plan complete events))
+    complete)
   (define result
     (match
      positional
@@ -428,45 +436,108 @@
        "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | facts ROOT | tree DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS LANGUAGE PROGRAM [--facts FILE] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"
        #:data
        (hash 'actual (if (null? positional) "" (car positional)))))))
-  (values (public-data result) json? gbnf? text-output))
+  (values
+   (public-data
+    (if (or (hash-has-key? result 'diagnostics) (not json?))
+      result
+      (hash-set result 'diagnostics '())))
+   json?
+   gbnf?
+   text-output))
+
+(define (command-error-result arguments items)
+  (define diagnostics (map diagnostic->jsexpr items))
+  (define positional
+    (with-handlers
+     ((exn:fail:typify? (lambda (_) '())))
+     (define-values (parsed options) (parse-options arguments))
+     parsed))
+  (define command (if (null? positional) "" (car positional)))
+  (cond
+   ((ormap (lambda (item) (equal? (diagnostic-code item) "E_USAGE")) items)
+    (hash 'ok #f 'diagnostics diagnostics))
+   ((equal? command "tree") (hash 'ok #f 'programs '() 'diagnostics diagnostics))
+   ((equal? command "plan")
+    (hash-set
+     (hash
+      'status
+      "failed"
+      'state
+      (hash)
+      'bound
+      (hash 'c 0 'n 0 'limit 0)
+      'modelled
+      "0 of 0"
+      'facts
+      "none"
+      'origins
+      '()
+      'ensure
+      '()
+      'skips
+      '()
+      'diagnostics
+      diagnostics)
+     (if (= (length positional) 4) 'plan 'programs)
+     '()))
+   ((equal? command "facts")
+    (hash
+     'collector
+     "typify 1.0"
+     'root
+     (if (pair? (cdr positional)) (cadr positional) "")
+     'facts
+     '()
+     'diagnostics
+     diagnostics))
+   ((equal? command "emit")
+    (hash
+     'language
+     (if (pair? (cdr positional)) (last positional) "")
+     'version
+     1
+     'classes
+     (hash)
+     'forms
+     '()
+     'caps
+     (hash)
+     'comment
+     ""
+     'diagnostics
+     diagnostics))
+   (else (hash 'ok #f 'terms '() 'diagnostics diagnostics))))
+
+(define (execute-command arguments)
+  (define json? (and (member "--json" arguments) #t))
+  (with-handlers
+   ((exn:fail:typify?
+     (lambda (error)
+       (define items (exn:fail:typify-diagnostics error))
+       (define native (map diagnostic->jsexpr items))
+       (if json?
+         (displayln (canonical-json (command-error-result arguments items)))
+         (display-diagnostics native))
+       (values
+        (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items) 2 1)
+        native))))
+   (define-values (result json-output? grammar? text-output) (run-command/details arguments))
+   (define diagnostics (hash-ref result 'diagnostics '()))
+   (unless json-output? (display-diagnostics diagnostics))
+   (cond
+    ((equal? arguments '("--version")) (displayln typify-version))
+    ((and (member "--bounds" arguments) (not json-output?)) (display (render-bounds result)))
+    ((and (hash-has-key? result 'terms) (hash-has-key? result 'ok) (not json-output?)) (void))
+    ((and text-output (not json-output?)) (display text-output))
+    ((and (hash-has-key? result 'text) (not json-output?)) (display (hash-ref result 'text)))
+    (else (displayln (canonical-json result))))
+   (values
+    (if (for/or ((item (in-list diagnostics))) (equal? (hash-ref item 'severity) "error")) 1 0)
+    diagnostics)))
 
 (module+
  main
- (define arguments (vector->list (current-command-line-arguments)))
- (define json? (and (member "--json" arguments) #t))
- (with-handlers
-  ((exn:fail:typify?
-    (lambda (error)
-      (define items (exn:fail:typify-diagnostics error))
-      (if json?
-        (displayln
-         (canonical-json (hash 'ok #f 'terms '() 'diagnostics (map diagnostic->jsexpr items))))
-        (for
-         ((item (in-list items)))
-         (define span (diagnostic-range item))
-         (fprintf
-          (current-error-port)
-          "~a:~a:~a: ~a: ~a [~a]\n"
-          (diagnostic-file item)
-          (if span (src-span-start-line span) 0)
-          (if span (src-span-start-column span) 0)
-          (diagnostic-severity item)
-          (diagnostic-message item)
-          (diagnostic-code item))))
-      (exit
-       (if (ormap (lambda (item) (member (diagnostic-code item) '("E_USAGE" "E_FILE"))) items)
-         2
-         1)))))
-  (define-values (result json-output? grammar? text-output) (run-command/details arguments))
-  (unless json-output? (display-diagnostics (hash-ref result 'diagnostics '())))
-  (cond
-   ((equal? arguments '("--version")) (displayln typify-version))
-   ((and (member "--bounds" arguments) (not json-output?)) (display (render-bounds result)))
-   ((and (pair? arguments) (equal? (car arguments) "check") (not json-output?)) (void))
-   ((and text-output (not json-output?)) (display text-output))
-   ((and (hash-has-key? result 'text) (not json-output?)) (display (hash-ref result 'text)))
-   (else (displayln (canonical-json result))))
-  (when (for/or
-         ((item (in-list (hash-ref result 'diagnostics '()))))
-         (equal? (hash-ref item 'severity) "error"))
-    (exit 1))))
+ (define-values
+  (status diagnostics)
+  (execute-command (vector->list (current-command-line-arguments))))
+ (exit status))

@@ -305,7 +305,7 @@
   (define (peek) (and (< at size) (string-ref source at)))
   (define (take!) (define value (peek)) (set! at (add1 at)) value)
   (define (blank? value) (and value (memv value '(#\space #\tab #\newline #\return))))
-  (define (skip!) (let loop () (when (and (not pattern?) (blank? (peek))) (take!) (loop))))
+  (define (skip!) (let loop () (when (blank? (peek)) (take!) (loop))))
   (define (except?)
     (and (not pattern?)
          (<= (+ at 6) size)

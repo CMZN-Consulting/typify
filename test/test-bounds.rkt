@@ -14,7 +14,7 @@
 
 (provide run-tests)
 
-(define-runtime-path main-path "../src/main.rkt" "../src/model.rkt")
+(define-runtime-path main-path "../src/main.rkt")
 
 (define declarations
   (string-append
@@ -79,6 +79,8 @@
      (define parsed (read-declarations declarations #:file declaration-path))
      (define expected-all
        (hash
+        'diagnostics
+        '()
         'languages
         (for/list
          ((name '("Alpha" "Zeta")))
@@ -101,6 +103,8 @@
       "all-language JSON bounds match the recorded API data")
      (define expected-selected
        (hash
+        'diagnostics
+        '()
         'languages
         (list (cadr (hash-ref expected-all 'languages)))
         'host

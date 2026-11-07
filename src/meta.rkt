@@ -33,7 +33,7 @@
    "pattern"
    "/.*/"
    "law"
-   "/(shadow|first|join [A-Za-z][A-Za-z0-9_-]*)( stacking)?/"
+   "/(shadow|first|join[ ][A-Za-z][A-Za-z0-9_-]*)([ ]stacking)?/"
    "width"
    "/0|[1-9][0-9]*/"
    "limit"
@@ -186,7 +186,9 @@
    "equal"
    '(2)
    "concat"
-   '(2)))
+   '(2)
+   "inherited"
+   '(1)))
 
 (define current-meta-classes (make-parameter meta-classes))
 

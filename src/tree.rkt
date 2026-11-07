@@ -266,14 +266,18 @@
       (hash-set spans (cons (src-span-file span) (src-span-start-line span)) span)))
    (define initial
      (hash-set* record 'enclosing enclosing 'line-spans line-spans '_source-spans source-spans))
+   (define (inherited constructor origin)
+     (for*/list
+      ((program (in-list enclosing))
+       #:unless
+       (equal? (hash-ref program 'status) "guarded")
+       (term (in-list (hash-ref program 'terms)))
+       #:when
+       (and (equal? (car term) constructor) (pair? (cdr term))))
+      (cadr term)))
    (define (context constructor origin)
-     (define found
-       (for*/first
-        ((program (in-list enclosing))
-         (term (in-list (hash-ref program 'terms)))
-         #:when
-         (and (equal? (car term) constructor) (pair? (cdr term))))
-        (cadr term)))
+     (define values (inherited constructor origin))
+     (define found (and (pair? values) (car values)))
      (unless found
        (define source (hash-ref origin 'path path))
        (define line (hash-ref origin 'line 1))
@@ -321,6 +325,10 @@
         context
         #:facts
         query
+        #:captures
+        (hash-ref record 'placeholders)
+        #:inherited
+        inherited
         #:guard-resolver
         (and guard-resolver (lambda (terms origins) (guard-resolver initial terms origins))))
        (hash 'terms '() 'origins '() 'effective-lines 0)))
