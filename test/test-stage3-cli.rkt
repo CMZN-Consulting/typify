@@ -263,18 +263,29 @@
       #t
       "the text projection emits notes before the answer")
      (display-to-file "item : book = Algebra\n? : itme\n? : missing" program)
-     (define checked (response (list "check" path "Catalog" program "--json")))
-     (check (hash-ref checked 'ok) #t "check passes over well-spelled program questions")
+     (define checked
+       (parameterize
+        ((current-directory root))
+        (response (list "check" path "Catalog" "catalog.typify" "--json"))))
+     (check
+      (hash-ref checked 'ok)
+      #t
+      (format
+       "check passes over well-spelled program questions: ~s"
+       (hash-ref checked 'diagnostics)))
      (check (hash-ref checked 'terms) '(("item" "book" "Algebra")) "questions add no program terms")
      (check
       (ormap (lambda (item) (hash-has-key? item 'near)) (hash-ref checked 'diagnostics))
       #f
       "check never suggests a near word")
      (display-to-file "item : book = Algebra\n? : _bad" program #:exists 'truncate/replace)
-     (define bad-question (response (list "check" path "Catalog" program "--json")))
+     (define bad-question
+       (parameterize
+        ((current-directory root))
+        (response (list "check" path "Catalog" "catalog.typify" "--json"))))
      (check
       (map (lambda (item) (hash-ref item 'code)) (hash-ref bad-question 'diagnostics))
-      '("E_QUESTION" "N_CLASS_EMPTY")
+      '("N_CLASS_EMPTY" "E_QUESTION")
       "a malformed program question is E_QUESTION")
      (define executable
        (or (find-executable-path "racket") (error 'test-stage3-cli "Racket is unavailable")))
