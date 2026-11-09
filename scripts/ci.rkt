@@ -34,6 +34,7 @@
     "test/test-language.rkt"
     "test/test-language-edge.rkt"
     "test/test-library.rkt"
+    "test/test-near.rkt"
     "test/test-defaults.rkt"
     "test/test-emission.rkt"
     "test/test-bounds.rkt"
