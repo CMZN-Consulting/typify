@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  TYPIFY_BLIND_MODE: deferred
+  TYPIFY_BLIND_MODE: full
   TYPIFY_ACCEPTANCE_STAGE: "3"
   TYPIFY_GBNF_VALIDATOR_REVISION: fd27b2034905f8dadd8bd6d2cc44595f4929d391
 
