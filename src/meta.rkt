@@ -16,6 +16,8 @@
    "letter (letter | /[0-9_-]/)*"
    "constructor"
    "name"
+   "verb"
+   "/[A-Za-z0-9][A-Za-z0-9-]*/"
    "value"
    "/.*/"
    "text"
@@ -186,7 +188,8 @@
     "declare-scope"
     '("name" "scope-mode")
     "scope : item = program")
-   (entry 'fuel "fuel : <name> = <number>" "declare-fuel" '("name" "number") "fuel : item = 32")))
+   (entry 'fuel "fuel : <name> = <number>" "declare-fuel" '("name" "number") "fuel : item = 32")
+   (entry 'question "? : <verb>" "question" '("verb") "? : form")))
 
 (define library-arities
   (hash

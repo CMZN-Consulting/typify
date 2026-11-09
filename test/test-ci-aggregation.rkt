@@ -227,7 +227,97 @@
       (refuses? (lambda () (aggregate stage-two)))
       #t
       "default stage one cannot consume stage-two reports")
-     (check (refuses? (lambda () (gate-names 3))) #t "unsupported acceptance stages are refused")
+     (define stage-three
+       (map (lambda (report) (at-stage report 3)) (list kernel language mutation)))
+     (define third (aggregate stage-three #:stage 3))
+     (check (hash-ref third 'acceptance-stage) 3 "stage three is explicit")
+     (check
+      (hash-ref (hash-ref third 'replay-validation) 'pass)
+      #t
+      "stage-three replay contracts agree")
+     (check
+      (hash-ref (hash-ref third 'stage3) 'pass)
+      #f
+      "missing ask evidence cannot pass stage three")
+     (check
+      (map (lambda (gate) (hash-ref gate 'name)) (hash-ref (hash-ref third 'stage3) 'unscored))
+      '("house-mount-state" "house-primitive-audit" "house-rule-mutation")
+      "HOUSE providers stay visible as unscored stage-five evidence")
+     (check
+      (filter
+       (lambda (name) (member name '(house-mount-state house-primitive-audit house-rule-mutation)))
+       (gate-names 3))
+      '()
+      "HOUSE providers do not block stage-three acceptance")
+     (check
+      (filter (lambda (name) (member name '(ask-exact-replay ask-round-trip))) (gate-names 3))
+      '(ask-exact-replay ask-round-trip)
+      "both new ask measurements are required")
+     (check (refuses? (lambda () (gate-names 4))) #t "unsupported acceptance stages are refused")
+     (define ask-evidence
+       (hash
+        'total
+        3
+        'failures
+        0
+        'complete
+        #t
+        'blind
+        #t
+        'independent
+        #t
+        'reference-executed
+        #f
+        'parsed-files
+        1
+        'declarations
+        (list (hash 'words 3))
+        'roundtrip-checks
+        9
+        'roundtrip-failures
+        0))
+     (check
+      (gate-valid? 'ask-exact-replay ask-evidence)
+      #t
+      "complete frozen answer replay is admitted")
+     (check
+      (gate-valid? 'ask-exact-replay (hash-set ask-evidence 'reference-executed #t))
+      #f
+      "running the reference source invalidates the replay evidence")
+     (check
+      (gate-valid? 'ask-exact-replay (hash-set ask-evidence 'total 4))
+      #f
+      "gate size must equal the declared words actually replayed")
+     (check
+      (gate-valid? 'ask-round-trip (hash-set ask-evidence 'total 9))
+      #t
+      "round-trip checks have their own measured denominator")
+     (check
+      (gate-valid? 'ask-round-trip (hash-set* ask-evidence 'total 9 'roundtrip-failures 1))
+      #f
+      "one failed round-trip check invalidates its gate")
+     (define deferred-entry
+       (hash 'id "deferred" 'reason "definition pending" 'sha256 (make-string 64 #\a)))
+     (check
+      (baseline-complete?
+       (hash-set* baseline 'deferred (list deferred-entry) 'inventory-case-total 2))
+      #t
+      "explicit deferred cases are inventoried separately from compared invocations")
+     (check
+      (baseline-complete?
+       (hash-set* baseline 'deferred (list deferred-entry) 'inventory-case-total 3))
+      #f
+      "an unaccounted manifest case makes the replay incomplete")
+     (check
+      (baseline-complete?
+       (hash-set*
+        baseline
+        'deferred
+        (list (hash-set deferred-entry 'id "fixture"))
+        'inventory-case-total
+        2))
+      #f
+      "a deferred case cannot also have a compared invocation")
      (define bounds
        (hash
         'total

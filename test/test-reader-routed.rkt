@@ -124,23 +124,20 @@
    #t
    "question-prefixed ordinary verbs remain ordinary forms")
   (check (line-accepts? "?x : _bad" reserved) #t "reader accepts ordinary question-prefixed verbs")
-  (define reserved-only
-    (body
+  (define reserved-errors
+    (native-errors
      '("is : word = /[a-z_]+/"
        "primitive : output : word"
        "form : ? : <word>"
        "does : output <word>")))
-  (define-values
-   (question-left question-right)
-   (form-automata reserved-only (car (language-forms reserved-only))))
   (check
-   (class-accepts? question-left "?")
-   #f
-   "ordinary emitted forms cannot bypass reserved question dispatch")
+   (map diagnostic-code reserved-errors)
+   '("E_DECLARATION")
+   "a user form cannot redeclare the reserved question verb")
   (check
-   (line-accepts? "? : _bad" reserved-only)
-   #f
-   "reader refuses malformed reserved word despite an ordinary form")
+   (diagnostic-data (car reserved-errors))
+   (hash 'kind "duplicate" 'actual "?")
+   "the reserved question refusal names the duplicated verb")
   (define counted (body (append basic-rows '("count : output = 1"))))
   (check
    (map diagnostic-code (hash-ref (check-program/diagnostics "? : item" counted) 'diagnostics))
@@ -386,6 +383,10 @@
    (read-declarations/diagnostics (source '("is : number = /[0-9]+/") "Typify")))
   (check
    (map diagnostic-code spoof-errors)
-   '("E_DECLARATION")
+   '("E_DECLARATION" "E_DECLARATION")
    "body name does not grant bootstrap exemption")
+  (check
+   (map diagnostic-data spoof-errors)
+   (list (hash 'kind "duplicate" 'actual "Typify") (hash 'kind "duplicate" 'actual "number"))
+   "the reserved body and its reserved class are independently reported")
   (hash 'suite "reader-routed" 'checks checks 'status "passed"))

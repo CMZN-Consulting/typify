@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require racket/file racket/list racket/path "../scripts/import-corpus.rkt")
+(require file/sha1 racket/file racket/list racket/path "../scripts/import-corpus.rkt")
 
 (provide run-tests)
 
@@ -43,6 +43,134 @@
   root)
 
 (define (rejects? procedure) (with-handlers ((exn:fail? (lambda (_) #t))) (procedure) #f))
+
+(define (ask-custody-controls check)
+  (define temporary (make-temporary-file "ask-custody~a" 'directory))
+  (dynamic-wind
+   void
+   (lambda ()
+     (define source (build-path temporary "source"))
+     (make-directory* (build-path source "declarations"))
+     (make-directory* (build-path source "reference"))
+     (define files
+       (list
+        (cons "README.md" #"Frozen reference language/version and generation command.\r\n")
+        (cons "gate.json" #"{\"declarations\":[]}\r\n")
+        (cons "declarations/gate.typify" #"#lang typify\r\ndeclare : Gate\r\nend!\r\n")
+        (cons
+         "reference/never-run.rkt"
+         #"#lang racket/base\n; frozen source data\n(error 'reference \"must not execute\")\n")))
+     (for ((item files)) (write-bytes-file (build-path source (car item)) (cdr item)))
+     (define inventory (ask-gate-inventory source))
+     (define expected (hash-ref inventory 'tree-sha256))
+     (define root (checkout temporary "checkout"))
+     (define destination (build-path root "test" "ask-gate"))
+     (define receipt (import-ask-gate source expected provenance #:root root))
+     (define receipt-path (build-path destination "import.json"))
+     (define receipt-bytes (file->bytes receipt-path))
+     (define custody
+       (hash
+        'archive-sha256
+        provenance
+        'tree-sha256
+        expected
+        'receipt-sha256
+        (bytes->hex-string (sha256-bytes receipt-bytes))))
+     (check
+      "ask-gate-envelope-and-reference-imported-verbatim"
+      (lambda ()
+        (and (equal? (hash-ref receipt 'schema) "typify-ask-gate-import-v1")
+             (equal? (hash-ref receipt 'layout) "test/ask-gate/")
+             (eq? (hash-ref receipt 'verbatim) #t)
+             (for/and
+              ((item files))
+              (equal? (file->bytes (build-path destination (car item))) (cdr item)))))
+      #t)
+     (check
+      "ask-gate-custody-pins-verify"
+      (lambda () (verify-ask-gate destination custody))
+      receipt)
+     (check
+      "ask-gate-import-is-idempotent"
+      (lambda ()
+        (and (equal? (import-ask-gate source expected provenance #:root root) receipt)
+             (equal? (file->bytes receipt-path) receipt-bytes)))
+      #t)
+     (check
+      "ask-gate-requires-explicit-handoff-pins"
+      (lambda () (rejects? (lambda () (verify-ask-gate destination #f))))
+      #t)
+     (define reference (build-path destination "reference" "never-run.rkt"))
+     (write-bytes-file reference #"changed reference\n")
+     (check
+      "ask-gate-changed-reference-refused"
+      (lambda () (rejects? (lambda () (verify-ask-gate destination custody))))
+      #t)
+     (check
+      "ask-gate-refuses-overwriting-changed-destination"
+      (lambda ()
+        (and (rejects? (lambda () (import-ask-gate source expected provenance #:root root)))
+             (equal? (file->bytes reference) #"changed reference\n")))
+      #t)
+     (write-bytes-file reference (cdr (assoc "reference/never-run.rkt" files)))
+     (write-bytes-file (build-path destination "reference" "extra.rkt") #"unlisted\n")
+     (check
+      "ask-gate-unlisted-reference-refused"
+      (lambda () (rejects? (lambda () (verify-ask-gate destination custody))))
+      #t)
+     (delete-file (build-path destination "reference" "extra.rkt"))
+     (write-bytes-file (build-path destination "README.md") #"changed metadata\n")
+     (check
+      "ask-gate-changed-readme-refused"
+      (lambda () (rejects? (lambda () (verify-ask-gate destination custody))))
+      #t)
+     (define wrong-root (checkout temporary "wrong-hash"))
+     (check
+      "ask-gate-wrong-source-hash-refused-before-copy"
+      (lambda ()
+        (and (rejects?
+              (lambda ()
+                (import-ask-gate source (make-string 64 #\0) provenance #:root wrong-root)))
+             (not (directory-exists? (build-path wrong-root "test" "ask-gate")))))
+      #t)
+     (define entry
+       (hash
+        'id
+        "case-a"
+        'reason
+        "awaiting a pinned definition"
+        'sha256
+        provenance
+        'manifest-entry
+        (string-append "case-a deferred: awaiting a pinned definition; sha256 " provenance)))
+     (define manifest (hash-ref entry 'manifest-entry))
+     (check
+      "empty-deferral-list-keeps-all-cases-active"
+      (lambda () (validate-deferred '() '("case-a") ""))
+      '())
+     (check
+      "explicit-deferral-is-bound-to-an-exact-manifest-entry"
+      (lambda () (validate-deferred (list entry) '("case-a") manifest))
+      (list entry))
+     (check
+      "deferral-without-manifest-authority-refused"
+      (lambda () (rejects? (lambda () (validate-deferred (list entry) '("case-a") ""))))
+      #t)
+     (check
+      "deferral-of-unlisted-case-refused"
+      (lambda () (rejects? (lambda () (validate-deferred (list entry) '("case-b") manifest))))
+      #t)
+     (check
+      "duplicate-deferral-refused"
+      (lambda () (rejects? (lambda () (validate-deferred (list entry entry) '("case-a") manifest))))
+      #t)
+     (check
+      "deferral-without-content-digest-refused"
+      (lambda ()
+        (rejects?
+         (lambda () (validate-deferred (list (hash-remove entry 'sha256)) '("case-a") manifest))))
+      #t))
+   (lambda () (delete-directory/files temporary))))
 
 (define (run-tests)
   (define count 0)
@@ -331,6 +459,7 @@
           #t)
          (delete-file source-manifest))))
    (lambda () (delete-directory/files temporary)))
+  (ask-custody-controls check)
   (hasheq
    'suite
    "corpus-custody"

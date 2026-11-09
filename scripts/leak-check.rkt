@@ -1,8 +1,15 @@
 #lang racket/base
 
-(require file/sha1 json racket/file racket/list racket/path racket/port racket/string)
+(require file/sha1
+         json
+         racket/file
+         racket/list
+         racket/path
+         racket/port
+         racket/string
+         "import-corpus.rkt")
 
-(provide check-repository source-comment-offset)
+(provide check-repository source-comment-offset frozen-reference-files)
 
 (define top-level '("README.md" "LICENSE.md" "src" "test" "scripts" ".github"))
 
@@ -81,6 +88,19 @@
     (or (directory-exists? path) (equal? (file-name-from-path path) (string->path ".git"))))
    path))
 
+(define (frozen-reference-files root)
+  (define directory (build-path root "test" "ask-gate"))
+  (if (directory-exists? directory)
+    (with-handlers
+     ((exn:fail? (lambda (_) '())))
+     (define receipt (verify-ask-gate directory))
+     (for/list
+      ((item (in-list (hash-ref receipt 'files)))
+       #:when
+       (string-prefix? (hash-ref item 'path) "reference/"))
+      (string-append "test/ask-gate/" (hash-ref item 'path))))
+    '()))
+
 (define (check-repository (given-root (current-directory)) #:deny (denied '()) #:extra (extra '()))
   (define root (simplify-path (path->complete-path given-root)))
   (define issues '())
@@ -98,15 +118,26 @@
             (directory-exists? (build-path root required)))
      (issue! required 'missing)))
   (define files (source-files root))
+  (define references (frozen-reference-files root))
+  (when (and (directory-exists? (build-path root "test" "ask-gate")) (null? references))
+    (issue! "test/ask-gate/" 'frozen-custody))
   (for
    ((path files))
    (define name (relative root path))
    (when (link-exists? path) (issue! name 'symlink))
-   (when (and (regexp-match? #rx"[.]typify$" name) (not (string-prefix? name "test/corpus/")))
+   (when (and
+          (regexp-match? #rx"[.]typify$" name)
+          (not
+           (or (string-prefix? name "test/corpus/")
+               (string-prefix? name "test/ask-gate/declarations/"))))
      (issue! name 'generated-source))
    (when (and
           (regexp-match? #rx"[.]md$" name)
-          (not (member name '("README.md" "LICENSE.md" "test/corpus/MANIFEST.md"))))
+          (not
+           (or (member
+                name
+                '("README.md" "LICENSE.md" "test/corpus/MANIFEST.md" "test/ask-gate/README.md"))
+               (member name references))))
      (issue! name 'markdown)))
   (for
    ((path (append files (map path->complete-path extra))))
@@ -137,7 +168,7 @@
             'authority
             "Hash-bound admission for generic private-range corpus examples")
            admissions)))
-      (when (regexp-match? #rx"[.]rkt$" (path->string path))
+      (when (and (regexp-match? #rx"[.]rkt$" (path->string path)) (not (member name references)))
         (define offset (source-comment-offset text))
         (when offset
           (issue!

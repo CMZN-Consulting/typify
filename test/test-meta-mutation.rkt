@@ -9,6 +9,7 @@
          "../src/diagnostics.rkt"
          "../src/meta.rkt"
          "../src/model.rkt"
+         "../src/questions.rkt"
          "blind-corpus.rkt")
 
 (provide run-tests mutation-operators)
@@ -287,7 +288,30 @@
     (lambda ()
       (rejects?
        (lambda () (read-declarations "#lang typify\ndeclare : Sample\nversion : -1\nend!"))))
-    #t)))
+    #t)
+   (oracle
+    "meta-question-definition"
+    (lambda () (ask-language (meta-language) "?"))
+    (hash
+     'word
+     "?"
+     'status
+     "declared"
+     'lines
+     '("? : form : ? : <verb>"
+       "? : does : question <verb>"
+       "? : primitive : question : verb"
+       "? : is : verb = /[A-Za-z0-9][A-Za-z0-9-]*/"
+       "? : effect : question = external"
+       "? : example : ? : form"
+       "? : count : question = *"
+       "? : missing : empty")
+     'near
+     '()
+     'accepts
+     '()
+     'diagnostics
+     '()))))
 
 (define (replace-at values index replacement)
   (for/list ((value values) (position (in-naturals))) (if (= position index) replacement value)))

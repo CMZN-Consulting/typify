@@ -6,6 +6,7 @@
          "../src/diagnostics.rkt"
          "../src/language.rkt"
          "../src/meta.rkt"
+         (only-in "test-ask-gate.rkt" (run-tests run-ask-tests))
          "blind-corpus.rkt"
          "witness-report.rkt")
 
@@ -432,6 +433,7 @@
     (measure-witnesses
      (append (map cons '("catalog" "flags" "mounts" "meta") public-models) blind-models)))
   (define blind-failures (hash-ref scoped-blind 'failures 1))
+  (define ask (run-ask-tests #:blind? blind? #:stage stage #:gate-provider? #t))
   (define law-failures
     (+
      (hash-ref blind-declarations 'failures)
@@ -440,6 +442,7 @@
   (define count
     (+
      checks
+     (hash-ref ask 'count)
      (if blind?
        (+
         (max 1 (hash-ref blind 'total 0))
@@ -448,7 +451,7 @@
         1)
        0)
      (hash-ref declaration-witnesses 'checks)))
-  (define failures (+ blind-failures law-failures))
+  (define failures (+ blind-failures law-failures (hash-ref ask 'fail)))
   (hash
    'suite
    "language"
@@ -468,82 +471,90 @@
    blind-failures
    'blind-full-baseline
    blind
+   'ask-measurement
+   (hash-ref ask 'measurement)
    'blind-declaration-coverage
    blind-declarations
    'gates
-   (hash
-    'blind-verdict
-    (hash-set*
-     scoped-blind
-     'total
-     (hash-ref scoped-blind 'case-total 0)
-     'failures
-     (hash-ref scoped-blind 'case-failures 1)
-     'invocations
-     (hash-ref scoped-blind 'total 0)
-     'invocation-failures
-     blind-failures)
-    'structural-round-trip
+   (hash-set*
     (hash
-     'total
-     (+ (length public-models) (hash-ref blind-declarations 'admitted))
-     'failures
-     (hash-ref blind-declarations 'failures)
-     'public-declarations
-     (length public-models)
-     'blind-declarations
-     (hash-ref blind-declarations 'admitted)
-     'blind-inputs
-     (hash-ref blind-declarations 'inputs)
-     'blind-refused
-     (hash-ref blind-declarations 'refused)
-     'blind-unavailable
-     (hash-ref blind-declarations 'unavailable)
-     'blind-infrastructure
-     (hash-ref blind-declarations 'infrastructure)
-     'blind-roundtrips
-     (hash-ref blind-declarations 'roundtrips)
-     'complete
-     (hash-ref blind-declarations 'complete)
-     'status
-     (cond
-      ((not blind?) "deferred-blind")
-      ((and (hash-ref blind-declarations 'complete) (zero? (hash-ref blind-declarations 'failures)))
-       "measured")
-      (else "incomplete-or-failed")))
-    'byte-smoke
-    (hash 'total 1 'failures 0)
-    'declaration-witnesses
-    (hash-set*
-     declaration-witnesses
-     'complete
-     (hash-ref blind-declarations 'complete)
-     'blind-inputs
-     (hash-ref blind-declarations 'inputs)
-     'blind-admitted
-     (hash-ref blind-declarations 'admitted)
-     'blind-refused
-     (hash-ref blind-declarations 'refused)
-     'blind-unavailable
-     (hash-ref blind-declarations 'unavailable)
-     'blind-infrastructure
-     (hash-ref blind-declarations 'infrastructure)
-     'status
-     (if blind? "measured" "deferred-blind"))
-    'worked-example-classes
-    (hash 'total (length worked-coverage) 'failures 0 'host-predicates 0 'coverage worked-coverage)
-    'meta-selfcheck
-    (hash
-     'total
-     (length normalized)
-     'failures
-     0
-     'term-normalization
-     #t
-     'exemptions
-     0
-     'primitive-count
-     (hash-count (language-constructors meta))))))
+     'blind-verdict
+     (hash-set*
+      scoped-blind
+      'total
+      (hash-ref scoped-blind 'case-total 0)
+      'failures
+      (hash-ref scoped-blind 'case-failures 1)
+      'invocations
+      (hash-ref scoped-blind 'total 0)
+      'invocation-failures
+      blind-failures)
+     'structural-round-trip
+     (hash
+      'total
+      (+ (length public-models) (hash-ref blind-declarations 'admitted))
+      'failures
+      (hash-ref blind-declarations 'failures)
+      'public-declarations
+      (length public-models)
+      'blind-declarations
+      (hash-ref blind-declarations 'admitted)
+      'blind-inputs
+      (hash-ref blind-declarations 'inputs)
+      'blind-refused
+      (hash-ref blind-declarations 'refused)
+      'blind-unavailable
+      (hash-ref blind-declarations 'unavailable)
+      'blind-infrastructure
+      (hash-ref blind-declarations 'infrastructure)
+      'blind-roundtrips
+      (hash-ref blind-declarations 'roundtrips)
+      'complete
+      (hash-ref blind-declarations 'complete)
+      'status
+      (cond
+       ((not blind?) "deferred-blind")
+       ((and (hash-ref blind-declarations 'complete)
+             (zero? (hash-ref blind-declarations 'failures)))
+        "measured")
+       (else "incomplete-or-failed")))
+     'byte-smoke
+     (hash 'total 1 'failures 0)
+     'declaration-witnesses
+     (hash-set*
+      declaration-witnesses
+      'complete
+      (hash-ref blind-declarations 'complete)
+      'blind-inputs
+      (hash-ref blind-declarations 'inputs)
+      'blind-admitted
+      (hash-ref blind-declarations 'admitted)
+      'blind-refused
+      (hash-ref blind-declarations 'refused)
+      'blind-unavailable
+      (hash-ref blind-declarations 'unavailable)
+      'blind-infrastructure
+      (hash-ref blind-declarations 'infrastructure)
+      'status
+      (if blind? "measured" "deferred-blind"))
+     'worked-example-classes
+     (hash 'total (length worked-coverage) 'failures 0 'host-predicates 0 'coverage worked-coverage)
+     'meta-selfcheck
+     (hash
+      'total
+      (length normalized)
+      'failures
+      0
+      'term-normalization
+      #t
+      'exemptions
+      0
+      'primitive-count
+      (hash-count (language-constructors meta))))
+    'ask-exact-replay
+    (hash-ref (hash-ref ask 'gates) 'ask-exact-replay)
+    'ask-round-trip
+    (hash-ref (hash-ref ask 'gates) 'ask-round-trip))))
 
 (module+ main (displayln (canonical-json (run-tests))))
 

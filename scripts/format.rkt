@@ -30,6 +30,10 @@
   (define changed '())
   (define errors '())
   (define count 0)
+  (define references (frozen-reference-files root))
+  (when (and (directory-exists? (build-path root "test" "ask-gate")) (null? references))
+    (set! errors
+      (list (hasheq 'file "test/ask-gate/" 'message "Frozen reference custody is unverified"))))
   (for
    ((path
      (in-directory
@@ -40,6 +44,10 @@
     #:when
     (and (file-exists? path)
          (not (link-exists? path))
+         (not
+          (string-prefix?
+           (string-replace (path->string (find-relative-path root path)) "\\" "/")
+           "test/ask-gate/reference/"))
          (regexp-match? #rx"[.]rkt$" (path->string path))))
    (set! count (add1 count))
    (define name (string-replace (path->string (find-relative-path root path)) "\\" "/"))

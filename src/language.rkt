@@ -1010,7 +1010,7 @@
             'states
             (hash-ref default-class-caps 'states)))
          (define restricted
-           (if right?
+           (if (or right? (and (eq? (form-kind candidate) 'colon) (equal? template '("?"))))
              lexical-restricted
              (class-intersection
               lexical-restricted
@@ -1110,42 +1110,52 @@
    ((record (in-list (if header-valid? (cdr lines) lines))))
    (recover
     (lambda ()
-      (case (line-record-kind record)
-        ((blank) (void))
-        ((comment)
-         (fail
-          "E_DECLARATION"
-          "Declaration prose belongs outside the declaration"
-          (line-record-span record)
-          (hash 'kind "syntax" 'actual (line-record-raw record))))
-        (else
-         (define row (meta-row record))
-         (case (hash-ref row 'kind)
-           ((declare)
-            (when current
-              (recover
-               (lambda ()
-                 (fail
-                  "E_DECLARATION"
-                  "Close the current language before declaring another"
-                  (row-span row)
-                  (hash 'kind "body" 'actual (row-source row)))))
-              (set! enclosing (cons (list current opening rows) enclosing)))
-            (set! current (capture-value row "name"))
-            (set! opening (row-span row))
-            (set! rows '()))
-           ((end)
-            (unless current
-              (declaration-fail "body" (row-source row) "No language is open" (row-span row)))
-            (finish-body!))
-           (else
-            (unless current
-              (declaration-fail
-               "body"
-               (row-source row)
-               "Declare a language before its contents"
-               (row-span row)))
-            (set! rows (append rows (list row))))))))))
+      (if (question-line? record)
+        (validate-question! record)
+        (case (line-record-kind record)
+          ((blank) (void))
+          ((comment)
+           (fail
+            "E_DECLARATION"
+            "Declaration prose belongs outside the declaration"
+            (line-record-span record)
+            (hash 'kind "syntax" 'actual (line-record-raw record))))
+          (else
+           (define row (meta-row record))
+           (case (hash-ref row 'kind)
+             ((declare)
+              (when current
+                (recover
+                 (lambda ()
+                   (fail
+                    "E_DECLARATION"
+                    "Close the current language before declaring another"
+                    (row-span row)
+                    (hash 'kind "body" 'actual (row-source row)))))
+                (set! enclosing (cons (list current opening rows) enclosing)))
+              (set! current (capture-value row "name"))
+              (set! opening (row-span row))
+              (set! rows '())
+              (when (and (equal? current "Typify") (not (current-bootstrap?)))
+                (recover
+                 (lambda ()
+                   (declaration-fail
+                    "duplicate"
+                    current
+                    "The meta body's name is reserved"
+                    opening)))))
+             ((end)
+              (unless current
+                (declaration-fail "body" (row-source row) "No language is open" (row-span row)))
+              (finish-body!))
+             (else
+              (unless current
+                (declaration-fail
+                 "body"
+                 (row-source row)
+                 "Declare a language before its contents"
+                 (row-span row)))
+              (set! rows (append rows (list row)))))))))))
   (let loop ()
     (when current
       (recover (lambda () (declaration-fail "body" "EOF" "The language has no end!" opening)))
@@ -1772,6 +1782,8 @@
        (define-values
         (kind left right)
         (parts (hash-ref pending 'source) (hash-ref pending 'production-span)))
+       (when (and (not (current-bootstrap?)) (memq kind '(colon bang)) (equal? left '("?")))
+         (declaration-fail "duplicate" "?" "The question verb belongs to the meta body" span))
        (define slots (append (filter slot? left) (if right (filter slot? right) '())))
        (when (check-duplicates (map slot-name slots))
          (declaration-fail
@@ -2478,6 +2490,14 @@
   (and (eq? (line-record-kind record) 'colon)
        (equal? (line-record-left record) "?")
        (verb-word? (line-record-right record))))
+
+(define (validate-question! record)
+  (unless (valid-question? record)
+    (fail
+     "E_QUESTION"
+     "A question requires one verb word"
+     (line-record-span record)
+     (hash 'actual (line-record-raw record)))))
 
 (define (line-accepts? text body)
   (and (not (regexp-match? #rx"[\r\n]" text))
@@ -3242,13 +3262,7 @@
        (recover
         (lambda ()
           (cond
-           ((question-line? record)
-            (unless (valid-question? record)
-              (fail
-               "E_QUESTION"
-               "A question requires one verb word"
-               (line-record-span record)
-               (hash 'actual (line-record-raw record)))))
+           ((question-line? record) (validate-question! record))
            (else
             (define-values (hit failure) (scan-forms body record))
             (unless hit (refuse-form! record failure))

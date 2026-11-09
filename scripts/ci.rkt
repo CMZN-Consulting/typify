@@ -26,6 +26,10 @@
     "test/test-resolution-metadata.rkt"
     "test/test-program-diagnostics.rkt"
     "test/test-reader-routed.rkt"
+    "test/test-stage3-meta.rkt"
+    "test/test-questions.rkt"
+    "test/test-ask-gate.rkt"
+    "test/test-stage3-cli.rkt"
     "test/test-recovery-rulings.rkt"
     "test/test-depth-literals.rkt"
     "test/test-ci-aggregation.rkt"
@@ -90,15 +94,33 @@
     plan-state-bounds
     facts-collector-agreement))
 
-(define (acceptance-stage? stage) (and (exact-integer? stage) (member stage '(1 2)) #t))
+(define stage-three-gate-names '(ask-exact-replay ask-round-trip))
+
+(define stage-five-gate-names '(house-mount-state house-primitive-audit house-rule-mutation))
+
+(define (unscored-gates stage)
+  (if (= stage 3)
+    (for/list
+     ((name (in-list stage-five-gate-names)))
+     (hash 'name (symbol->string name) 'status "unscored-missing-evidence" 'stage 5))
+    '()))
+
+(define (acceptance-stage? stage) (and (exact-integer? stage) (member stage '(1 2 3)) #t))
 
 (define (stage-key stage)
-  (unless (acceptance-stage? stage) (raise-argument-error 'stage-key "1 or 2" stage))
-  (if (= stage 1) 'stage1 'stage2))
+  (unless (acceptance-stage? stage) (raise-argument-error 'stage-key "1, 2 or 3" stage))
+  (case stage ((1) 'stage1) ((2) 'stage2) ((3) 'stage3)))
 
 (define (gate-names stage)
   (stage-key stage)
-  (append stage-one-gate-names (if (= stage 2) stage-two-gate-names '())))
+  (append
+   stage-one-gate-names
+   (if (>= stage 2)
+     (filter
+      (lambda (name) (or (= stage 2) (not (member name stage-five-gate-names))))
+      stage-two-gate-names)
+     '())
+   (if (= stage 3) stage-three-gate-names '())))
 
 (define (field data key (default #f))
   (if (hash? data)
@@ -119,6 +141,9 @@
   (define case-ids (and (list? results) (map (lambda (result) (field result 'case-id)) results)))
   (define units (field baseline 'invocations (field baseline 'total)))
   (define unit-failures (field baseline 'invocation-failures (field baseline 'failures)))
+  (define deferred (field baseline 'deferred '()))
+  (define deferred-ids (and (list? deferred) (map (lambda (entry) (field entry 'id)) deferred)))
+  (define full-cases (field baseline 'full-case-total (field baseline 'case-total)))
   (and (hash? baseline)
        (eq? (field baseline 'available) #t)
        (eq? (field baseline 'complete) #t)
@@ -135,6 +160,14 @@
        (= (length ids) units)
        (= (length ids) (length (remove-duplicates ids)))
        (andmap string? case-ids)
+       (list? deferred-ids)
+       (andmap string? deferred-ids)
+       (= (length deferred-ids) (length (remove-duplicates deferred-ids)))
+       (not (ormap (lambda (id) (member id case-ids)) deferred-ids))
+       (natural? full-cases)
+       (equal?
+        (field baseline 'inventory-case-total (+ full-cases (length deferred-ids)))
+        (+ full-cases (length deferred-ids)))
        (equal? (field baseline 'case-total) (length (remove-duplicates case-ids)))
        (equal?
         (field baseline 'total)
@@ -206,7 +239,9 @@
      (parameterize
       ((current-output-port output) (current-error-port errors))
       (define runner (dynamic-require (build-path root name) 'run-tests))
-      (if (member name '("test/test-language.rkt" "test/test-meta-mutation.rkt"))
+      (if (member
+           name
+           '("test/test-language.rkt" "test/test-meta-mutation.rkt" "test/test-ask-gate.rkt"))
         (runner #:blind? blind? #:stage stage)
         (runner))))
    (define check-style?
@@ -343,6 +378,26 @@
                (equal? (field evidence 'state-violations) 0)
                (eq? (field evidence 'canary-found) #t)))
          ((facts-collector-agreement) (eq? (field evidence 'independent) #t))
+         ((ask-exact-replay)
+          (and (eq? (field evidence 'complete) #t)
+               (eq? (field evidence 'blind) #t)
+               (eq? (field evidence 'independent) #t)
+               (eq? (field evidence 'reference-executed) #f)
+               (positive? (field evidence 'parsed-files))
+               (list? (field evidence 'declarations))
+               (pair? (field evidence 'declarations))
+               (equal?
+                total
+                (for/sum
+                 ((entry (in-list (field evidence 'declarations))))
+                 (field entry 'words 0)))))
+         ((ask-round-trip)
+          (and (eq? (field evidence 'complete) #t)
+               (eq? (field evidence 'blind) #t)
+               (eq? (field evidence 'independent) #t)
+               (eq? (field evidence 'reference-executed) #f)
+               (equal? total (field evidence 'roundtrip-checks))
+               (equal? (field evidence 'roundtrip-failures) 0)))
          (else #t))))
 
 (define (measure-gates tests #:stage (stage 1))
@@ -535,6 +590,8 @@
      (and blind? kernel-pass? (andmap (lambda (gate) (hash-ref gate 'pass)) gates))
      'status
      (if blind? "measured" "deferred-blind")
+     'unscored
+     (unscored-gates stage)
      'gates
      gates))))
 
@@ -730,6 +787,8 @@
      (and reports-pass? (andmap (lambda (gate) (field gate 'pass)) gates))
      'status
      (if replay-valid? "measured" "baseline-replay-disagreement")
+     'unscored
+     (unscored-gates stage)
      'gates
      gates))))
 
@@ -740,7 +799,7 @@
  (define arguments (vector->list (current-command-line-arguments)))
  (define (usage)
    (displayln
-    "usage: racket scripts/ci.rkt [--stage 1|2] [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--stage 1|2] [--output FILE]"
+    "usage: racket scripts/ci.rkt [--stage 1|2|3] [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--stage 1|2|3] [--output FILE]"
     (current-error-port))
    (exit 2))
  (define-values
@@ -759,8 +818,8 @@
      ((list* "--defer-blind" rest)
       (if blind? (loop rest output #f group aggregate-paths stage) (usage)))
      ((list* "--stage" value rest)
-      (if (and (not stage) (member value '("1" "2")))
-        (loop rest output blind? group aggregate-paths (if (equal? value "1") 1 2))
+      (if (and (not stage) (member value '("1" "2" "3")))
+        (loop rest output blind? group aggregate-paths (string->number value))
         (usage)))
      ((list* "--group" name rest)
       (if (and (equal? group "all") (member name '("all" "kernel" "language" "mutation")))

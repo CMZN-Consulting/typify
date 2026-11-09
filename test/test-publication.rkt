@@ -1,11 +1,14 @@
 #lang racket/base
 
-(require racket/file
+(require file/sha1
+         racket/file
          racket/list
          racket/path
          racket/runtime-path
          racket/string
-         "../scripts/leak-check.rkt")
+         "../scripts/leak-check.rkt"
+         "../scripts/format.rkt"
+         "../scripts/import-corpus.rkt")
 
 (provide run-tests)
 
@@ -187,7 +190,71 @@
      (check
       "source-comment-check-retained"
       (lambda () (issue? (check-repository comment-root) "source-comment" "src/sample.rkt"))
-      #t))
+      #t)
+     (define gate-source (build-path temporary "gate-source"))
+     (define reference-bytes
+       #"#lang racket/base\n; frozen reference data\n(error 'reference \"must never run\")\n")
+     (for
+      ((item
+        (list
+         (cons "README.md" #"Reference language and generation command.\n")
+         (cons "gate.json" #"{\"declarations\":[]}\n")
+         (cons "declarations/gate.typify" #"#lang typify\ndeclare : Gate\nend!\n")
+         (cons "reference/source.rkt" reference-bytes))))
+      (write-bytes-file (build-path gate-source (car item)) (cdr item)))
+     (define gate-root (new-root temporary "frozen-gate" #:fixtures? #f))
+     (write-bytes-file (build-path gate-root "src" "info.rkt") #"#lang info\n")
+     (define gate-tree (hash-ref (ask-gate-inventory gate-source) 'tree-sha256))
+     (define archive (make-string 64 #\a))
+     (import-ask-gate gate-source gate-tree archive #:root gate-root)
+     (define gate-path (build-path gate-root "test" "ask-gate"))
+     (define reference-path (build-path gate-path "reference" "source.rkt"))
+     (define pins
+       (hash
+        'archive-sha256
+        archive
+        'tree-sha256
+        gate-tree
+        'receipt-sha256
+        (call-with-input-file
+         (build-path gate-path "import.json")
+         (lambda (input) (bytes->hex-string (sha256-bytes input))))))
+     (parameterize
+      ((current-ask-gate-custody pins))
+      (check
+       "frozen-reference-comments-are-hash-bound-data"
+       (lambda () (hash-ref (check-repository gate-root) 'pass))
+       #t)
+      (check
+       "formatter-preserves-verified-reference-bytes"
+       (lambda ()
+         (and (hash-ref (format-repository gate-root #:write? #t) 'pass)
+              (equal? (file->bytes reference-path) reference-bytes)))
+       #t)
+      (write-bytes-file reference-path (bytes-append reference-bytes #"  (void)\n"))
+      (define changed-reference (file->bytes reference-path))
+      (check
+       "changed-reference-loses-comment-exception-and-custody"
+       (lambda ()
+         (define result (check-repository gate-root))
+         (and (issue? result "frozen-custody")
+              (issue? result "source-comment" "test/ask-gate/reference/source.rkt")))
+       #t)
+      (check
+       "formatter-refuses-unverified-reference-without-rewriting-it"
+       (lambda ()
+         (and (not (hash-ref (format-repository gate-root #:write? #t) 'pass))
+              (equal? (file->bytes reference-path) changed-reference)))
+       #t)
+      (write-bytes-file reference-path (bytes-append reference-bytes secret-bytes))
+      (check
+       "frozen-reference-remains-subject-to-secret-signature-scans"
+       (lambda ()
+         (define result (check-repository gate-root))
+         (andmap
+          (lambda (kind) (issue? result kind "test/ask-gate/reference/source.rkt"))
+          '("private-key" "credential" "home-path" "key-file")))
+       #t)))
    (lambda () (delete-directory/files temporary)))
   (hash
    'suite

@@ -10,6 +10,7 @@
          racket/string
          "../src/diagnostics.rkt"
          "../src/main.rkt"
+         "../scripts/import-corpus.rkt"
          (only-in "test-decoder.rkt" parse-gbnf gbnf-accepts?))
 
 (provide run-blind-corpus
@@ -57,7 +58,11 @@
   (define receipt (and (file-exists? receipt-path) (load-receipt root)))
   (define directories
     (if receipt
-      (for/list ((name (in-list (hash-ref receipt 'cases)))) (build-path root name))
+      (for/list
+       ((name (in-list (hash-ref receipt 'cases)))
+        #:unless
+        (member name (map (lambda (entry) (hash-ref entry 'id)) (hash-ref receipt 'deferred '()))))
+       (build-path root name))
       (case-directories root)))
   (append-map
    (lambda (directory)
@@ -188,7 +193,10 @@
            (eq? (hash-ref receipt 'verbatim #f) #t)
            (equal? (hash-ref receipt 'tree-sha256 #f) tree-sha256)
            (equal? (hash-ref (hash-ref receipt 'provenance (hash)) 'sha256 #f) archive-sha256)
-           (= (length (hash-ref receipt 'cases '())) 100))
+           (list? (hash-ref receipt 'cases #f))
+           (pair? (hash-ref receipt 'cases))
+           (andmap string? (hash-ref receipt 'cases))
+           (equal? (hash-ref receipt 'cases) (remove-duplicates (hash-ref receipt 'cases))))
     (error 'blind-corpus "The frozen receipt's custody metadata does not match"))
   (for
    ((entry (in-list (hash-ref receipt 'files)))
@@ -200,6 +208,24 @@
             (= (file-size path) (hash-ref entry 'bytes))
             (equal? (digest path) (hash-ref entry 'sha256)))
      (error 'blind-corpus "The frozen root metadata is missing or has changed")))
+  (define deferred
+    (validate-deferred
+     (hash-ref receipt 'deferred '())
+     (hash-ref receipt 'cases)
+     (if (member "MANIFEST.md" (hash-ref receipt 'metadata '()))
+       (file->string (build-path root "MANIFEST.md"))
+       "")))
+  (for*
+   ((entry (in-list deferred))
+    (file (in-list (hash-ref receipt 'files)))
+    #:when
+    (string-prefix? (hash-ref file 'path) (string-append (hash-ref entry 'id) "/")))
+   (define path (safe-path root (hash-ref file 'path)))
+   (unless (and
+            (file-exists? path)
+            (= (file-size path) (hash-ref file 'bytes))
+            (equal? (digest path) (hash-ref file 'sha256)))
+     (error 'blind-corpus "A deferred case's sealed content is missing or changed")))
   (define allowed
     (append
      '("import.json" "hostile.json")
@@ -536,6 +562,9 @@
    ((or (hash-has-key? expected 'sarif_projection)
         (hash-has-key? expected 'lsp_range_utf16_zero_based))
     4)
+   ((let ((invocation (hash-ref expected 'invocation '())))
+      (and (>= (length invocation) 2) (equal? (cadr invocation) "ask")))
+    3)
    ((ormap model-diagnostic? diagnostics) 2)
    (else 1)))
 
@@ -691,7 +720,7 @@
         'path
         "/infrastructure"
         'expected
-        (hash 'cases 100 'custody "frozen-receipt")
+        (hash 'cases "authorized-manifest-inventory" 'custody "frozen-receipt")
         'actual
         setup-error
         'reason
@@ -700,7 +729,17 @@
         "none"))))
   (define selected-complete?
     (and (= attempted requested) (not setup-error) (zero? infrastructure-count)))
-  (define complete? (and (not ids) selected-complete? (= (hash-count case-results) 100)))
+  (define deferred (if receipt (hash-ref receipt 'deferred '()) '()))
+  (define inventory-cases (if receipt (hash-ref receipt 'cases) '()))
+  (define complete?
+    (and (not ids)
+         selected-complete?
+         receipt
+         (equal?
+          (sort
+           (append (hash-keys case-results) (map (lambda (entry) (hash-ref entry 'id)) deferred))
+           string<?)
+          (sort inventory-cases string<?))))
   (define failures (count (lambda (result) (not (hash-ref result 'pass))) results))
   (hash
    'available
@@ -733,6 +772,10 @@
    (count not (hash-values case-results))
    'corpus-case-total
    (length (case-directories root))
+   'inventory-case-total
+   (length inventory-cases)
+   'deferred
+   deferred
    'complete
    complete?
    'selected-complete
@@ -774,7 +817,8 @@
   (case stage
     ((1) '("check" "emit"))
     ((2) '("check" "emit" "tree" "plan"))
-    (else (raise-argument-error 'blind-stage-commands "1 or 2" stage))))
+    ((3) '("check" "emit" "tree" "plan" "ask"))
+    (else (raise-argument-error 'blind-stage-commands "1, 2 or 3" stage))))
 
 (define (blind-stage-scope observed stage)
   (blind-command-scope observed (blind-stage-commands stage) #:stage stage))
@@ -1144,7 +1188,14 @@
   (check (hash-ref second-stage 'stage-limit) 2)
   (check (hash-ref second-stage 'scope) '("check" "emit" "tree" "plan"))
   (check (hash-ref second-stage 'total) 4)
-  (check (with-handlers ((exn:fail? (lambda (_) #t))) (blind-stage-commands 3) #f) #t)
+  (check (blind-stage-commands 3) '("check" "emit" "tree" "plan" "ask"))
+  (check (with-handlers ((exn:fail? (lambda (_) #t))) (blind-stage-commands 4) #f) #t)
+  (check
+   (expected-stage
+    (hash
+     'expected
+     (hash 'invocation '("typify" "ask" "declarations.typify" "Example" "word" "--json"))))
+   3)
   (check (expected-stage (hash 'expected (hash 'diagnostics (list (hash 'code "E_JOIN_LAW"))))) 2)
   (check
    (expected-stage

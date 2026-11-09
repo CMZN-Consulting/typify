@@ -16,6 +16,7 @@
          "model.rkt"
          "facts.rkt"
          "plan.rkt"
+         "questions.rkt"
          "tree.rkt"
          "syntax.rkt")
 
@@ -237,6 +238,7 @@
   (let loop ((remaining arguments) (positionals '()) (options (hash)))
     (cond
      ((null? remaining) (values (reverse positionals) options))
+     ((equal? (car remaining) "--") (values (append (reverse positionals) (cdr remaining)) options))
      ((equal? (car remaining) "--facts")
       (when (or
              (hash-has-key? options "--facts")
@@ -452,6 +454,12 @@
         #:on-error
         (lambda (item) (set! ensure-diagnostics (cons item ensure-diagnostics)))))
       (planned-response report events diagnostics ensure-diagnostics))
+     ((list "ask" path name word)
+      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+      (define body (if (equal? name "Typify") (meta-language) (select-language declarations name)))
+      (define answer (ask-language body word #:diagnostics diagnostics))
+      (set! text-output (string-append (string-join (hash-ref answer 'lines) "\n") "\n"))
+      answer)
      ((list "emit" "Typify")
       (if gbnf? (hash 'text (language->gbnf (meta-language))) (language->grammar (meta-language))))
      ((list "emit" path name)
@@ -461,7 +469,7 @@
      (_
       (raise-typify
        "E_USAGE"
-       "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | facts ROOT | tree DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS LANGUAGE PROGRAM [--facts FILE] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"
+       "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | facts ROOT | tree DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS LANGUAGE PROGRAM [--facts FILE] | ask DECLARATIONS LANGUAGE WORD [--json] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"
        #:data
        (hash 'actual (if (null? positional) "" (car positional)))))))
   (values
@@ -534,11 +542,12 @@
      '()
      'diagnostics
      diagnostics))
-   ((equal? command "emit") (hash 'ok #f 'diagnostics diagnostics))
+   ((member command '("ask" "emit")) (hash 'ok #f 'diagnostics diagnostics))
    (else (hash 'ok #f 'terms '() 'diagnostics diagnostics))))
 
 (define (execute-command arguments)
-  (define json? (and (member "--json" arguments) #t))
+  (define json?
+    (and (member "--json" (takef arguments (lambda (item) (not (equal? item "--"))))) #t))
   (define failure-bound 'null)
   (define failure-facts "none")
   (define failure-report #f)
@@ -583,7 +592,7 @@
    (unless json-output? (display-diagnostics diagnostics))
    (cond
     ((equal? arguments '("--version")) (displayln typify-version))
-    ((and (member "--bounds" arguments) (not json-output?))
+    ((and (hash-has-key? result 'bounds) (not json-output?))
      (display (render-bounds (hash-ref result 'bounds))))
     ((and (hash-has-key? result 'terms) (hash-has-key? result 'ok) (not json-output?)) (void))
     ((and text-output (not json-output?)) (display text-output))
