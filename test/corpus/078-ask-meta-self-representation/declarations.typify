@@ -1,11 +1,10 @@
 #lang typify
 
-declare : TypifyMetaSubset
+declare : CatalogMetaHost
 version : 1
-is : verb = letter /[A-Za-z0-9_-]*/
-term : ask-word : verb
-form : ? : <verb>
-does : ask-word <verb>
-count : ask-word = *
-example : ? : form
+is : word = /[A-Za-z0-9-]+/
+term : item : word
+form : item : <word>
+does : item <word>
+example : item : form
 end!

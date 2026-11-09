@@ -1,8 +1,34 @@
-# Typify v1 Blind Verdict Corpus (v8) — MANIFEST
+# Typify v1 Blind Verdict Corpus (v12) — MANIFEST
 
-**Corpus Revision**: `v8` (updated for the `15:38:57Z`, `15:45:11Z`, and `15:48:46Z` corrections to `typify-v1-definition-2026-11-07.md`).
+**Corpus Revision**: `v12` (updated for the `2026-11-09T14:59:52Z`, `15:14:08Z`, `15:20:48Z`, `15:27:56Z`, and `17:41:38Z` stage-three `ask` corrections to `typify-v1-definition-2026-11-07.md`).
 
-This corpus contains **100** blind test cases (`001`–`100`) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `15:48:46Z`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+This corpus contains **101** blind test cases (`001`–`101`, **0 deferred**) derived strictly from the text of the Typify v1 definition (`typify-v1-definition-2026-11-07.md`, including Amendments 1 `A`–`D`, Amendment 2 `E`–`Q`, Amendment 3 `R`–`Z`, and all corrections through `2026-11-09T17:41:38Z`), accompanied by the stage-three `ask` gate (`test/ask-gate/`). Every expected value carries provenance tags (`§1`–`§14`, `A`–`Z`) derived solely from the specification text.
+
+## Deferred Cases (`v12`)
+
+- **None** (`0` deferred, `101` compared per `2026-11-09T15:14:08Z` item 7 and `17:41:38Z` item 7).
+
+## Cases Changed in `v12` (`2026-11-09T17:41:38Z` Stage-Three Corrections)
+
+- **`101-err-ask-question-line-malformed-in-declarations`** (`declarations.typify`, `expected.json`): Added corpus case testing `typify ask declarations.typify Catalog item --json` over a declarations file containing a question line `? : 123bad!` whose word fails the verb class, expecting exit status `1` and the refusal envelope with `E_QUESTION` covering line `5` (`5:1`–`5:12`, `byteOffset` `44`–`55`) per `17:41:38Z` items 4 and 7.
+- **Stage-three `ask` gate (`test/ask-gate/`)**: Added witnesses in `declarations/ask-gate.typify`, `reference/ref_ask.py`, `gate.json` (`typo: 16616`, `unknown: 33`, `witness: 11`), and `README.md` for `17:41:38Z` item 1 (`is : alias-view = "a" | "b"` sharing the spelling of form verb `alias-view` and named by no `does` line of `alias-view`'s forms, printing once after `alias-view`'s verb/constructor lines), item 3 (`form : letter : <word>` with `does : tag-letter <word>`, legal as a form verb and candidate with no `is` line for the built-in `letter`), and item 4 (well-spelled `? : bind` outside every body and `? : module` inside `AskGate` passed over without declaring anything).
+
+## Cases Changed in `v11` (`2026-11-09T14:59:52Z`–`15:27:56Z` Stage-Three Corrections)
+
+- **`046-multislot-3-http-header-rule`** (`declarations.typify`, `expected.json`): Renamed class and placeholder `verb` to `method` (`is : method = "GET" | "POST" | "DELETE"`) per `15:27:56Z` item 4 (`verb` joins the reserved meta class names under `D7`/`D12`).
+- **`069-ask-declared-form-and-rule`** (`expected.json`): Updated author-note `title` from `"transitive classes"` and `"missing : error"` to `"direct classes"` and `"missing : refused"` per `14:59:52Z` item 16 (`stdout_json` unchanged).
+- **`072-ask-undeclared-near-scaled-threshold-short-word`** (`expected.json`): Updated author-note `title` from `max(1, floor(L/4))` to `max(n, 3) // 3 capped at 2` per `14:59:52Z` items 8 and 16 (`stdout_json` unchanged).
+- **`074-ask-undeclared-accepts-menu`** (`expected.json`): Updated `lines` to `["? : book = undeclared"]` alone and `accepts` to `[]` (with `title` noting that `accepts` arrives in `1.1`) per `14:59:52Z` items 5 and 10.
+- **`078-ask-meta-self-representation`** (`declarations.typify`, `expected.json`): Rewritten to invoke `typify ask declarations.typify Typify ? --json` over a clean user declaration file (`CatalogMetaHost`) and expect the pinned eight-line meta-body answer for `?` (`form`, `does`, `primitive`, `is`, `effect`, `example`, `count`, `missing : empty`) with `"diagnostics": []` per `14:59:52Z` item 2 and `15:14:08Z` item 1.
+- **Stage-three `ask` gate (`test/ask-gate/`)**: Added reference oracle `reference/ref_ask.py` (`Python 3.15.0`, standard library only), gate declarations `declarations/ask-gate.typify`, frozen gate output `gate.json` (`14,390` typo words, `29` unknown words, `10` witness words), and `README.md` per `14:59:52Z` item 14, `15:14:08Z` item 6, `15:20:48Z` items 1–6, and `15:27:56Z` items 1–7.
+
+## Cases Changed in `v10` (`2026-11-07T17:45:07Z` Corrections)
+
+- **`094-rule-context-lookup-and-program-guard`** (`expected.json`): Updated `E_CONTEXT` `data.key` from `""` to `[]` in subcase `standalone-program-missing-enclosing-context-refused` per `17:45:07Z` item 1.
+
+## Cases Changed in `v9` (`2026-11-07T17:28:50Z` Corrections)
+
+- **`080-err-mounts-order-wrong-bind-then-mask`**, **`089-err-reads-fact-reject-when-absent`**, and **`090-ensure-origin-distinguishes-writer`** (`expected.json`): Updated `data.key` on `E_ENSURE` and `E_FACT_REJECT` to a string array (`["/mounts/research"]`, `["/mounts/alpha"]`) per `17:28:50Z` item 2, and updated `"masked"` on value-carrying `bind` state entries in `080` and `090` to `false` per `17:28:50Z` item 3.
 
 ## Cases Changed in `v8` (`15:38:57Z` & `15:45:11Z` Corrections)
 
@@ -48,7 +74,7 @@ This corpus contains **100** blind test cases (`001`–`100`) derived strictly f
 - **No shadowing of library, built-in, or meta class names (`D12`)**: Renamed user classes/constructors that collided with `name`, `prefix`, or `split` in `022`, `027`, `047`, `055`–`058`, `060`, `068`, `070`, `095`–`098`, and `100`.
 - **Primitive syntax, unparenthesized rules, state fold wire (`07:44Z`, `07:47Z`, `07:51Z`), and schematic GBNF (`06:05Z`)**: Updated `079`–`098` to use `primitive : <constructor> : <class> ...` without `primitive!` or self-rewriting identity rules, updated `plan --json` outputs in `079`–`094` with `"status"`, `"ensure": [{"ensure", "ok", "origin"}]`, `"skips"`, and external step objects `{"term": [...], "unchecked": true}`, updated `064`–`067` and `094` to use `file : <template>` + `required!`/`optional!`, and updated `099` so `expected.json` compares canonical JSON output rather than schematic GBNF bytes.
 
-## Case Index (`001`–`100`)
+## Case Index (`001`–`101`)
 
 | Case | Verdict | Sections & Amendments Covered | Summary |
 | :--- | :--- | :--- | :--- |
@@ -97,7 +123,7 @@ This corpus contains **100** blind test cases (`001`–`100`) derived strictly f
 | `043-hostile-gbnf-emission-injection` | `refused` | `§4`, `F`, `K`, `Q`, `R`, `U`, `Y`, `§8` | Hostile audit (3 grammar-injection pairs): tokens containing GBNF metasymbols '::=' and '[' refused |
 | `044-multislot-1-catalog-item` | `accepted` | `§4`, `§5`, `F`, `J`, `R`, `T`, `Y` | Multi-slot form 1: Catalog 'item : <category> = <title>' with delimiter ' = ' |
 | `045-multislot-2-systemd-bind-paths` | `accepted` | `§4`, `§5`, `F`, `J`, `Q`, `R`, `T`, `Y` | Multi-slot form 2: Three-slot 'bind : <src>:<dst>:<mode>' with ':' delimiters and distinct placeholder references (D4) |
-| `046-multislot-3-http-header-rule` | `accepted` | `§4`, `§5`, `F`, `J`, `R`, `T`, `Y` | Multi-slot form 3: Bracketed verb and arrow delimiter 'header : [<verb>] <hname> => <hval>' |
+| `046-multislot-3-http-header-rule` | `accepted` | `§4`, `§5`, `F`, `J`, `R`, `T`, `Y` | Multi-slot form 3: Bracketed method and arrow delimiter 'header : [<method>] <hname> => <hval>' |
 | `047-multislot-4-network-route` | `accepted` | `§4`, `§5`, `F`, `J`, `R`, `T`, `Y` | Multi-slot form 4: Four-slot network route 'route : <net>/<cidr> via <gw> dev <iface>' (D4, D12) |
 | `048-multislot-5-package-pin` | `accepted` | `§4`, `§5`, `F`, `J`, `R`, `T`, `Y` | Multi-slot form 5: Three-slot package pin 'pin : <pkg>@<ver>#<sha>' with '@' and '#' delimiters |
 | `049-multislot-6-acl-grant` | `accepted` | `§4`, `§5`, `F`, `J`, `R`, `T`, `Y` | Multi-slot form 6: Parenthesized tuple 'grant : (<role>, <perm>) on <path>' |
@@ -120,16 +146,16 @@ This corpus contains **100** blind test cases (`001`–`100`) derived strictly f
 | `066-tree-optional-absent-empty` | `accepted` | `§7`, `§9`, `G`, `R`, `T`, `X`, `Y` | Tree optional program without default: absent notes.typify reported as 'absent-empty' contributing zero terms |
 | `067-err-tree-required-missing` | `refused` | `§7`, `§9`, `G`, `K`, `R`, `X`, `Y` | Tree error: required program (count = 1) absent from directory reported as 'missing' and refused |
 | `068-sees-valid-and-undeclared-language` | `refused` | `§3`, `§7`, `K`, `R`, `Y` | Declaration error: 'sees' references a language not declared in the file |
-| `069-ask-declared-form-and-rule` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `X`, `Y` | Question form (Amendment S): declared word 'item' answered with form, transitive classes, term, does, count, missing : error, and example in exact order (no status line) |
+| `069-ask-declared-form-and-rule` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `X`, `Y` | Question form (Amendment S): declared word 'item' answered with form, does, term, direct classes, example, count, and missing : refused in exact order (no status line) |
 | `070-ask-declared-with-default` | `accepted` | `§6`, `§9`, `G`, `I`, `R`, `S`, `X`, `Y` | Question form (Amendment S): declared word 'access' with default line reports '? : missing : default : access : ro' |
 | `071-ask-undeclared-near-damerau-single-edit` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `Y` | Question form (Amendment I, S): undeclared word 'bindd' returns '? : near : bind' (distance 1 <= threshold 1) and omits 'accepts' |
-| `072-ask-undeclared-near-scaled-threshold-short-word` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `Y` | Question form (Amendment I, S): length-scaled threshold max(1, floor(L/4)) = 1 for 'cat' matches 'act' (transposition=1) and 'cut' (substitution=1) sorted lexicographically, excluding 'dog' (distance 3) |
+| `072-ask-undeclared-near-scaled-threshold-short-word` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `Y` | Question form (Amendment I, S): length-scaled bound max(n, 3) // 3 capped at 2 = 1 for 'cat' matches 'act' (transposition=1) and 'cut' (substitution=1) sorted lexicographically, excluding 'dog' (distance 3) |
 | `073-ask-undeclared-near-hyphen-parts-and-ties` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `Y` | Question form (Amendment I, S): hyphen-split part matching finds 'mount-point' and 'read-only-mount' (part 'mount' distance 0) with ties broken lexicographically |
-| `074-ask-undeclared-accepts-menu` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `Y` | Question form (Amendment I, S): undeclared word 'book' accepted by first placeholder <category> of form 'item : <category> = <title>' |
+| `074-ask-undeclared-accepts-menu` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `Y` | Question form (Amendment I, S): undeclared word 'book' answers status line '? : book = undeclared' alone with empty 'accepts' in v1 ('accepts' arrives in 1.1) |
 | `075-ask-undeclared-neither-near-nor-accepts` | `accepted` | `§6`, `§9`, `I`, `R`, `S`, `Y` | Question form (Amendment I, S): undeclared word 'price' with neither near words nor accepting first-slot forms emits only '? : price = undeclared' |
 | `076-err-ask-invalid-verb-not-echoed` | `refused` | `§2`, `§6`, `I`, `K`, `R`, `S`, `Y` | Question form error: '? : <subject>' with invalid verb token '123bad!' rejected with E_QUESTION covering the line (D2, D5) |
 | `077-ask-ignored-in-program-count-and-order` | `accepted` | `§6`, `G`, `I`, `R`, `S`, `T`, `X`, `Y` | Question lines '? : <word>' inside a strict-order program do not disturb 'order : strict', counts, or emitted terms |
-| `078-ask-meta-self-representation` | `accepted` | `§6`, `§14`, `I`, `R`, `S`, `X`, `Y` | Question form on '?' itself ('? : ?') in the self-describing meta declaration (Amendment S: no status line, missing : none) |
+| `078-ask-meta-self-representation` | `accepted` | `§6`, `§14`, `I`, `R`, `S`, `X`, `Y` | Question form on '?' itself ('typify ask declarations.typify Typify ? --json') in the reserved meta body Typify |
 | `079-mounts-order-correct-mask-then-bind` | `accepted` | `§5`, `§9`, `B`, `H`, `I`, `Q`, `R`, `T`, `U`, `V`, `W`, `Y` | Mounts example ('rule : share <p> <m> -> mask (parent <p>) ; bind <p> <m>', 06:32Z): shadow stacking leaves /mounts/research unmasked and satisfies ensure : share : child-visible |
 | `080-err-mounts-order-wrong-bind-then-mask` | `refused` | `§5`, `§9`, `B`, `H`, `I`, `K`, `Q`, `R`, `T`, `U`, `V`, `W`, `Y` | Mounts example in wrong order ('rule : share <p> <m> -> bind <p> <m> ; mask (parent <p>)'): ancestor put /mounts masks child /mounts/research and fails E_ENSURE |
 | `081-cell-law-join-commutative-order-free` | `accepted` | `H`, `Q`, `R`, `T`, `U`, `V`, `Y` | Cell law 'cell : perms = join modes' (05:28Z U): unordered pair '"ro" "rw" = "rw"' listed once derives symmetric entry '"rw" "ro" = "rw"' |
@@ -152,3 +178,4 @@ This corpus contains **100** blind test cases (`001`–`100`) derived strictly f
 | `098-err-rule-nonvariable-left-side` | `refused` | `H`, `K`, `R`, `T`, `U`, `Y` | Declaration error: rule left-hand side with literal argument instead of variable placeholder rejected |
 | `099-emit-json-and-gbnf-catalog` | `accepted` | `§8`, `§9`, `F`, `J`, `R`, `X`, `Y` | Grammar emission ('typify emit', 06:00Z, 06:05Z, 06:20Z J): emits canonical JSON grammar by default and schematic-equivalent GBNF with '--gbnf' (no fixed GBNF byte comparison) |
 | `100-diagnostic-sarif-lsp-nonbmp-and-exit2` | `refused` / `usage_or_io_error` | `§9`, `K`, `R`, `T`, `Y` | Diagnostic range on non-BMP code point U+1F680 (start col 9 byteOffset 11, exclusive end col 12 byteOffset 14 per 05:28Z & 05:30Z), SARIF/LSP projections, and exit code 2 |
+| `101-err-ask-question-line-malformed-in-declarations` | `refused` | `§2`, `§6`, `§9`, `I`, `K`, `R`, `S`, `Y` | Question line in declarations file (17:41:38Z item 4): '? : 123bad!' failing the verb class is refused by 'ask' with E_QUESTION covering line 5 and exit code 1 |

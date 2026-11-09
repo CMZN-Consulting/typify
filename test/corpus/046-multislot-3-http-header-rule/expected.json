@@ -1,6 +1,6 @@
 {
   "case_id": "046-multislot-3-http-header-rule",
-  "title": "Multi-slot form 3: Bracketed verb and arrow delimiter 'header : [<verb>] <hname> => <hval>'",
+  "title": "Multi-slot form 3: Bracketed method and arrow delimiter 'header : [<method>] <hname> => <hval>'",
   "sections_covered": [
     "§4",
     "§5",

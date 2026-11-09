@@ -1,6 +1,6 @@
 {
   "case_id": "078-ask-meta-self-representation",
-  "title": "Question form on '?' itself ('? : ?') in the self-describing meta declaration (Amendment S: no status line, missing : none)",
+  "title": "Question form on '?' itself ('typify ask declarations.typify Typify ? --json') in the reserved meta body Typify",
   "sections_covered": [
     "§6",
     "§14",
@@ -24,7 +24,7 @@
     "typify",
     "ask",
     "declarations.typify",
-    "TypifyMetaSubset",
+    "Typify",
     "?",
     "--json"
   ],
@@ -44,11 +44,12 @@
   ],
   "ask_lines": [
     "? : form : ? : <verb>",
-    "? : does : ask-word <verb>",
-    "? : term : ask-word : verb",
-    "? : is : verb = letter /[A-Za-z0-9_-]*/",
+    "? : does : question <verb>",
+    "? : primitive : question : verb",
+    "? : is : verb = /[A-Za-z0-9][A-Za-z0-9-]*/",
+    "? : effect : question = external",
     "? : example : ? : form",
-    "? : count : ask-word = *",
+    "? : count : question = *",
     "? : missing : empty"
   ],
   "stdout_json": {
@@ -56,11 +57,12 @@
     "status": "declared",
     "lines": [
       "? : form : ? : <verb>",
-      "? : does : ask-word <verb>",
-      "? : term : ask-word : verb",
-      "? : is : verb = letter /[A-Za-z0-9_-]*/",
+      "? : does : question <verb>",
+      "? : primitive : question : verb",
+      "? : is : verb = /[A-Za-z0-9][A-Za-z0-9-]*/",
+      "? : effect : question = external",
       "? : example : ? : form",
-      "? : count : ask-word = *",
+      "? : count : question = *",
       "? : missing : empty"
     ],
     "near": [],
@@ -72,11 +74,12 @@
     "status": "declared",
     "lines": [
       "? : form : ? : <verb>",
-      "? : does : ask-word <verb>",
-      "? : term : ask-word : verb",
-      "? : is : verb = letter /[A-Za-z0-9_-]*/",
+      "? : does : question <verb>",
+      "? : primitive : question : verb",
+      "? : is : verb = /[A-Za-z0-9][A-Za-z0-9-]*/",
+      "? : effect : question = external",
       "? : example : ? : form",
-      "? : count : ask-word = *",
+      "? : count : question = *",
       "? : missing : empty"
     ],
     "near": [],

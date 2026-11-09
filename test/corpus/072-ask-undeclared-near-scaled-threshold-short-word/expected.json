@@ -1,6 +1,6 @@
 {
   "case_id": "072-ask-undeclared-near-scaled-threshold-short-word",
-  "title": "Question form (Amendment I, S): length-scaled threshold max(1, floor(L/4)) = 1 for 'cat' matches 'act' (transposition=1) and 'cut' (substitution=1) sorted lexicographically, excluding 'dog' (distance 3)",
+  "title": "Question form (Amendment I, S): length-scaled bound max(n, 3) // 3 capped at 2 = 1 for 'cat' matches 'act' (transposition=1) and 'cut' (substitution=1) sorted lexicographically, excluding 'dog' (distance 3)",
   "sections_covered": [
     "§6",
     "§9",

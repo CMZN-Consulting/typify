@@ -10,7 +10,15 @@
          current-ask-gate-custody
          validate-deferred)
 
-(define current-ask-gate-custody (make-parameter #f))
+(define current-ask-gate-custody
+  (make-parameter
+   (hash
+    'archive-sha256
+    "b140479b001a0ade1babd3d23e3d689a73a21bb8348d32334a9b2552589fe406"
+    'tree-sha256
+    "acd8418854e498cbf4c1cb92b684e5be018520616ad16375c1ae0aa21c961684"
+    'receipt-sha256
+    "94350c5232241b05c25073c4bfdf543765c5a2c9ded27741b4ad51220a2424f1")))
 
 (define (sha256-file path)
   (call-with-input-file path (lambda (input) (bytes->hex-string (sha256-bytes input)))))

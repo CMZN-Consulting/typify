@@ -1,0 +1,78 @@
+#lang typify
+
+? : bind
+
+declare : AskGate
+version : 1
+? : module
+is : alias-view = "a" | "b"
+is : taxonomy = "book" | "note"
+is : word = /[a-z0-9-]+/
+cell : ledger = shadow
+primitive : bind : word taxonomy
+writes : bind : ledger = put 1
+primitive : emit-op : word
+effect : emit-op = external
+primitive : mark-ready
+effect : mark-ready = external
+term : record-entry : word
+rule : record-entry <w> -> emit-op <w>
+term : Blpha : word
+fact : Blpha
+term : abcwxyz : word
+fact : abcwxyz
+term : alpha : word
+fact : alpha
+term : module : word
+fact : module
+term : mount-point : word
+fact : mount-point
+term : nodule : word
+fact : nodule
+term : read-only-mount : word
+fact : read-only-mount
+term : tag-letter : word
+fact : tag-letter
+form : Blpha : <word>
+does : Blpha <word>
+example : Blpha : one
+form : abcwxyz : <word>
+does : abcwxyz <word>
+example : abcwxyz : one
+form : alias-view : <word>
+does : record-entry <word>
+example : alias-view : one
+form : alpha : <word>
+does : alpha <word>
+example : alpha : one
+form : bind : <word> = <taxonomy>
+does : bind <word> <taxonomy>
+example : bind : slot-1 = book
+form : letter : <word>
+does : tag-letter <word>
+example : letter : one
+form : module : <word>
+does : module <word>
+example : module : one
+form : mount-point : <word>
+does : mount-point <word>
+example : mount-point : one
+form : nodule : <word>
+does : nodule <word>
+example : nodule : one
+form : read-only-mount : <word>
+does : read-only-mount <word>
+example : read-only-mount : one
+form : ready!
+does : mark-ready
+example : ready!
+end!
+
+declare : SiblingLang
+version : 1
+is : word = /[a-z0-9-]+/
+term : foreign-op : word
+form : foreign-op : <word>
+does : foreign-op <word>
+example : foreign-op : one
+end!

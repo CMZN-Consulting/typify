@@ -1,0 +1,12 @@
+#lang typify
+
+declare : Catalog
+version : 1
+? : 123bad!
+is : category = "book" | "journal" | "note"
+is : title = /[^=]+/
+term : item : category title
+form : item : <category> = <title>
+does : item <category> <title>
+example : item : book = Structure and Interpretation of Computer Programs
+end!

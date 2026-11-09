@@ -1,6 +1,6 @@
 {
   "case_id": "074-ask-undeclared-accepts-menu",
-  "title": "Question form (Amendment I, S): undeclared word 'book' accepted by first placeholder <category> of form 'item : <category> = <title>'",
+  "title": "Question form (Amendment I, S): undeclared word 'book' answers status line '? : book = undeclared' alone with empty 'accepts' in v1 ('accepts' arrives in 1.1)",
   "sections_covered": [
     "§6",
     "§9",
@@ -40,33 +40,26 @@
     "S"
   ],
   "ask_lines": [
-    "? : book = undeclared",
-    "? : accepts : item : <category> = <title>"
+    "? : book = undeclared"
   ],
   "stdout_json": {
     "word": "book",
     "status": "undeclared",
     "lines": [
-      "? : book = undeclared",
-      "? : accepts : item : <category> = <title>"
+      "? : book = undeclared"
     ],
     "near": [],
-    "accepts": [
-      "item : <category> = <title>"
-    ],
+    "accepts": [],
     "diagnostics": []
   },
   "ask_json": {
     "word": "book",
     "status": "undeclared",
     "lines": [
-      "? : book = undeclared",
-      "? : accepts : item : <category> = <title>"
+      "? : book = undeclared"
     ],
     "near": [],
-    "accepts": [
-      "item : <category> = <title>"
-    ],
+    "accepts": [],
     "diagnostics": []
   },
   "ask_provenance": [

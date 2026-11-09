@@ -1,0 +1,106 @@
+{
+  "case_id": "101-err-ask-question-line-malformed-in-declarations",
+  "title": "Question line in declarations file (17:41:38Z item 4): '? : 123bad!' failing the verb class is refused by 'ask' with E_QUESTION covering line 5 and exit code 1",
+  "sections_covered": [
+    "§2",
+    "§6",
+    "§9",
+    "I",
+    "K",
+    "R",
+    "S",
+    "Y"
+  ],
+  "provenance": [
+    "§2",
+    "§6",
+    "§9",
+    "I",
+    "K",
+    "R",
+    "S",
+    "Y"
+  ],
+  "command": "ask",
+  "invocation": [
+    "typify",
+    "ask",
+    "declarations.typify",
+    "Catalog",
+    "item",
+    "--json"
+  ],
+  "exit_code": 1,
+  "exit_code_provenance": [
+    "§9",
+    "K",
+    "S",
+    "Y"
+  ],
+  "verdict": "refused",
+  "verdict_provenance": [
+    "§6",
+    "I",
+    "K",
+    "S"
+  ],
+  "stdout_json": {
+    "ok": false,
+    "diagnostics": [
+      {
+        "code": "E_QUESTION",
+        "file": "declarations.typify",
+        "range": {
+          "start": {
+            "line": 5,
+            "column": 1,
+            "byteOffset": 44
+          },
+          "end": {
+            "line": 5,
+            "column": 12,
+            "byteOffset": 55
+          }
+        },
+        "data": {
+          "actual": "? : 123bad!"
+        },
+        "provenance": [
+          "§2",
+          "§6",
+          "I",
+          "K",
+          "S"
+        ]
+      }
+    ]
+  },
+  "diagnostics": [
+    {
+      "code": "E_QUESTION",
+      "file": "declarations.typify",
+      "range": {
+        "start": {
+          "line": 5,
+          "column": 1,
+          "byteOffset": 44
+        },
+        "end": {
+          "line": 5,
+          "column": 12,
+          "byteOffset": 55
+        }
+      },
+      "data": {
+        "actual": "? : 123bad!"
+      },
+      "provenance": [
+        "§2",
+        "§6",
+        "I",
+        "K",
+        "S"
+      ]
+    }
+  ]
+}
