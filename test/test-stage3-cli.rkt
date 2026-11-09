@@ -6,6 +6,7 @@
          racket/port
          racket/runtime-path
          racket/string
+         "../src/diagnostics.rkt"
          "../src/main.rkt")
 
 (provide run-tests)
@@ -68,7 +69,10 @@
   (define checks 0)
   (define (check actual expected context)
     (set! checks (add1 checks))
-    (unless (equal? actual expected)
+    (unless (if
+             (and (hash? actual) (hash? expected))
+             (equal? (canonical-json actual) (canonical-json expected))
+             (equal? actual expected))
       (error 'test-stage3-cli "~a: expected ~s; received ~s" context expected actual)))
   (define (capture arguments)
     (define output (open-output-string))
