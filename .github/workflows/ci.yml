@@ -67,7 +67,7 @@ jobs:
           printf 'TYPIFY_GBNF_VALIDATOR=%s\n' "$RUNNER_TEMP/decoder-build/bin/test-gbnf-validator" >> "$GITHUB_ENV"
       - name: Measure internal kernel checks without frozen corpus replay
         run: racket scripts/ci.rkt --group kernel --stage "$TYPIFY_ACCEPTANCE_STAGE" --defer-blind --output "${{ runner.temp }}/kernel-check.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: kernel-check
@@ -99,7 +99,7 @@ jobs:
           printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
       - name: Replay language verdicts, declarations and witnesses
         run: racket scripts/ci.rkt --group language --stage "$TYPIFY_ACCEPTANCE_STAGE" --output "${{ runner.temp }}/language-replay.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: language-replay
@@ -131,7 +131,7 @@ jobs:
           printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
       - name: Replay the unchanged mutation operator set and independent oracles
         run: racket scripts/ci.rkt --group mutation --stage "$TYPIFY_ACCEPTANCE_STAGE" --output "${{ runner.temp }}/mutation-replay.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: mutation-replay
@@ -181,7 +181,7 @@ jobs:
             "${{ runner.temp }}/evidence/language/language-replay.json" \
             "${{ runner.temp }}/evidence/mutation/mutation-replay.json" \
             --output "${{ runner.temp }}/acceptance.json"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: acceptance
