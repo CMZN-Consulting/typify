@@ -2,6 +2,8 @@
 
 Typify declares line-oriented languages, checks their programs and builds their meanings as data.
 
+The optional [MCP server](mcp/README.md) lets an editor or model look up a word, check proposed declarations and programs, and preview a workplace edit through the workplace's own planner.
+
 This branch develops version 1. There is no version 1 release yet. The stable 0.5 reader remains on main and tag v0.5.0.
 
 With Racket 9.3 CS, run the source reader:

@@ -1,0 +1,23 @@
+{
+  "name": "typify-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An MCP server for authoring languages and programs with the Typify reader.",
+  "license": "MIT",
+  "bin": {
+    "typify-mcp": "server.ts"
+  },
+  "scripts": {
+    "start": "bun server.ts",
+    "test": "bun test",
+    "typecheck": "bun ./node_modules/typescript/bin/tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.5",
+    "typescript": "7.0.2"
+  }
+}

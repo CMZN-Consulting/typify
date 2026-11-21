@@ -47,6 +47,15 @@ jobs:
           printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
       - name: Link source package without fetching dependencies
         run: raco pkg install --scope user --no-setup --deps fail --name typify --link ./src
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.5"
+      - name: Check the authoring server through an MCP client
+        working-directory: mcp
+        run: |
+          bun install --frozen-lockfile
+          bun run typecheck
+          bun test
       - name: Build pinned independent grammar validator
         shell: bash
         env:
