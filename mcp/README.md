@@ -8,12 +8,13 @@ Use Bun 1.4.5 and an executable Typify v1 reader with `ask` and `check`. If you 
 
 ```sh
 raco pkg install --scope user --deps fail --name typify --link ./src
+racket -e '(require setup/dirs) (displayln (build-path (find-user-console-bin-dir) "typify"))'
 cd mcp
 bun install --frozen-lockfile
 bun server.ts --help
 ```
 
-Point a stdio MCP client at the Bun executable and the server. Use absolute paths so the client can start from any directory. The `--reader` option defaults to `typify` on the server's PATH. The optional `--declarations` file supplies a default when a caller omits declaration text.
+Point a stdio MCP client at the Bun executable and the server. Use the absolute launcher path printed by Racket as the value of `--reader`. If the launcher's directory is on the server's `PATH`, you can omit `--reader`. The optional `--declarations` file supplies a default when a caller omits declaration text.
 
 ```json
 {
@@ -44,7 +45,9 @@ To check a proposed change to the language itself, pass its complete source in `
 
 ## Preview a workplace
 
-Add `--workplace /absolute/path/to/workplace-checkout` and `--preview /absolute/path/to/tmux-workplace/bin/workplace-preview` together to expose `preview`. The adapter and its sibling `bin/workplace` must come from the same frame checkout. Set the server environment variable `WORKPLACE_ROOT` to the directory relative to which the workplace normally resolves its checkout if that layout matters to the plan.
+Add `--workplace /absolute/path/to/workplace-checkout` and `--preview /absolute/path/to/tmux-workplace/bin/workplace-preview` together to expose `preview`. The adapter and its sibling `bin/workplace` must come from the same frame checkout.
+
+By default the adapter uses the checkout's parent as the workplace root. If the plan depends on the checkout's position in a larger tree, set `WORKPLACE_ROOT` in the server environment. The checkout must be at or beneath that root. For example, a disposable checkout at `/tmp/trial/Workspace/house` with `WORKPLACE_ROOT=/tmp/trial` keeps the relative path `Workspace/house` during preview.
 
 Call `preview` with `{"edits":[]}` for a baseline comparison. For a proposal, send one entry per file with a project-relative `path` and the full proposed `content`. A null content removes that file from the candidate. Edits may address a declared language layer or a file under `programs/`.
 
