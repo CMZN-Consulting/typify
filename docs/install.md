@@ -13,7 +13,7 @@ One archive per platform, with names that carry no version:
 | macOS aarch64 (Apple silicon) | macOS 15 | `typify-macos-aarch64.tar.gz` |
 | Windows x86_64 | Windows Server 2022 | `typify-windows-x86_64.zip` |
 
-No other platform has an archive. Each archive unpacks to a directory `typify/` holding the program, `typify/share/typify.typify` (the output of `typify emit Typify`), `typify/LICENSE.md` (the license of Typify and the notices of the Racket runtime inside the archive) and `typify/MANIFEST.txt`. No Racket needs to be installed.
+No other platform has an archive. Each archive unpacks to a directory `typify/` holding the program, `typify/share/typify.typify` (the self-declaration, which you can check with `typify check typify/share/typify.typify --json`), `typify/LICENSE.md` (the license of Typify and the notices of the Racket runtime inside the archive) and `typify/MANIFEST.txt`. No Racket needs to be installed.
 
 ## Download
 
@@ -56,11 +56,13 @@ Each archive carries `typify/MANIFEST.txt`, one line per other file in the archi
 **Attestation.** With the GitHub CLI, signed in to GitHub (`gh auth login`, or a token in `GH_TOKEN`; without a sign-in and without `--bundle` the command stops before it checks anything):
 
 ```sh
-gh attestation verify typify-linux-x86_64.tar.gz --repo CMZN-Consulting/typify
-gh attestation verify typify/MANIFEST.txt --repo CMZN-Consulting/typify
+gh attestation verify typify-linux-x86_64.tar.gz --repo CMZN-Consulting/typify \
+  --signer-workflow CMZN-Consulting/typify/.github/workflows/release.yml --source-ref refs/tags/v1.0.0
+gh attestation verify typify/MANIFEST.txt --repo CMZN-Consulting/typify \
+  --signer-workflow CMZN-Consulting/typify/.github/workflows/release.yml --source-ref refs/tags/v1.0.0
 ```
 
-The command exits with status 0 when an attestation issued by a workflow of this repository names the file's sha256, and fails otherwise, for an altered file or another repository. `--format json` prints the verified attestation, including the commit the file was built from. The first command checks the archive; run the second from the directory that holds `typify/`, after unpacking, to check the manifest.
+The commands require the file's SHA-256 in an attestation signed by the repository's release workflow for the specified tag. For another version, change the tag. If you have independently pinned the release commit, add `--source-digest COMMIT`. Use `--format json` to inspect the verified statement and its named subjects. The first command checks the archive; run the second from the directory that holds `typify/`, after unpacking, to check the manifest.
 
 **By hand.** Compare the archive's sha256 with the hash from the attestation or from a pin you committed earlier: `sha256sum ARCHIVE` on Linux, `shasum -a 256 ARCHIVE` on macOS, `Get-FileHash -Algorithm SHA256 ARCHIVE` in PowerShell (it prints upper case; compare without regard to case). The release notes come from the same place as the archives, so a match with them shows only that the download is complete.
 

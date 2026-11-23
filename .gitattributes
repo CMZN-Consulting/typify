@@ -1,3 +1,9 @@
 src/**/*.rkt text eol=lf
 test/corpus/** -text
 test/ask-gate/** -text
+scripts/*.sh text eol=lf
+LICENSE.md text eol=lf
+README.md text eol=lf
+docs/install.md text eol=lf
+test/overlays/v12-stage4.json -text
+test/release-fixtures/** -text

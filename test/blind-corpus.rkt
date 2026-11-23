@@ -594,7 +594,9 @@
          #:stop-on-failure?
          (stop-on-failure? #f)
          #:retain-observations?
-         (retain-observations? #f))
+         (retain-observations? #f)
+         #:observe
+         (observe-case observe))
   (unless (memq wire '(v12 stage4)) (raise-argument-error 'run-blind-corpus "'v12 or 'stage4" wire))
   (define setup-error #f)
   (define receipt
@@ -661,7 +663,7 @@
       (when (hash-has-key? entry 'inventory-error)
         (error 'blind-corpus "~a" (hash-ref entry 'inventory-error)))
       (verify-case-inputs! root receipt case-id)
-      (observe entry)))
+      (observe-case entry)))
    (define infrastructure (hash-ref actual 'infrastructure #f))
    (define differences
      (with-handlers

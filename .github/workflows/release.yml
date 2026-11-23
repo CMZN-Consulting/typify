@@ -1,0 +1,336 @@
+name: release
+
+on:
+  push:
+    branches: [pr/stable-1.0.0]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TYPIFY_PREVIOUS_RELEASE: 487dc51e3afe1d251866f7a77312184da5e5c779
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} (${{ matrix.replica }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux-x86_64, linux-aarch64, macos-aarch64, windows-x86_64]
+        replica: [a, b]
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+          - platform: linux-aarch64
+            runner: ubuntu-22.04-arm
+          - platform: macos-aarch64
+            runner: macos-15
+          - platform: windows-x86_64
+            runner: windows-2022
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build from the pinned Racket archive
+        shell: bash
+        run: bash scripts/release.sh build --platform "${{ matrix.platform }}" --output "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: build-${{ matrix.platform }}-${{ matrix.replica }}
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+          retention-days: 30
+
+  registry:
+    name: Diagnostic registry against the previous release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.TYPIFY_PREVIOUS_RELEASE }}
+          path: previous
+          persist-credentials: false
+      - name: Compare the registry of codes
+        shell: bash
+        run: |
+          RACKET=$(bash current/scripts/release.sh racket --root "$RUNNER_TEMP/racket-tools")
+          cd current
+          "$RACKET" scripts/check-diagnostic-registry.rkt ../previous
+
+  verify:
+    name: Verify ${{ matrix.platform }}
+    needs: build
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+          - platform: linux-aarch64
+            runner: ubuntu-22.04-arm
+          - platform: macos-aarch64
+            runner: macos-15
+          - platform: windows-x86_64
+            runner: windows-2022
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: build-*
+          path: ${{ runner.temp }}/builds
+      - name: Make the fixture root on POSIX
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          sudo mkdir -p /Volumes/S/typify-fixture
+          sudo chown "$(id -u):$(id -g)" /Volumes/S/typify-fixture
+          printf 'FIXTURE=%s\n' /Volumes/S/typify-fixture >>"$GITHUB_ENV"
+      - name: Make the fixture root on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\fixture-drive" | Out-Null
+          subst S: "$env:RUNNER_TEMP\fixture-drive"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          New-Item -ItemType Directory -Force 'S:\typify-fixture' | Out-Null
+          'FIXTURE=S:\typify-fixture' | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Verify both builds on this platform
+        shell: bash
+        run: |
+          RACKET=$(bash scripts/release.sh racket --platform "${{ matrix.platform }}" --root "$RUNNER_TEMP/racket-tools")
+          bash scripts/release-verify.sh --platform "${{ matrix.platform }}" --builds "$RUNNER_TEMP/builds" \
+            --racket "$RACKET" --fixture "$FIXTURE" --output "$RUNNER_TEMP/verify"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: verify-${{ matrix.platform }}
+          path: ${{ runner.temp }}/verify
+          if-no-files-found: error
+          retention-days: 30
+
+  parity:
+    name: Four-platform byte parity
+    needs: verify
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: verify-*
+          path: ${{ runner.temp }}/verify
+      - name: Compare raw transcripts and outputs across the four platforms
+        shell: bash
+        run: |
+          set -euo pipefail
+          V=$RUNNER_TEMP/verify
+          STATUS=0
+          for P in linux-aarch64 macos-aarch64 windows-x86_64; do
+            for R in a b; do
+              if cmp "$V/verify-linux-x86_64/transcript-a.json" "$V/verify-$P/transcript-$R.json"; then
+                echo "pass  transcript $P-$R equals linux-x86_64-a"
+              else
+                echo "FAIL  transcript $P-$R differs from linux-x86_64-a"
+                STATUS=1
+              fi
+            done
+          done
+          exit "$STATUS"
+
+      - name: Prove an omitted attestation subject or control is refused
+        run: python3 -B test/test_release_attestations.py
+      - name: Save the native evidence for this exact revision
+        shell: bash
+        run: |
+          python3 scripts/release-summary.py "$RUNNER_TEMP/verify" "$(git rev-parse HEAD)" "$RUNNER_TEMP/native-release.json"
+          cat "$RUNNER_TEMP/native-release.json" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-native-verification
+          path: ${{ runner.temp }}/native-release.json
+          if-no-files-found: error
+          retention-days: 30
+
+  docs:
+    name: Docs smoke on ${{ matrix.platform }}
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+            asset: typify-linux-x86_64.tar.gz
+          - platform: linux-aarch64
+            runner: ubuntu-22.04-arm
+            asset: typify-linux-aarch64.tar.gz
+          - platform: macos-aarch64
+            runner: macos-15
+            asset: typify-macos-aarch64.tar.gz
+          - platform: windows-x86_64
+            runner: windows-2022
+            asset: typify-windows-x86_64.zip
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: build-${{ matrix.platform }}-a
+          path: ${{ runner.temp }}/build
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: verify-${{ matrix.platform }}
+          path: ${{ runner.temp }}/verify
+      - name: Run the user path without Racket
+        shell: bash
+        run: |
+          B=$RUNNER_TEMP/build
+          if command -v sha256sum >/dev/null 2>&1; then
+            MANIFEST=$(sha256sum "$B/${{ matrix.platform }}.MANIFEST.txt" | cut -d ' ' -f 1)
+          else
+            MANIFEST=$(shasum -a 256 "$B/${{ matrix.platform }}.MANIFEST.txt" | cut -d ' ' -f 1)
+          fi
+          bash scripts/docs-smoke.sh --archive "$B/${{ matrix.asset }}" \
+            --sha256 "$(cut -d ' ' -f 1 "$B/${{ matrix.asset }}.sha256")" --manifest-sha256 "$MANIFEST" \
+            --tampered "$RUNNER_TEMP/verify/canaries" --work "$RUNNER_TEMP/docs"
+
+  attest:
+    name: Attest archives and manifests
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, registry, verify, parity, docs]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: build-*-a
+          path: ${{ runner.temp }}/builds
+      - name: List the subjects
+        shell: bash
+        run: |
+          python3 scripts/check-release-attestations.py subjects "$RUNNER_TEMP/builds" > "$RUNNER_TEMP/subjects.txt"
+          cat "$RUNNER_TEMP/subjects.txt"
+      - name: Attest the eight subjects
+        id: provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8
+        with:
+          subject-checksums: ${{ runner.temp }}/subjects.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-provenance
+          path: ${{ steps.provenance.outputs.bundle-path }}
+          if-no-files-found: error
+          retention-days: 30
+
+
+  publish:
+    name: Draft the release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: attestation-check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: build-*-a
+          path: ${{ runner.temp }}/builds
+      - name: Create a draft release with the four archives
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          D=$RUNNER_TEMP/builds
+          NOTES=$RUNNER_TEMP/notes.md
+          printf '| Archive | Archive sha256 | Manifest sha256 |\n| --- | --- | --- |\n' >"$NOTES"
+          FILES=()
+          for P in linux-x86_64 linux-aarch64 macos-aarch64 windows-x86_64; do
+            read -r SHA ASSET <"$D/build-$P-a/"*.sha256
+            printf '| `%s` | `%s` | `%s` |\n' "$ASSET" "$SHA" "$(sha256sum "$D/build-$P-a/$P.MANIFEST.txt" | cut -d ' ' -f 1)" >>"$NOTES"
+            FILES+=("$D/build-$P-a/$ASSET")
+          done
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "$GITHUB_REF_NAME" --notes-file "$NOTES" "${FILES[@]}"
+
+  attestation-check:
+    name: Check the attestation both ways
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: attest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: build-*-a
+          path: ${{ runner.temp }}/builds
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: verify-*
+          path: ${{ runner.temp }}/verify
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: release-provenance
+          path: ${{ runner.temp }}/provenance
+      - name: Verify the full subject inventory and the four changes per platform
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BUNDLES=("$RUNNER_TEMP/provenance"/*)
+          [[ ${#BUNDLES[@]} == 1 && -s "${BUNDLES[0]}" ]]
+          python3 scripts/check-release-attestations.py verify "$RUNNER_TEMP/builds" "$RUNNER_TEMP/verify" \
+            "${BUNDLES[0]}" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$(git rev-parse HEAD)"
