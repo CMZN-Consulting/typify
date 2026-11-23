@@ -11,7 +11,9 @@
 
 (provide check-repository source-comment-offset frozen-reference-files)
 
-(define top-level '("README.md" "LICENSE.md" "src" "test" "scripts" ".github"))
+(define required-top-level '("README.md" "LICENSE.md" "src" "test" "scripts" ".github"))
+
+(define top-level (append required-top-level '("mcp" ".gitignore")))
 
 (define corpus-network-addresses
   (for/list
@@ -112,7 +114,7 @@
    (define name (path->string entry))
    (unless (or (equal? name ".git") (member name top-level)) (issue! name 'layout)))
   (for
-   ((required top-level))
+   ((required required-top-level))
    (unless (or
             (file-exists? (build-path root required))
             (directory-exists? (build-path root required)))
@@ -136,7 +138,11 @@
           (not
            (or (member
                 name
-                '("README.md" "LICENSE.md" "test/corpus/MANIFEST.md" "test/ask-gate/README.md"))
+                '("README.md"
+                  "LICENSE.md"
+                  "mcp/README.md"
+                  "test/corpus/MANIFEST.md"
+                  "test/ask-gate/README.md"))
                (member name references))))
      (issue! name 'markdown)))
   (for
