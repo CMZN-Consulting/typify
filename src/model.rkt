@@ -424,18 +424,20 @@
          (define name (capture-value row "name"))
          (define descriptor (constructor! name row #:primitive? #t))
          (duplicate! writes name row)
+         (define clause (capture-value row "value"))
          (define match
-           (regexp-match
-            #px"^([^ =]+) *= *(put|delete) +([0-9]+)(?: +(.*))?$"
-            (capture-value row "value")))
+           (regexp-match-positions #px"^([^ =]+) *= *(put|delete) +([^ ]+)(?: +(.*))?$" clause))
+         (define (field index)
+           (define position (list-ref match index))
+           (and position (substring clause (car position) (cdr position))))
          (unless match
            (decl-fail "syntax" (row-text row) "The write clause is malformed" (row-span row)))
-         (define width (string->number (list-ref match 3)))
-         (define literal-source (list-ref match 4))
+         (define width-text (field 3))
+         (define literal-source (field 4))
          (define literals
            (if literal-source
              (begin
-               (unless (equal? (list-ref match 2) "put")
+               (unless (equal? (field 2) "put")
                  (decl-fail "syntax" (row-text row) "A delete has no literal value" (row-span row)))
                (list
                 (with-handlers
@@ -452,8 +454,29 @@
              (row-text row)
              "A write literal requires allowed code points within the length cap"
              (row-span row))))
+         (define width (meta-width-number width-text))
+         (unless width
+           (define record (hash-ref row 'record))
+           (define right (line-record-right record))
+           (define width-span
+             (if (string-suffix? right clause)
+               (let ((base (- (string-length right) (string-length clause)))
+                     (position (list-ref match 3)))
+                 (span-slice
+                  (line-right-span record)
+                  right
+                  (+ base (car position))
+                  (+ base (cdr position))))
+               (row-span row)))
+           (raise-typify
+            "E_CLASS"
+            "The captured token fails its class"
+            #:span
+            width-span
+            #:data
+            (hash 'class "width" 'token width-text)))
          (unless (<=
-                  (if (equal? (list-ref match 2) "delete") 0 1)
+                  (if (equal? (field 2) "delete") 0 1)
                   width
                   (length (hash-ref descriptor 'signature)))
            (decl-fail
@@ -465,13 +488,7 @@
            (hash-set
             writes
             name
-            (model-write
-             name
-             (list-ref match 1)
-             (string->symbol (list-ref match 2))
-             width
-             (row-span row)
-             literals)))
+            (model-write name (field 1) (string->symbol (field 2)) width (row-span row) literals)))
          (set! write-rows (hash-set write-rows name row)))
         ((reads)
          (define name (capture-value row "name"))

@@ -1,9 +1,10 @@
 #lang racket/base
 
-(require racket/list racket/string "classes.rkt")
+(require racket/list racket/string racket/promise "classes.rkt")
 
 (provide meta-classes
          meta-forms
+         meta-width-number
          current-meta-classes
          current-meta-forms
          meta-source
@@ -46,6 +47,12 @@
    "\"program\" | \"parent\" | \"root\""
    "multiplicity"
    "\"1\" | \"0..1\" | \"1..*\" | \"*\""))
+
+(define width-class
+  (delay (hash-ref (compile-classes (hash "width" (hash-ref meta-classes "width"))) "width")))
+
+(define (meta-width-number text)
+  (and (class-pattern-accepts? (force width-class) text) (string->number text)))
 
 (define meta-cap-defaults
   (hash

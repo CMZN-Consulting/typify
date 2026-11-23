@@ -485,12 +485,14 @@
   (define-values
    (classified-hit class-failures)
    (if (current-reader-meta)
-     (scan-forms (current-reader-meta) record)
+     (scan-forms (current-reader-meta) record #:meta? #t)
      (scan-templates
       (current-meta-forms)
       record
       (compiled-meta-classes)
-      (lambda (entry) (parts (hash-ref entry 'production) (line-record-span record))))))
+      (lambda (entry) (parts (hash-ref entry 'production) (line-record-span record)))
+      #:meta?
+      #t)))
   (unless classified-hit
     (refuse-form!
      record
@@ -1472,7 +1474,22 @@
             (append (hash-ref current-form key) (list (cons (capture-value row "value") span))))))
         ((count count-keyed)
          (define key (capture-value row "name"))
-         (define width (if (eq? kind 'count-keyed) (string->number (capture-value row "width")) 0))
+         (define width
+           (if (eq? kind 'count-keyed) (meta-width-number (capture-value row "width")) 0))
+         (unless width
+           (fail
+            "E_TERM_CLASS"
+            "The meta action did not produce a natural width"
+            span
+            (hash
+             'kind
+             "result"
+             'constructor
+             "declare-keyed-count"
+             'class
+             "width"
+             'actual
+             (capture-value row "width"))))
          (define selected (if (zero? width) counts keyed-counts))
          (when (hash-has-key? selected key)
            (declaration-fail
@@ -2391,7 +2408,17 @@
 
 (struct capture-failure (name token span limit) #:transparent)
 
-(define (scan-templates candidates record classes templates)
+(define (scan-templates candidates record classes templates #:meta? (meta? #f))
+  (define (keyed-width-failure? candidate previous rejected)
+    (and meta?
+         (equal? (capture-failure-name (car previous)) "multiplicity")
+         (= (length rejected) 1)
+         (equal? (capture-failure-name (car rejected)) "width")
+         (equal?
+          (if (form? candidate)
+            (term-constructor (form-meaning candidate))
+            (hash-ref candidate 'constructor))
+          "declare-keyed-count")))
   (define (field-failures parts captures offsets text span)
     (for/list
      ((part (in-list parts))
@@ -2444,7 +2471,11 @@
                 (line-right-span record))
                '())))
           (if (pair? rejected)
-            (loop (cdr remaining) (if (null? failures) rejected (list (car failures))))
+            (loop
+             (cdr remaining)
+             (if (or (null? failures) (keyed-width-failure? candidate failures rejected))
+               rejected
+               (list (car failures))))
             (values
              (cons
               candidate
@@ -2454,13 +2485,14 @@
                (hash-set captures key value)))
              '()))))))))))
 
-(define (scan-forms body record)
+(define (scan-forms body record #:meta? (meta? #f))
   (scan-templates
    (language-forms body)
    record
    (language-classes body)
-   (lambda (candidate)
-     (values (form-kind candidate) (form-left candidate) (form-right candidate)))))
+   (lambda (candidate) (values (form-kind candidate) (form-left candidate) (form-right candidate)))
+   #:meta?
+   meta?))
 
 (define (find-form body record) (define-values (hit failures) (scan-forms body record)) hit)
 
