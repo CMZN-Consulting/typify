@@ -39,3 +39,20 @@ The aggregate requires every Stage 3 criterion, complete matching v12 replays ag
 | `targets` | Four objects named by `target` with values `linux-x86_64`, `linux-aarch64`, `macos-aarch64` and `windows-x86_64`. Each reports `v12Invocations`, `extensionInvocations` and the lowercase `transcriptSha256` of the complete native CLI capture. Each count matches its inventory and all four digests agree. |
 
 The extension custodian supplies the SHA-256 of the manifest's compact canonical UTF-8 JSON, with sorted object keys, original array order and no final newline. The release job compares it with the measured manifest. Each platform job must capture the same ordered invocations and exact stdout, stderr and exit codes, preserving line endings and paths before hashing. The diagnostic and platform measurements come from the release jobs. The aggregate validates their receipts. It records the canonical provider digest and the independently supplied extension pin so a reviewer can identify the inputs used.
+
+### Capturing the native transcripts
+
+The existing baseline-only command is `python3 scripts/capture-release-corpus.py EXE V12 OUTPUT`. For a release, use the same externally approved inputs on each platform.
+
+```sh
+python3 scripts/capture-release-corpus.py "$EXE" "$V12" transcript.json \
+  --extension-archive "$ARCHIVE" --extension-manifest "$MANIFEST" \
+  --extension-manifest-sha256 "$FROZEN_EXTENSION_MANIFEST_SHA256" \
+  --extension-root "$FRESH_FIXTURE_DIRECTORY" --target "$TARGET" > target.json
+```
+
+The frozen tar or compressed tar contains ordinary fixture files and directories. Its root may contain `capture.json`. Alternatively, pass `--extension-invocations INDEX.json` and include the SHA-256 of its exact file bytes as `invocationsSha256` in the independently approved extension manifest. The index is an object with `schema` equal to `typify-stage4-invocations-v1` and `runs` in manifest ID order. Each entry has exactly four members, for example `{"id":"sample/version","cwd":".","argv":["typify","--version","--json"],"exit":0}`. The working directory is relative to the archive root, arguments are a flat array of strings, and `exit` is 0, 1 or 2. Stage fixtures and operands must stay within those directories. Fixture archives carry file contents; host file ownership and mode are determined by the worker. Use frozen facts inputs for cases that require specified permissions or owners.
+
+Use matching physical fixture coordinates for the v12 and extension roots across workers. For the reader's absolute input paths, `C:/typify-fixture` on Windows corresponds to `/Volumes/C/typify-fixture` on macOS and Linux. The parent of the designated extension directory must exist. The capturer creates that directory afresh and removes it after use. It declines a pre-existing directory.
+
+`target.json` records the checked host platform, both observed invocation counts and the transcript hash. The transcript lists v12 invocations first and extension invocations second. Each row has an ID, process exit code, and separate base64 values for the original stdout and stderr bytes. The transcript envelope uses the same ASCII serialization and final LF on all platforms. Native paths, document URIs, non-ASCII output and CRLF remain observable. A mismatch identifies a difference for the release operator to investigate.
