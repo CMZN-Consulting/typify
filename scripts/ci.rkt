@@ -65,6 +65,7 @@
     "test/test-decoder.rkt"
     "test/test-import-corpus.rkt"
     "test/test-publication.rkt"
+    "test/test-license-check.rkt"
     "test/test-meta-mutation.rkt"))
 
 (define language-module "test/test-language.rkt")
