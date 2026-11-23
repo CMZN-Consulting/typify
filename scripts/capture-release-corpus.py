@@ -133,9 +133,11 @@ def unpack_extension(archive_path, root, pin):
 
 def extension_runs(index_bytes, manifest):
     index = json_document(index_bytes)
-    if (not isinstance(index, dict) or set(index) != {"schema", "runs"}
+    if (not isinstance(index, dict) or set(index) not in ({"schema", "runs"}, {"schema", "runs", "doubleFailureId"})
             or index["schema"] != "typify-stage4-invocations-v1" or not isinstance(index["runs"], list)):
         raise ValueError("invalid extension invocation index")
+    if "doubleFailureId" in index and index["doubleFailureId"] != manifest["doubleFailureId"]:
+        raise ValueError("double-failure invocation differs from the freeze")
     for run in index["runs"]:
         if not isinstance(run, dict) or set(run) != {"id", "cwd", "argv", "exit"}:
             raise ValueError("invalid extension invocation entry")

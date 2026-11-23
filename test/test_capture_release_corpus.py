@@ -62,6 +62,14 @@ class CaptureTests(unittest.TestCase):
         return reader["capture_extension"](Path(sys.executable), self.archive, self.fixture, manifest, path,
                                            ["baseline"])
 
+    def test_index_double_failure_matches_frozen_manifest(self):
+        manifest, _ = self.freeze()
+        self.index["doubleFailureId"] = "extra-b"
+        self.assertEqual(reader["extension_runs"](encoded(self.index), manifest), self.index["runs"])
+        self.index["doubleFailureId"] = "extra-a"
+        with self.assertRaisesRegex(ValueError, "double-failure"):
+            reader["extension_runs"](encoded(self.index), manifest)
+
     def test_transcript_bytes_and_order(self):
         for sidecar in (False, True):
             with self.subTest(sidecar=sidecar):

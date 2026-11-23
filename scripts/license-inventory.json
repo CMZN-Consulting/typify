@@ -819,6 +819,21 @@
    "origin": "contributed"
   },
   {
+   "authorship": "Original independently authored Stage 4 behavioral fixtures and additive v12 expectations. The author granted redistribution under the project MIT License and confirmed the frozen manifest digest.",
+   "confirmed": true,
+   "confirmed-by": "OC, fixture author",
+   "confirmed-on": "2026-11-23",
+   "id": "stage4-corpus-handoff",
+   "license": "MIT",
+   "match": [
+    "test/overlays/v12-stage4.json",
+    "test/release-fixtures/stage4.tar",
+    "test/release-fixtures/stage4-manifest.json",
+    "test/release-fixtures/stage4-manifest.sha256"
+   ],
+   "origin": "contributed"
+  },
+  {
    "authorship": "Independently authored question fixtures and reference sources imported with the frozen v12 corpus. The maintainer confirmed CMZN's authority to distribute this group under MIT for 1.0.0.",
    "confirmed": true,
    "confirmed-by": "CMZN LTD. maintainer",
