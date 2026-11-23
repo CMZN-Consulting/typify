@@ -1,0 +1,26 @@
+name: Native reader preflight
+
+on:
+  push:
+    branches: [pr/stable-1.0.0]
+
+permissions:
+  contents: read
+
+jobs:
+  reader:
+    name: Native reader on ${{ matrix.host }}
+    runs-on: ${{ matrix.host }}
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        host: [ubuntu-22.04, ubuntu-22.04-arm, macos-15, windows-2022]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify installer, compile reader, relocate and exercise the distribution
+        shell: bash
+        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} .github/scripts/native-reader-probe.py ${{ matrix.host }}
