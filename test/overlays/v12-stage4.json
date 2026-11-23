@@ -1,0 +1,757 @@
+{
+  "schema": "typify-v12-stage4-overlay-v1",
+  "baselineArchiveSha256": "b140479b001a0ade1babd3d23e3d689a73a21bb8348d32334a9b2552589fe406",
+  "baselineTreeSha256": "7a895f8edc5f3ed4bd4dbcabdd484c14925ac38bef4edd5048e6b8925117d43d",
+  "baselineReceiptSha256": "140bad4af9ad2261569c9018b94f40f95a1638bc9df333750561767087f2b6fe",
+  "entries": [
+    {
+      "id": "064-tree-present-and-slots",
+      "invocation": [
+        "typify",
+        "tree",
+        "declarations.typify",
+        ".",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "facts"
+          ],
+          "value": "none"
+        },
+        {
+          "path": [
+            "stdout_json",
+            "inputs"
+          ],
+          "value": {
+            "root": {
+              "$fixtureRoot": "root"
+            },
+            "factsRoot": null,
+            "declarations": [
+              {
+                "path": "declarations.typify",
+                "sha256": "61fa42ef27450cfa152c2f5b0906d72fbcd2ce9fb6137fab51e3ff472a3ba33f"
+              }
+            ],
+            "paths": [
+              {
+                "path": ".",
+                "kind": "directory"
+              },
+              {
+                "path": "services",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api/config.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services/api/app.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services/api/notes.typify",
+                "kind": "file"
+              }
+            ],
+            "directories": [
+              {
+                "path": "services",
+                "entries": [
+                  {
+                    "kind": "directory",
+                    "name": "api"
+                  }
+                ],
+                "sha256": "991adb4b5e4dc05a90e94d28ef61e82f5f3467e8fcf871320633a89084e91204"
+              }
+            ],
+            "programs": [
+              {
+                "path": "services/api/app.typify",
+                "sha256": "d42e75eec2041be29283a3094e3e5d6d2e6680c824a9ac08596fb25d21dde3e4"
+              },
+              {
+                "path": "services/api/config.typify",
+                "sha256": "5a5658c2227ed69ffec5fa2adc0a7aca886ee1184980164f1a39375f9a638de0"
+              },
+              {
+                "path": "services/api/notes.typify",
+                "sha256": "adb90cbbbcda760cdcc85a2237dede0affab0e703beee8db5664cc242644153f"
+              }
+            ],
+            "facts": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "065-tree-optional-defaulted",
+      "invocation": [
+        "typify",
+        "tree",
+        "declarations.typify",
+        ".",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "facts"
+          ],
+          "value": "none"
+        },
+        {
+          "path": [
+            "stdout_json",
+            "inputs"
+          ],
+          "value": {
+            "root": {
+              "$fixtureRoot": "root"
+            },
+            "factsRoot": null,
+            "declarations": [
+              {
+                "path": "declarations.typify",
+                "sha256": "61fa42ef27450cfa152c2f5b0906d72fbcd2ce9fb6137fab51e3ff472a3ba33f"
+              }
+            ],
+            "paths": [
+              {
+                "path": ".",
+                "kind": "directory"
+              },
+              {
+                "path": "services",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api/config.typify",
+                "kind": "absent"
+              },
+              {
+                "path": "services/api/app.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services/api/notes.typify",
+                "kind": "file"
+              }
+            ],
+            "directories": [
+              {
+                "path": "services",
+                "entries": [
+                  {
+                    "kind": "directory",
+                    "name": "api"
+                  }
+                ],
+                "sha256": "991adb4b5e4dc05a90e94d28ef61e82f5f3467e8fcf871320633a89084e91204"
+              }
+            ],
+            "programs": [
+              {
+                "path": "services/api/app.typify",
+                "sha256": "d42e75eec2041be29283a3094e3e5d6d2e6680c824a9ac08596fb25d21dde3e4"
+              },
+              {
+                "path": "services/api/notes.typify",
+                "sha256": "adb90cbbbcda760cdcc85a2237dede0affab0e703beee8db5664cc242644153f"
+              }
+            ],
+            "facts": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "066-tree-optional-absent-empty",
+      "invocation": [
+        "typify",
+        "tree",
+        "declarations.typify",
+        ".",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "facts"
+          ],
+          "value": "none"
+        },
+        {
+          "path": [
+            "stdout_json",
+            "inputs"
+          ],
+          "value": {
+            "root": {
+              "$fixtureRoot": "root"
+            },
+            "factsRoot": null,
+            "declarations": [
+              {
+                "path": "declarations.typify",
+                "sha256": "61fa42ef27450cfa152c2f5b0906d72fbcd2ce9fb6137fab51e3ff472a3ba33f"
+              }
+            ],
+            "paths": [
+              {
+                "path": ".",
+                "kind": "directory"
+              },
+              {
+                "path": "services",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api/config.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services/api/app.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services/api/notes.typify",
+                "kind": "absent"
+              }
+            ],
+            "directories": [
+              {
+                "path": "services",
+                "entries": [
+                  {
+                    "kind": "directory",
+                    "name": "api"
+                  }
+                ],
+                "sha256": "991adb4b5e4dc05a90e94d28ef61e82f5f3467e8fcf871320633a89084e91204"
+              }
+            ],
+            "programs": [
+              {
+                "path": "services/api/app.typify",
+                "sha256": "d42e75eec2041be29283a3094e3e5d6d2e6680c824a9ac08596fb25d21dde3e4"
+              },
+              {
+                "path": "services/api/config.typify",
+                "sha256": "5a5658c2227ed69ffec5fa2adc0a7aca886ee1184980164f1a39375f9a638de0"
+              }
+            ],
+            "facts": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "067-err-tree-required-missing",
+      "invocation": [
+        "typify",
+        "tree",
+        "declarations.typify",
+        ".",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "facts"
+          ],
+          "value": "none"
+        },
+        {
+          "path": [
+            "stdout_json",
+            "inputs"
+          ],
+          "value": {
+            "root": {
+              "$fixtureRoot": "root"
+            },
+            "factsRoot": null,
+            "declarations": [
+              {
+                "path": "declarations.typify",
+                "sha256": "61fa42ef27450cfa152c2f5b0906d72fbcd2ce9fb6137fab51e3ff472a3ba33f"
+              }
+            ],
+            "paths": [
+              {
+                "path": ".",
+                "kind": "directory"
+              },
+              {
+                "path": "services",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api/config.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services/api/app.typify",
+                "kind": "absent"
+              },
+              {
+                "path": "services/api/notes.typify",
+                "kind": "absent"
+              }
+            ],
+            "directories": [
+              {
+                "path": "services",
+                "entries": [
+                  {
+                    "kind": "directory",
+                    "name": "api"
+                  }
+                ],
+                "sha256": "991adb4b5e4dc05a90e94d28ef61e82f5f3467e8fcf871320633a89084e91204"
+              }
+            ],
+            "programs": [
+              {
+                "path": "services/api/config.typify",
+                "sha256": "5a5658c2227ed69ffec5fa2adc0a7aca886ee1184980164f1a39375f9a638de0"
+              }
+            ],
+            "facts": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "079-mounts-order-correct-mask-then-bind",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "Mounts",
+        "program.typify",
+        "--facts",
+        "facts.json",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            0,
+            "sequence"
+          ],
+          "value": 0
+        },
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            1,
+            "sequence"
+          ],
+          "value": 1
+        }
+      ]
+    },
+    {
+      "id": "080-err-mounts-order-wrong-bind-then-mask",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "MountsWrongOrder",
+        "program.typify",
+        "--facts",
+        "facts.json",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            0,
+            "sequence"
+          ],
+          "value": 1
+        },
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            1,
+            "sequence"
+          ],
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "087-err-plan-unmodelled-primitive-unchecked/external-primitive-plan-unchecked",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "ExternalPrimitivePlan",
+        "program.typify",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            0,
+            "sequence"
+          ],
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "088-reads-fact-skip-when-absent",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "OptionalMountSkip",
+        "program.typify",
+        "--facts",
+        "facts.json",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            0,
+            "sequence"
+          ],
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "090-ensure-origin-distinguishes-writer",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        "Mounts",
+        "program.typify",
+        "--facts",
+        "facts.json",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            0,
+            "sequence"
+          ],
+          "value": 2
+        },
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            1,
+            "sequence"
+          ],
+          "value": 1
+        },
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            2,
+            "sequence"
+          ],
+          "value": 3
+        }
+      ]
+    },
+    {
+      "id": "094-rule-context-lookup-and-program-guard",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        ".",
+        "--facts",
+        "facts.json",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "inputs"
+          ],
+          "value": {
+            "root": {
+              "$fixtureRoot": "root"
+            },
+            "factsRoot": "/mounts",
+            "declarations": [
+              {
+                "path": "declarations.typify",
+                "sha256": "0230f410f9a67cab4723c0a7a149ad14f72054395101eecc0b860251d57b05e0"
+              }
+            ],
+            "paths": [
+              {
+                "path": ".",
+                "kind": "directory"
+              },
+              {
+                "path": "root.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api/mounts.typify",
+                "kind": "file"
+              }
+            ],
+            "directories": [
+              {
+                "path": "services",
+                "entries": [
+                  {
+                    "kind": "directory",
+                    "name": "api"
+                  }
+                ],
+                "sha256": "991adb4b5e4dc05a90e94d28ef61e82f5f3467e8fcf871320633a89084e91204"
+              }
+            ],
+            "programs": [
+              {
+                "path": "root.typify",
+                "sha256": "e8d48a42424c3306c367aa51be0b5950340b379c55e6f04a2002012bf3c77b33"
+              },
+              {
+                "path": "services/api/mounts.typify",
+                "sha256": "ee7a324b05df56213734ed7d8d929ccc628609e42ceeb60d930338fb92ba26d7"
+              }
+            ],
+            "facts": [
+              {
+                "fact": "exists",
+                "args": [
+                  "/mounts/root"
+                ],
+                "held": true
+              }
+            ]
+          }
+        },
+        {
+          "path": [
+            "stdout_json",
+            "schedule"
+          ],
+          "value": [
+            {
+              "sequence": 0,
+              "stage": 0,
+              "program": "services/api/mounts.typify",
+              "kind": "host",
+              "term": [
+                "bind",
+                "api",
+                "/mounts/root/cache",
+                "/mounts/root/cache"
+              ],
+              "modelled": true,
+              "origin": {
+                "kind": "program",
+                "path": "services/api/mounts.typify",
+                "line": 1
+              }
+            }
+          ]
+        },
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            0,
+            "sequence"
+          ],
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "094-rule-context-lookup-and-program-guard/root-plan-context-and-guard-ok",
+      "invocation": [
+        "typify",
+        "plan",
+        "declarations.typify",
+        ".",
+        "--facts",
+        "facts.json",
+        "--json"
+      ],
+      "add": [
+        {
+          "path": [
+            "stdout_json",
+            "inputs"
+          ],
+          "value": {
+            "root": {
+              "$fixtureRoot": "root"
+            },
+            "factsRoot": "/mounts",
+            "declarations": [
+              {
+                "path": "declarations.typify",
+                "sha256": "0230f410f9a67cab4723c0a7a149ad14f72054395101eecc0b860251d57b05e0"
+              }
+            ],
+            "paths": [
+              {
+                "path": ".",
+                "kind": "directory"
+              },
+              {
+                "path": "root.typify",
+                "kind": "file"
+              },
+              {
+                "path": "services",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api",
+                "kind": "directory"
+              },
+              {
+                "path": "services/api/mounts.typify",
+                "kind": "file"
+              }
+            ],
+            "directories": [
+              {
+                "path": "services",
+                "entries": [
+                  {
+                    "kind": "directory",
+                    "name": "api"
+                  }
+                ],
+                "sha256": "991adb4b5e4dc05a90e94d28ef61e82f5f3467e8fcf871320633a89084e91204"
+              }
+            ],
+            "programs": [
+              {
+                "path": "root.typify",
+                "sha256": "e8d48a42424c3306c367aa51be0b5950340b379c55e6f04a2002012bf3c77b33"
+              },
+              {
+                "path": "services/api/mounts.typify",
+                "sha256": "ee7a324b05df56213734ed7d8d929ccc628609e42ceeb60d930338fb92ba26d7"
+              }
+            ],
+            "facts": [
+              {
+                "fact": "exists",
+                "args": [
+                  "/mounts/root"
+                ],
+                "held": true
+              }
+            ]
+          }
+        },
+        {
+          "path": [
+            "stdout_json",
+            "schedule"
+          ],
+          "value": [
+            {
+              "sequence": 0,
+              "stage": 0,
+              "program": "services/api/mounts.typify",
+              "kind": "host",
+              "term": [
+                "bind",
+                "api",
+                "/mounts/root/cache",
+                "/mounts/root/cache"
+              ],
+              "modelled": true,
+              "origin": {
+                "kind": "program",
+                "path": "services/api/mounts.typify",
+                "line": 1
+              }
+            }
+          ]
+        },
+        {
+          "path": [
+            "stdout_json",
+            "state",
+            "mounts",
+            0,
+            "sequence"
+          ],
+          "value": 0
+        }
+      ]
+    }
+  ]
+}

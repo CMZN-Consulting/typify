@@ -28,7 +28,7 @@
 
 (define-runtime-path stage4-overlay-path "overlays/v12-stage4.json")
 
-(define stage4-overlay-sha256 #f)
+(define stage4-overlay-sha256 "050fb5dfcdaf995abbd6d9cfd120bb977ca84dca20ffa9cde02fc495798a02ab")
 
 (define archive-sha256 "b140479b001a0ade1babd3d23e3d689a73a21bb8348d32334a9b2552589fe406")
 
