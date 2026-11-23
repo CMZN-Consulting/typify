@@ -10,6 +10,7 @@
          racket/system
          "../src/diagnostics.rkt"
          "../src/facts.rkt"
+         (only-in "../src/physical-path.rkt" (physical-path-name portable))
          "../src/language.rkt"
          "../src/plan.rkt"
          "../src/tree.rkt")
@@ -17,10 +18,6 @@
 (provide run-tests)
 
 (define-runtime-path shell-collector "facts-collector.sh")
-
-(define (portable path)
-  (define text (path->string path))
-  (if (eq? (system-type 'os) 'windows) (string-replace text "\\" "/") text))
 
 (define (query data name arguments)
   (call-with-values (lambda () (fact-query data name arguments)) list))
@@ -270,6 +267,14 @@
          (query markers "clean" '("/vault/nested/.obsidian" ".obsidian"))
          (query #f "clean" '("/vault" ".obsidian"))))
       '((#f #f) (#t #t) (#t #t) (#t #t) (#f #f)))
+     (define scoped (hash-set markers 'root "/vault"))
+     (check
+      "clean-requires-a-canonical-path-inside-the-observed-root"
+      (lambda ()
+        (for/list
+         ((path '("/vault" "/vault/room" "/vaulted" "/" "/other" "/vault/../other")))
+         (query scoped "clean" (list path "unseen"))))
+      '((#t #t) (#t #t) (#f #f) (#f #f) (#f #f) (#f #f)))
      (check
       "clean-ignores-immediate-markers-and-regular-files-but-includes-nested-links"
       (lambda ()

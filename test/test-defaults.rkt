@@ -41,6 +41,34 @@
     (define diagnostic (refusal thunk))
     (check (and diagnostic (diagnostic-code diagnostic)) code context)
     diagnostic)
+  (define restricted-form '("form : edit!" "does : action" "order : free" "restricts!"))
+  (define defaulted-form '("form : fallback!" "does : action" "default : fallback!"))
+  (for
+   ((rows
+     (in-list
+      (list (append restricted-form defaulted-form) (append defaulted-form restricted-form)))))
+   (define declared (body (cons "primitive : action" rows)))
+   (check
+    (hash-ref (check-program "" declared) 'terms)
+    '(("action"))
+    "a default under another form satisfies the constructor in either order"))
+  (define wrong-default
+    (reject
+     (lambda ()
+       (body
+        (append
+         '("primitive : action"
+           "primitive : other"
+           "form : fallback!"
+           "does : other"
+           "default : fallback!")
+         restricted-form)))
+     "E_RESTRICTS"
+     "a different constructor's default cannot satisfy a restriction"))
+  (check
+   (diagnostic-data wrong-default)
+   (hash 'form "edit!" 'constructor "action")
+   "the nearest form retains its restriction across an intervening order line")
   (define shared
     (body
      '("is : word = /[a-z]+/"

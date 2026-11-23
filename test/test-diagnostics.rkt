@@ -1,8 +1,14 @@
 #lang racket/base
 
-(require racket/list "../src/diagnostics.rkt")
+(require racket/file
+         racket/list
+         racket/runtime-path
+         "../src/diagnostics.rkt"
+         "../scripts/check-diagnostic-registry.rkt")
 
 (provide run-tests)
+
+(define-runtime-path source-root "..")
 
 (define (contract-refusal? thunk) (with-handlers ((exn:fail:contract? (lambda (_) #t))) (thunk) #f))
 
@@ -48,6 +54,36 @@
    diagnostic-codes
    (sort (map car registry) string<?)
    "the public registry is closed over the specified codes")
+  (define checkout (make-temporary-file "diagnostic-registry~a" 'directory))
+  (dynamic-wind
+   void
+   (lambda ()
+     (for
+      ((replacement (in-list '(#f "E_CONTEXT_RENAMED"))))
+      (define root (build-path checkout (if replacement "renamed" "removed")))
+      (make-directory* (build-path root "src"))
+      (define remaining (remove "E_CONTEXT" diagnostic-codes))
+      (call-with-output-file
+       (build-path root "src" "diagnostics.rkt")
+       (lambda (out)
+         (displayln "#lang racket/base" out)
+         (displayln "(provide diagnostic-codes)" out)
+         (fprintf
+          out
+          "(define diagnostic-codes '~s)\n"
+          (if replacement (cons replacement remaining) remaining))))
+      (define result (compare-diagnostic-registries source-root root))
+      (check (hash-ref result 'pass) #f "a missing release ID fails even under a new spelling")
+      (check (hash-ref result 'removed) '("E_CONTEXT") "the absent public ID is identified")
+      (check
+       (hash-ref result 'added)
+       (if replacement (list replacement) '())
+       "added IDs remain visible")
+      (unless replacement
+        (define addition (compare-diagnostic-registries root source-root))
+        (check (hash-ref addition 'pass) #t "adding a code preserves release compatibility")
+        (check (hash-ref addition 'added) '("E_CONTEXT") "a new code is reported"))))
+   (lambda () (delete-directory/files checkout)))
   (for
    ((entry (in-list registry)))
    (define code (car entry))

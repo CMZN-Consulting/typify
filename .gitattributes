@@ -1,0 +1,3 @@
+src/**/*.rkt text eol=lf
+test/corpus/** -text
+test/ask-gate/** -text

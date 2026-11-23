@@ -95,6 +95,21 @@
         string<?
         #:key
         car)))
+     (define docs-root (new-root temporary "docs"))
+     (write-bytes-file (build-path docs-root "docs" "install.md") #"Install the reader.\n")
+     (check
+      "reviewed-install-doc-admitted"
+      (lambda () (hash-ref (check-repository docs-root) 'pass))
+      #t)
+     (write-bytes-file (build-path docs-root "docs" "unlisted.md") #"Unlisted page.\n")
+     (write-bytes-file (build-path docs-root "docs" "install.md") #"Example restricted marker.\n")
+     (check
+      "reviewed-doc-still-scanned-and-unreviewed-doc-refused"
+      (lambda ()
+        (define result (check-repository docs-root #:deny '("restricted marker")))
+        (and (issue? result "private-vocabulary" "docs/install.md")
+             (issue? result "markdown" "docs/unlisted.md")))
+      #t)
      (define changed-root (new-root temporary "changed"))
      (define program-path (string-append case-directory "/program.typify"))
      (write-bytes-file

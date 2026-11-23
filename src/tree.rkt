@@ -7,7 +7,10 @@
          "classes.rkt"
          "diagnostics.rkt"
          "facts.rkt"
+         "inputs.rkt"
+         (only-in "projections.rkt" record-source-path)
          "language.rkt"
+         (only-in "physical-path.rkt" physical-root-path)
          "syntax.rkt")
 
 (provide discover-tree read-tree read-tree/diagnostics tree->jsexpr tree-facts-required?)
@@ -59,9 +62,25 @@
         (for/or ((row (in-list (language-rows body)))) (memq (hash-ref row 'kind) '(guard reads))))
        #t))
 
+(define (path-kind path type)
+  (case type
+    ((#f) "absent")
+    ((link directory-link) "link")
+    ((directory) "directory")
+    ((file)
+     (if (= (bitwise-and (hash-ref (file-or-directory-stat path #t) 'mode) 61440) 32768)
+       "file"
+       "other"))
+    (else "other")))
+
 (define (discover-tree declarations given-root)
-  (define root (simplify-path (path->complete-path given-root) #f))
-  (unless (and (directory-exists? root) (not (link-exists? root))) (file-error root))
+  (define root (physical-root-path given-root))
+  (observe-root! root)
+  (with-handlers
+   ((exn:fail:filesystem? (lambda (_) (file-error root))))
+   (define root-type (file-or-directory-type root #f))
+   (when (current-root-inputs) (observe-path! "." (path-kind root root-type)))
+   (unless (eq? root-type 'directory) (file-error root)))
   (define root-parts (explode-path root))
   (define records '())
   (define bodies (sort (filter language-file (hash-values declarations)) body-order))
@@ -74,17 +93,33 @@
              (equal? root-parts (take parts (length root-parts))))
       (file-error path))
     path)
-  (define (path-type path)
+  (define (relative-name components) (if (null? components) "." (string-join components "/")))
+  (define (path-type components)
+    (define path (located components))
     (with-handlers
      ((exn:fail:filesystem? (lambda (_) (file-error path))))
-     (when (link-exists? path) (file-error path))
-     (file-or-directory-type path #f)))
+     (define type (file-or-directory-type path #f))
+     (when (current-root-inputs) (observe-path! (relative-name components) (path-kind path type)))
+     (when (memq type '(link directory-link)) (file-error path))
+     type))
   (define (entries components)
     (define path (located components))
-    (if (eq? (path-type path) 'directory)
+    (if (eq? (path-type components) 'directory)
       (with-handlers
        ((exn:fail:filesystem? (lambda (_) (file-error path))))
-       (sort (directory-list path) string<? #:key path->string))
+       (define names (sort (directory-list path) string<? #:key path->string))
+       (when (current-root-inputs)
+         (observe-directory!
+          (relative-name components)
+          (for/list
+           ((name (in-list names)))
+           (define entry (build-path path name))
+           (hash
+            'name
+            (path->string name)
+            'kind
+            (path-kind entry (file-or-directory-type entry #f))))))
+       names)
       '()))
   (for
    ((body (in-list bodies)))
@@ -131,7 +166,7 @@
    (define (add! components bindings)
      (unless (andmap safe-component? components) (template-error body source))
      (define path (located components))
-     (define type (path-type path))
+     (define type (path-type components))
      (when (and type (not (eq? type 'file))) (file-error path))
      (when type
        (unless (= (bitwise-and (hash-ref (file-or-directory-stat path #t) 'mode) 61440) 32768)
@@ -172,7 +207,7 @@
        (define next (append prefix (list fixed)))
        (if last?
          (add! next bindings)
-         (let ((type (path-type (located next))))
+         (let ((type (path-type next)))
            (if (or (not type) (eq? type 'directory))
              (walk (cdr remaining) next bindings)
              (file-error (located next))))))
@@ -184,9 +219,8 @@
         (when captures
           (define next (append prefix (list name)))
           (if last?
-            (when (eq? (path-type (located next)) 'file) (add! next captures))
-            (when (eq? (path-type (located next)) 'directory)
-              (walk (cdr remaining) next captures))))))))
+            (when (eq? (path-type next) 'file) (add! next captures))
+            (when (eq? (path-type next) 'directory) (walk (cdr remaining) next captures))))))))
    (walk patterns '() (hash))
    (when (and (language-required? body) (= before (length records)))
      (raise-typify
@@ -247,12 +281,13 @@
        checked)
       enclosing-order))
    (define present? (equal? (hash-ref record 'status) "present"))
+   (record-source-path path (hash-ref record 'absolute-path))
    (define text
      (if present?
        (with-handlers
         ((exn:fail:filesystem? (lambda (_) (file-error path))))
         (when (link-exists? (hash-ref record 'absolute-path)) (file-error path))
-        (file->string (hash-ref record 'absolute-path)))
+        (input-source-text 'programs path (hash-ref record 'absolute-path)))
        ""))
    (define line-spans
      (for/hash

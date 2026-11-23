@@ -13,7 +13,7 @@
 
 (define required-top-level '("README.md" "LICENSE.md" "src" "test" "scripts" ".github"))
 
-(define top-level (append required-top-level '("mcp" ".gitignore")))
+(define top-level (append required-top-level '("mcp" "docs" ".gitignore" ".gitattributes")))
 
 (define corpus-network-addresses
   (for/list
@@ -140,6 +140,10 @@
                 name
                 '("README.md"
                   "LICENSE.md"
+                  "docs/diagnostics.md"
+                  "docs/inputs.md"
+                  "docs/install.md"
+                  "docs/plan-wire.md"
                   "mcp/README.md"
                   "test/corpus/MANIFEST.md"
                   "test/ask-gate/README.md"))

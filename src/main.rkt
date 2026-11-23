@@ -8,8 +8,11 @@
          racket/path
          racket/promise
          racket/string
+         "build-info.rkt"
          "classes.rkt"
+         "inputs.rkt"
          "diagnostics.rkt"
+         (only-in "projections.rkt" with-projection-sources write-diagnostic-projection)
          "emission.rkt"
          "language.rkt"
          "meta.rkt"
@@ -22,8 +25,6 @@
 
 (provide run-command execute-command render-bounds render-tree render-plan display-diagnostics)
 
-(define typify-version "1.0")
-
 (define (public-data value)
   (cond
    ((src-span? value) (src-span->jsexpr value))
@@ -31,7 +32,7 @@
    ((list? value) (map public-data value))
    (else value)))
 
-(define (read-source path)
+(define (read-source path (kind 'programs))
   (with-handlers
    ((exn:fail:filesystem?
      (lambda (error)
@@ -42,12 +43,12 @@
         (src-span path 1 1 1 1 0 0)
         #:data
         (hash 'path (string-replace path "\\" "/"))))))
-   (file->string path)))
+   (input-source-text kind path path)))
 
 (define (load-declarations/diagnostics path)
   (define-values
    (declarations diagnostics)
-   (read-declarations/diagnostics (read-source path) #:file path))
+   (read-declarations/diagnostics (read-source path 'declarations) #:file path))
   (raise-diagnostics diagnostics)
   (values declarations diagnostics))
 
@@ -234,6 +235,8 @@
       (canonical-json (hash-ref event 'term))
       (if (hash-ref event 'modelled?) "" " unchecked"))))))
 
+(define projection-options '("--sarif" "--lsp" "--github-annotations"))
+
 (define (parse-options arguments)
   (let loop ((remaining arguments) (positionals '()) (options (hash)))
     (cond
@@ -246,7 +249,8 @@
              (string-prefix? (cadr remaining) "--"))
         (raise-typify "E_USAGE" "--facts needs one file" #:data (hash 'actual "--facts")))
       (loop (cddr remaining) positionals (hash-set options "--facts" (cadr remaining))))
-     ((member (car remaining) '("--json" "--gbnf" "--bounds"))
+     ((or (member (car remaining) '("--json" "--gbnf" "--bounds"))
+          (member (car remaining) projection-options))
       (when (hash-has-key? options (car remaining))
         (raise-typify
          "E_USAGE"
@@ -272,9 +276,19 @@
          (on-bound void)
          #:on-facts
          (on-facts void)
+         #:on-inputs
+         (on-inputs void)
          #:on-failure-report
          (on-failure-report void))
   (define-values (positional options) (parse-options arguments))
+  (define outputs
+    (filter
+     (lambda (flag) (hash-has-key? options flag))
+     (append projection-options '("--json" "--gbnf"))))
+  (when (and
+         (> (length outputs) 1)
+         (ormap (lambda (flag) (member flag projection-options)) outputs))
+    (raise-typify "E_USAGE" "Choose one output format" #:data (hash 'actual (car outputs))))
   (define json? (hash-ref options "--json" #f))
   (define gbnf? (hash-ref options "--gbnf" #f))
   (define bounds? (hash-ref options "--bounds" #f))
@@ -323,10 +337,10 @@
        (if (diagnostics-error? diagnostics) "failed" (hash-ref report 'status))))
     (set! text-output (render-plan complete events))
     complete)
-  (define result
+  (define (dispatch)
     (match
      positional
-     ((list "--version") (hash 'version typify-version))
+     ((list "--version") (hash 'version typify-version 'build typify-build))
      ((list "check" path)
       (define-values (declarations diagnostics) (load-declarations/diagnostics path))
       (if bounds?
@@ -361,6 +375,8 @@
       (define-values
        (facts facts-hash)
        (facts-input (tree-facts-required? declarations) facts-path root))
+      (on-facts facts-hash)
+      (observe-facts-root! facts)
       (define checked
         (read-tree/diagnostics
          declarations
@@ -377,6 +393,8 @@
       (hash
        'ok
        (not (diagnostics-error? complete-diagnostics))
+       'facts
+       facts-hash
        'programs
        entries
        'diagnostics
@@ -390,6 +408,7 @@
         facts-path
         root))
       (on-facts facts-hash)
+      (observe-facts-root! facts)
       (define checked
         (read-tree/diagnostics
          declarations
@@ -472,6 +491,11 @@
        "usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] [--json] | facts ROOT | tree DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS ROOT [--facts FILE] | plan DECLARATIONS LANGUAGE PROGRAM [--facts FILE] | ask DECLARATIONS LANGUAGE WORD [--json] | emit Typify | emit DECLARATIONS LANGUAGE [--gbnf] [--json]"
        #:data
        (hash 'actual (if (null? positional) "" (car positional)))))))
+  (define result
+    (match
+     positional
+     ((list (or "tree" "plan") _ _) (call-with-root-inputs dispatch on-inputs))
+     (_ (dispatch))))
   (values
    (public-data
     (if (or (hash-has-key? result 'diagnostics)
@@ -502,7 +526,7 @@
   (cond
    ((ormap (lambda (item) (equal? (diagnostic-code item) "E_USAGE")) items)
     (hash 'ok #f 'diagnostics diagnostics))
-   ((equal? command "tree") (hash 'ok #f 'programs '() 'diagnostics diagnostics))
+   ((equal? command "tree") (hash 'ok #f 'programs '() 'facts facts 'diagnostics diagnostics))
    ((equal? command "plan")
     (define empty
       (hash
@@ -531,7 +555,7 @@
       (hash-set* (public-data failure-report) 'status "failed" 'diagnostics diagnostics)
       (if (= (length positional) 4)
         (hash-set* empty 'plan '() 'recorded '() 'skips '())
-        (hash-set empty 'programs '()))))
+        (hash-set* empty 'programs '() 'schedule '()))))
    ((equal? command "facts")
     (hash
      'collector
@@ -546,19 +570,25 @@
    (else (hash 'ok #f 'terms '() 'diagnostics diagnostics))))
 
 (define (execute-command arguments)
-  (define json?
-    (and (member "--json" (takef arguments (lambda (item) (not (equal? item "--"))))) #t))
+  (define flags (takef arguments (lambda (item) (not (equal? item "--")))))
+  (define projection (findf (lambda (flag) (member flag projection-options)) flags))
+  (if projection
+    (with-projection-sources (lambda () (execute-with-output arguments flags projection)))
+    (execute-with-output arguments flags #f)))
+
+(define (execute-with-output arguments flags projection)
+  (define json? (and (member "--json" flags) #t))
   (define failure-bound 'null)
   (define failure-facts "none")
   (define failure-report #f)
+  (define failure-inputs #f)
   (with-handlers
    ((exn:fail:typify?
      (lambda (error)
        (define items (exn:fail:typify-diagnostics error))
        (define native (map diagnostic->jsexpr items))
-       (if json?
-         (displayln
-          (canonical-json
+       (define (failure-result)
+         (define failure
            (command-error-result
             arguments
             items
@@ -567,8 +597,12 @@
             #:facts
             failure-facts
             #:failure-report
-            failure-report)))
-         (display-diagnostics native))
+            failure-report))
+         (if failure-inputs (hash-set failure 'inputs (inputs->jsexpr failure-inputs)) failure))
+       (cond
+        (projection (write-diagnostic-projection projection native))
+        (json? (displayln (canonical-json (failure-result))))
+        (else (display-diagnostics native)))
        (values
         (if (and (not (ormap (lambda (item) (equal? (diagnostic-code item) "E_USAGE")) items))
                  (let-values (((positional options) (parse-options arguments)))
@@ -586,12 +620,15 @@
      (lambda (bound) (set! failure-bound bound))
      #:on-facts
      (lambda (facts) (set! failure-facts facts))
+     #:on-inputs
+     (lambda (inputs) (set! failure-inputs inputs))
      #:on-failure-report
      (lambda (report) (set! failure-report report))))
    (define diagnostics (hash-ref result 'diagnostics '()))
-   (unless json-output? (display-diagnostics diagnostics))
+   (unless (or json-output? projection) (display-diagnostics diagnostics))
    (cond
-    ((equal? arguments '("--version")) (displayln typify-version))
+    (projection (write-diagnostic-projection projection diagnostics))
+    ((equal? arguments '("--version")) (printf "~a ~a\n" typify-version typify-build))
     ((and (hash-has-key? result 'bounds) (not json-output?))
      (display (render-bounds (hash-ref result 'bounds))))
     ((and (hash-has-key? result 'terms) (hash-has-key? result 'ok) (not json-output?)) (void))

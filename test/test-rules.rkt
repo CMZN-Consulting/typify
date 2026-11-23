@@ -292,6 +292,29 @@
        "form : run : <value>"
        "does : carry <value>")))
   (define ensure-tasks (hash-ref (expand ensured "run : alpha") 'ensures))
+  (for
+   ((expression
+     '("(exists <1>)"
+       "(directory <1>)"
+       "(symlink <1>)"
+       "(owner <1>)"
+       "(mode <1>)"
+       "(clean <1> marker)"
+       "(equal (exists <1>) yes)")))
+   (define line (string-append "ensure : write : observed = " expression))
+   (define item
+     (reject
+      (lambda ()
+        (body (list "primitive : write : canonical-path" "effect : write = external" line)))
+      "E_DECLARATION"))
+   (check
+    (diagnostic-data item)
+    (hash 'kind "syntax" 'actual line)
+    "fact calls in invariants are refused at declaration time")
+   (check
+    (src-span-start-line (diagnostic-range item))
+    6
+    "the diagnostic identifies the ensure line"))
   (check (length ensure-tasks) 2 "every carrying term records its invariant once")
   (check
    (map (lambda (task) (hash-ref task 'arguments-resolved?)) ensure-tasks)
@@ -670,15 +693,15 @@
    (language-needs-facts? inherited-body)
    #f
    "inheritance alone does not require a facts file")
-  (define ensure-only-fact
+  (define ensure-only
     (body
      '("primitive : emit : value"
        "effect : emit = external"
-       "ensure : emit : present = (exists <1>)"
+       "ensure : emit : exact = (equal <1> expected)"
        "form : run : <value>"
        "does : emit <value>")))
   (check
-   (language-needs-facts? ensure-only-fact)
+   (language-needs-facts? ensure-only)
    #f
    "only guard, reads and fact calls inside if require facts")
   (hash 'suite "rules" 'checks checks 'status "passed"))

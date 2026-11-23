@@ -1,0 +1,7 @@
+# Root plan order and reader builds
+
+A root plan has a `schedule` array. Each entry names the source program, stage, zero-based sequence position, primitive term, origin, and whether the primitive is modelled. Its `kind` is `host` for a host operation or `recorded` for a state-only operation. The reader sorts by stage and preserves discovery and term order at equal stages. The per-program lists remain available for looking up one program.
+
+The schedule describes the plan. A failed read can retain proposed operations for diagnostics. Use the report status to decide whether the plan succeeded. A skipped operation can leave a gap in the sequence numbers. On a stacking cell, each surviving row records the sequence number of the write that established it. Within the same partition a later ancestor write covers an earlier descendant. A `first` cell keeps the original row's sequence when a later write has the same key.
+
+Run `typify --version` for the version and the reader-source SHA-256 on one line. Use `typify --version --json` for the `version` and `build` fields. The build is a digest over the sorted source manifest computed at compilation. Each UTF-8 line contains the lowercase SHA-256 of a Racket source file in the reader package, two spaces, its slash-separated path relative to the package, and LF. The `sha256:` prefix identifies the algorithm. Platform archives carry their own digests.

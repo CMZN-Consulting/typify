@@ -400,7 +400,7 @@
    ((string=? (car left) (car right)) (tuple-key<? (cdr left) (cdr right)))
    (else #f)))
 
-(define (state->jsexpr state)
+(define (state->jsexpr state cells)
   (for/hash
    (((cell entries) (in-hash state)))
    (values
@@ -408,15 +408,19 @@
     (for/list
      ((key (in-list (sort (hash-keys entries) tuple-key<?))))
      (define entry (hash-ref entries key))
-     (hash
-      'key
-      key
-      'value
-      (hash-ref entry 'value)
-      'masked
-      (null? (hash-ref entry 'value))
-      'origin
-      (hash-ref entry 'origin))))))
+     (define row
+       (hash
+        'key
+        key
+        'value
+        (hash-ref entry 'value)
+        'masked
+        (null? (hash-ref entry 'value))
+        'origin
+        (hash-ref entry 'origin)))
+     (if (model-cell-stacking? (hash-ref cells cell))
+       (hash-set row 'sequence (hash-ref entry 'sequence))
+       row)))))
 
 (define (plan-needs-facts? programs)
   (ormap (lambda (program) (language-needs-facts? (hash-ref program 'body))) programs))
@@ -634,8 +638,26 @@
      (map recorded->jsexpr recorded-events)
      'skips
      (map skip->jsexpr skips))
-    (hash-set
+    (hash-set*
      report
+     'schedule
+     (for/list
+      ((event (in-list events)))
+      (hash
+       'sequence
+       (hash-ref event 'schedule-id)
+       'stage
+       (hash-ref event 'stage)
+       'program
+       (hash-ref (hash-ref event 'program) 'path)
+       'kind
+       (if (hash-ref event 'state-only?) "recorded" "host")
+       'term
+       (hash-ref event 'term)
+       'modelled
+       (hash-ref event 'modelled?)
+       'origin
+       (hash-ref event 'origin)))
      'programs
      (for/list
       ((program (in-list programs)) (index (in-naturals)))
@@ -947,7 +969,7 @@
       (retained-events)
       (reverse skips)
       (reverse ensure-results)
-      (state->jsexpr state)
+      (state->jsexpr state cells)
       bound
       facts-hash
       single?
@@ -969,7 +991,7 @@
      (retained-events)
      (reverse skips)
      (reverse ensure-results)
-     (state->jsexpr state)
+     (state->jsexpr state cells)
      bound
      facts-hash
      single?))

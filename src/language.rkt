@@ -671,6 +671,11 @@
 
 (define fact-names '("exists" "directory" "symlink" "mode" "owner" "clean"))
 
+(define (contains-fact-call? expression)
+  (and (term? expression)
+       (or (member (term-constructor expression) fact-names)
+           (ormap contains-fact-call? (term-arguments expression)))))
+
 (define state-predicate-names '("bound" "masked" "visible" "absent" "covered" "uncovered"))
 
 (define library-predicate-names '("prefix" "suffix" "equal"))
@@ -1754,14 +1759,14 @@
     ((clause (in-list (hash-ref (compiled-model-ensures model) (constructor-name item) '()))))
     (recover
      (lambda ()
-       (validate-predicate!
-        (model-ensure-expression clause)
-        constructors
-        classes
-        captures
-        #f
-        model
-        void))))
+       (define expression (model-ensure-expression clause))
+       (when (contains-fact-call? expression)
+         (declaration-fail
+          "syntax"
+          (term-data expression)
+          "An ensure clause may only observe the final state or use library predicates"
+          (model-ensure-span clause)))
+       (validate-predicate! expression constructors classes captures #f model void))))
    (for
     ((clause (in-list (hash-ref (compiled-model-reads model) (constructor-name item) '())))
      #:when
@@ -1910,21 +1915,24 @@
             span
             index
             (hash-ref pending 'restricting? #f)))))))))
+  (define constructors-with-defaults
+    (for/hash
+     ((candidate (in-list forms)) #:when (pair? (form-defaults candidate)))
+     (values (term-constructor (form-meaning candidate)) #t)))
   (for
    ((candidate (in-list forms)) #:when (form-restricting? candidate))
    (recover
     (lambda ()
-      (define multiplicity (hash-ref counts (term-constructor (form-meaning candidate)) "*"))
-      (unless (or (member multiplicity '("1" "1..*")) (pair? (form-defaults candidate)))
+      (define name (term-constructor (form-meaning candidate)))
+      (define multiplicity (hash-ref counts name "*"))
+      (unless (or
+               (member multiplicity '("1" "1..*"))
+               (hash-has-key? constructors-with-defaults name))
         (fail
          "E_RESTRICTS"
          "A restricting form needs a required multiplicity or a default"
          (hash-ref form-restriction-spans (form-span candidate) (form-span candidate))
-         (hash
-          'form
-          (form-source candidate)
-          'constructor
-          (term-constructor (form-meaning candidate))))))))
+         (hash 'form (form-source candidate) 'constructor name))))))
   (for
    ((key
      (in-list

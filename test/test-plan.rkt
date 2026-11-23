@@ -260,6 +260,16 @@
    (hash-ref (car (hash-ref (hash-ref staged-report 'state) "entries")) 'value)
    '("late")
    "the final root state follows globally staged order")
+  (check
+   (for/list
+    ((event (in-list (hash-ref staged-report 'schedule))))
+    (list (hash-ref event 'program) (hash-ref event 'sequence) (hash-ref event 'term)))
+   '(("b.typify" 0 ("put" "account" "early")) ("a.typify" 1 ("later" "account" "late")))
+   "the root schedule exposes the actual interleaving across source programs")
+  (check
+   (map (lambda (row) (hash-ref row 'sequence)) (hash-ref (hash-ref mounted 'state) "mounts"))
+   '(0 1)
+   "a later ancestor can be distinguished using the sequence of each stacking row")
   (define external
     (body
      "External"

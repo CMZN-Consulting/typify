@@ -6,7 +6,9 @@
          racket/promise
          racket/string
          "classes.rkt"
-         "diagnostics.rkt")
+         "diagnostics.rkt"
+         "inputs.rkt"
+         (only-in "physical-path.rkt" physical-root-path (physical-path-name portable)))
 
 (provide collect-facts fact-query validate-facts)
 
@@ -16,13 +18,6 @@
 
 (define (canonical-fact-path? value)
   (and (string? value) (class-accepts? (force fact-path-class) value)))
-
-(define (portable path)
-  (define raw (if (path? path) (path->string path) path))
-  (define text (if (eq? (system-type 'os) 'windows) (string-replace raw "\\" "/") raw))
-  (if (or (equal? text "/") (regexp-match? #px"^[A-Za-z]:/$" text))
-    text
-    (regexp-replace #px"/+$" text "")))
 
 (define (facts-error path)
   (raise-typify
@@ -69,13 +64,24 @@
    (hash-set! seen identity #t))
   data)
 
+(define (observed-path? data path)
+  (define root (hash-ref data 'root))
+  (and (canonical-fact-path? path)
+       (or (equal? path root) (equal? root "/") (string-prefix? path (string-append root "/")))))
+
 (define (fact-query data name arguments)
+  (define-values (held? value) (fact-value data name arguments))
+  (observe-fact! name arguments held?)
+  (values held? value))
+
+(define (fact-value data name arguments)
   (cond
    ((equal? name "clean")
     (define clean?
       (and data
            (= (length arguments) 2)
            (andmap string? arguments)
+           (observed-path? data (car arguments))
            (let* ((base (car arguments))
                   (name (cadr arguments))
                   (prefix (if (equal? base "/") "/" (string-append base "/"))))
@@ -107,7 +113,7 @@
   (string-append (make-string (- 4 (string-length digits)) #\0) digits))
 
 (define (collect-facts given-root)
-  (define root (simplify-path (path->complete-path given-root) #f))
+  (define root (physical-root-path given-root))
   (unless (canonical-fact-path? (portable root))
     (raise-typify
      "E_USAGE"
