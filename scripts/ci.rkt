@@ -12,11 +12,13 @@
          "../src/diagnostics.rkt"
          "format.rkt"
          "stage4-evidence.rkt"
+         "stage5-evidence.rkt"
          "leak-check.rkt")
 
 (provide run-kernel-check
          run-stage1-aggregate
          run-stage-aggregate
+         run-stage5-aggregate
          consumer-gate-names
          consumer-gate-valid?)
 
@@ -111,11 +113,11 @@
      (hash 'name (symbol->string name) 'status "unscored-missing-evidence" 'stage 5))
     '()))
 
-(define (acceptance-stage? stage) (and (exact-integer? stage) (member stage '(1 2 3 4)) #t))
+(define (acceptance-stage? stage) (and (exact-integer? stage) (member stage '(1 2 3 4 5)) #t))
 
 (define (stage-key stage)
-  (unless (acceptance-stage? stage) (raise-argument-error 'stage-key "1, 2, 3 or 4" stage))
-  (case stage ((1) 'stage1) ((2) 'stage2) ((3) 'stage3) ((4) 'stage4)))
+  (unless (acceptance-stage? stage) (raise-argument-error 'stage-key "1, 2, 3, 4 or 5" stage))
+  (case stage ((1) 'stage1) ((2) 'stage2) ((3) 'stage3) ((4) 'stage4) ((5) 'stage5)))
 
 (define (gate-names stage)
   (stage-key stage)
@@ -127,7 +129,8 @@
       stage-two-gate-names)
      '())
    (if (>= stage 3) stage-three-gate-names '())
-   (if (= stage 4) stage4-gate-names '())))
+   (if (>= stage 4) stage4-gate-names '())
+   (if (= stage 5) stage5-gate-names '())))
 
 (define (field data key (default #f))
   (if (hash? data)
@@ -515,6 +518,10 @@
          (group "all")
          #:stage
          (stage 1))
+  (when (= stage 5)
+    (raise-arguments-error
+     'run-kernel-check
+     "stage five reuses the stage-four jobs; use the aggregate entry point"))
   (define acceptance-key (stage-key stage))
   (define modules (group-modules group))
   (when (and (equal? group "kernel") blind?)
@@ -636,6 +643,47 @@
   (run-stage-aggregate kernel-path language-path mutation-path #:stage 1))
 
 (define (run-stage-aggregate
+         kernel
+         language
+         mutation
+         #:stage
+         (stage 1)
+         #:stage4-provider
+         (provider #f)
+         #:extension-manifest-sha256
+         (extension-pin #f)
+         #:consumer-packet
+         (packet #f)
+         #:consumer-revision
+         (consumer-revision #f)
+         #:consumer-packet-sha256
+         (packet-sha #f))
+  (cond
+   ((= stage 5)
+    (run-stage5-aggregate
+     kernel
+     language
+     mutation
+     provider
+     extension-pin
+     packet
+     consumer-revision
+     packet-sha))
+   (else
+    (when (or packet consumer-revision packet-sha)
+      (raise-arguments-error 'run-stage-aggregate "consumer evidence belongs to stage five"))
+    (aggregate-before-consumer
+     kernel
+     language
+     mutation
+     #:stage
+     stage
+     #:stage4-provider
+     provider
+     #:extension-manifest-sha256
+     extension-pin))))
+
+(define (aggregate-before-consumer
          kernel-path
          language-path
          mutation-path
@@ -874,6 +922,49 @@
       (or extension-pin 'null))
      result)))
 
+(define (run-stage5-aggregate
+         kernel
+         language
+         mutation
+         provider
+         extension-pin
+         packet
+         consumer-revision
+         packet-sha)
+  (define previous
+    (run-stage-aggregate
+     kernel
+     language
+     mutation
+     #:stage
+     4
+     #:stage4-provider
+     provider
+     #:extension-manifest-sha256
+     extension-pin))
+  (define passed? (eq? #t (field (field previous 'stage4) 'pass)))
+  (define receipt
+    (if passed?
+      (check-stage5-consumer packet consumer-revision packet-sha)
+      (hasheq 'pass #f 'error "preceding-stage-incomplete")))
+  (hasheq
+   'schema
+   "typify-ci-v1"
+   'acceptance-stage
+   5
+   'suite-group
+   "aggregate"
+   'report-complete
+   #t
+   'source-revision
+   (field previous 'source-revision)
+   'stage4Sha256
+   (content-hash (canonical-json previous))
+   'stage4
+   (hasheq 'pass passed?)
+   'stage5
+   receipt))
+
 (module+ test-support (provide group-modules baseline-complete? gate-valid? gate-names stage-key))
 
 (module+
@@ -881,9 +972,12 @@
  (define arguments (vector->list (current-command-line-arguments)))
  (define provider-path #f)
  (define extension-pin #f)
+ (define consumer-packet #f)
+ (define consumer-revision #f)
+ (define consumer-pin #f)
  (define (usage)
    (displayln
-    "usage: racket scripts/ci.rkt [--stage 1|2|3|4] [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--stage 1|2|3|4] [--stage4-provider FILE --extension-manifest-sha256 SHA] [--output FILE]"
+    "usage: racket scripts/ci.rkt [--stage 1|2|3|4] [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--stage 1|2|3|4|5] [--stage4-provider FILE --extension-manifest-sha256 SHA] [--consumer-packet FILE --consumer-revision REV --consumer-packet-sha256 SHA] [--output FILE]"
     (current-error-port))
    (exit 2))
  (define-values
@@ -898,13 +992,16 @@
      remaining
      ('()
       (when (and aggregate-paths (or (not blind?) (not (equal? group "all")))) (usage))
-      (when (and (or provider-path extension-pin) (not (and aggregate-paths (equal? stage 4))))
+      (when (and (or provider-path extension-pin) (not (and aggregate-paths (member stage '(4 5)))))
         (usage))
+      (when (and (or consumer-packet consumer-revision consumer-pin) (not (equal? stage 5)))
+        (usage))
+      (when (and (equal? stage 5) (not aggregate-paths)) (usage))
       (values output blind? group aggregate-paths (or stage 1)))
      ((list* "--defer-blind" rest)
       (if blind? (loop rest output #f group aggregate-paths stage) (usage)))
      ((list* "--stage" value rest)
-      (if (and (not stage) (member value '("1" "2" "3" "4")))
+      (if (and (not stage) (member value '("1" "2" "3" "4" "5")))
         (loop rest output blind? group aggregate-paths (string->number value))
         (usage)))
      ((list* "--group" name rest)
@@ -917,6 +1014,18 @@
         (loop rest output blind? group (list kernel language mutation) stage)))
      ((list* "--output" path rest)
       (if output (usage) (loop rest path blind? group aggregate-paths stage)))
+     ((list* "--consumer-packet" path rest)
+      (when consumer-packet (usage))
+      (set! consumer-packet path)
+      (loop rest output blind? group aggregate-paths stage))
+     ((list* "--consumer-revision" value rest)
+      (when consumer-revision (usage))
+      (set! consumer-revision value)
+      (loop rest output blind? group aggregate-paths stage))
+     ((list* "--consumer-packet-sha256" value rest)
+      (when consumer-pin (usage))
+      (set! consumer-pin value)
+      (loop rest output blind? group aggregate-paths stage))
      ((list* "--stage4-provider" path rest)
       (when provider-path (usage))
       (set! provider-path path)
@@ -936,20 +1045,28 @@
          'acceptance-stage
          stage
          'kernel
-         (hasheq 'pass #f 'error (exn-message error))
-         (stage-key stage)
+         (hasheq 'pass #f 'error (if (= stage 5) "invalid-stage4-evidence" (exn-message error)))
+         (if (= stage 5) 'stage5 (stage-key stage))
          (hasheq
           'pass
           #f
           'status
           (if aggregate-paths "evidence-unavailable" "kernel-unavailable"))))))
-    (if aggregate-paths
+    (cond
+     ((= stage 5)
+      (apply
+       run-stage5-aggregate
+       (append
+        aggregate-paths
+        (list provider-path extension-pin consumer-packet consumer-revision consumer-pin))))
+     (aggregate-paths
       (keyword-apply
        run-stage-aggregate
        '(#:extension-manifest-sha256 #:stage #:stage4-provider)
        (list extension-pin stage provider-path)
-       aggregate-paths)
-      (run-kernel-check #:checkpoint output-path #:blind? blind? #:group group #:stage stage))))
+       aggregate-paths))
+     (else
+      (run-kernel-check #:checkpoint output-path #:blind? blind? #:group group #:stage stage)))))
  (when output-path
    (call-with-output-file
     output-path
@@ -959,4 +1076,12 @@
  (write-json result)
  (newline)
  (define acceptance-request? (or aggregate-paths (and (= stage 4) blind? (equal? group "all"))))
- (exit (if (field (field result (if acceptance-request? (stage-key stage) 'kernel)) 'pass) 0 1)))
+ (exit
+  (if (field (field result
+                    (cond
+                     ((= stage 5) 'stage5)
+                     (acceptance-request? (stage-key stage))
+                     (else 'kernel)))
+             'pass)
+    0
+    1)))

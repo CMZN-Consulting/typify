@@ -144,6 +144,7 @@
                   "docs/inputs.md"
                   "docs/install.md"
                   "docs/plan-wire.md"
+                  "docs/stage5.md"
                   "mcp/README.md"
                   "test/corpus/MANIFEST.md"
                   "test/overlays/README.md"

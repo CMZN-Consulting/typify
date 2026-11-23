@@ -255,11 +255,21 @@
       '(ask-exact-replay ask-round-trip)
       "both new ask measurements are required")
      (check
-      (refuses? (lambda () (gate-names 5)))
-      #t
-      "the release pipeline has its own acceptance criteria")
+      (drop (gate-names 5) (length (gate-names 4)))
+      '(consumer-mount-state
+        consumer-primitive-audit
+        consumer-rule-mutation
+        consumer-correspondence)
+      "four consumer laws complete the preceding acceptance criteria")
+     (check (refuses? (lambda () (gate-names 6))) #t "undefined stages refuse")
      (define fourth
        (aggregate (map (lambda (r) (at-stage r 4)) (list kernel language mutation)) #:stage 4))
+     (define fifth
+       (aggregate (map (lambda (r) (at-stage r 4)) (list kernel language mutation)) #:stage 5))
+     (check
+      (hash-ref (hash-ref fifth 'stage5) 'error)
+      "preceding-stage-incomplete"
+      "a synthetic fourth-stage aggregate blocks consumer acceptance")
      (define fourth-gates (hash-ref (hash-ref fourth 'stage4) 'gates))
      (check
       (take (gate-names 4) (length (gate-names 3)))

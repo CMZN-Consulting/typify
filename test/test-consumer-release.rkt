@@ -8,7 +8,8 @@
          racket/system
          "../src/diagnostics.rkt"
          "../src/main.rkt"
-         "../scripts/check-consumer-release.rkt")
+         "../scripts/check-consumer-release.rkt"
+         (only-in "test-stage5-consumer.rkt" (run-tests stage5-tests)))
 
 (provide run-tests)
 
@@ -237,6 +238,13 @@
       (check-consumer-release (build-path root secret) revision packet-digest)
       (hasheq 'pass #f 'error "unreadable-or-invalid-packet")))
    (lambda () (delete-directory/files root)))
-  (hash 'checks checks 'status "passed" 'suite "consumer-release"))
+  (define additional (stage5-tests))
+  (hash
+   'checks
+   (+ checks (hash-ref additional 'checks))
+   'status
+   "passed"
+   'suite
+   "consumer-release"))
 
 (module+ test (run-tests))

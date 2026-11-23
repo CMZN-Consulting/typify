@@ -7,9 +7,10 @@
          racket/string
          "../src/build-info.rkt"
          "../src/diagnostics.rkt"
+         "stage5-evidence.rkt"
          (only-in "ci.rkt" consumer-gate-names consumer-gate-valid?))
 
-(provide check-consumer-release)
+(provide check-consumer-release check-stage5-consumer)
 
 (define (field object key) (and (hash? object) (hash-ref object key #f)))
 
@@ -163,12 +164,14 @@
 (module+
  main
  (define args (vector->list (current-command-line-arguments)))
- (unless (= (length args) 3)
+ (define stage5? (and (pair? args) (equal? (car args) "--stage5")))
+ (define operands (if stage5? (cdr args) args))
+ (unless (= (length operands) 3)
    (displayln
-    "usage: racket scripts/check-consumer-release.rkt PACKET.json EXPECTED_CONSUMER_REVISION EXPECTED_PACKET_SHA256"
+    "usage: racket scripts/check-consumer-release.rkt [--stage5] PACKET.json EXPECTED_CONSUMER_REVISION EXPECTED_PACKET_SHA256"
     (current-error-port))
    (exit 2))
- (define result (apply check-consumer-release args))
+ (define result (apply (if stage5? check-stage5-consumer check-consumer-release) operands))
  (write-json result)
  (newline)
  (exit (if (hash-ref result 'pass) 0 1)))
