@@ -212,7 +212,7 @@
   (define state (hash))
   (define (origin line) (hash 'kind "program" 'path program-path 'line line))
   (for
-   ((event (in-list ordered)))
+   ((event (in-list ordered)) (sequence (in-naturals)))
    (define term (caddr event))
    (cond
     ((equal? (car term) "clear")
@@ -232,11 +232,12 @@
          (if (and prior (eq? (hash-ref params 'law) 'join))
            (if (or (equal? value "rw") (equal? (car (hash-ref prior 'value)) "rw")) "rw" "ro")
            value))
+       (define row (hash 'key key 'value (list stored) 'masked #f 'origin (origin (cadr event))))
        (set! state
          (hash-set
           state
           key
-          (hash 'key key 'value (list stored) 'masked #f 'origin (origin (cadr event)))))))))
+          (if (hash-ref params 'stacking?) (hash-set row 'sequence sequence) row)))))))
   (values
    (for/list
     ((event (in-list ordered)))
