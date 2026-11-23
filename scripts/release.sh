@@ -108,7 +108,7 @@ install_racket() {
       mkdir -p -- "$mount"
       hdiutil attach -readonly -nobrowse -mountpoint "$mount" "$installer" >&2
       for candidate in "$mount"/*/; do
-        if [ -x "${candidate}bin/racket" ] && [ -x "${candidate}bin/raco" ]; then found+=("${candidate%/}"); fi
+        if [ ! -L "${candidate%/}" ] && [ -x "${candidate}bin/racket" ] && [ -x "${candidate}bin/raco" ]; then found+=("${candidate%/}"); fi
       done
       if [ "${#found[@]}" -eq 1 ]; then
         ditto "${found[0]}" "$destination" || status=$?
@@ -116,7 +116,15 @@ install_racket() {
         printf 'the disk image holds %s directories with bin/racket and bin/raco, not one\n' "${#found[@]}" >&2
         status=1
       fi
-      hdiutil detach "$mount" >&2 || status=1
+      local tries=0
+      until hdiutil detach "$mount" >&2; do
+        tries=$((tries + 1))
+        if [ "$tries" -ge 3 ]; then
+          hdiutil detach -force "$mount" >&2 || status=1
+          break
+        fi
+        sleep 5
+      done
       [ "$status" -eq 0 ] || exit 1
       ;;
     windows-*)
@@ -162,7 +170,7 @@ COMMIT=$(git -C "$REPOSITORY" rev-parse --verify 'HEAD^{commit}')
 TREE=$(git -C "$REPOSITORY" rev-parse --verify 'HEAD^{tree}')
 EPOCH=$(git -C "$REPOSITORY" log -1 --format=%ct HEAD)
 mkdir -p -- "$ROOT/typify"
-git -C "$REPOSITORY" archive --format=tar HEAD -- src LICENSE.md | tar -xf - -C "$ROOT/typify"
+git -C "$REPOSITORY" -c core.autocrlf=false -c core.eol=lf archive --format=tar HEAD -- src LICENSE.md | tar -xf - -C "$ROOT/typify"
 mkdir -p -- "$OUTPUT"
 
 "$RACKET" "$(native_path "$REPOSITORY/scripts/release.rkt")" build \

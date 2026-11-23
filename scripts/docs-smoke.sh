@@ -99,7 +99,19 @@ runnable() {
   found=$(type -P "$1" 2>/dev/null) && [ -n "$found" ] && [ -x "$found" ]
 }
 
-if runnable racket || runnable raco || runnable racket.exe || runnable raco.exe; then
+racket_trace() {
+  local name
+  for name in PLTCOLLECTS PLTADDONDIR PLTUSERHOME PLTCONFIGDIR PLTCOMPILEDROOTS; do
+    [ -z "${!name:-}" ] || return 0
+  done
+  for name in /usr/share/racket /usr/racket /usr/local/racket "$HOME/.local/share/racket" "$HOME/Library/Racket" \
+    /Applications/Racket* "/c/Program Files/Racket" "${APPDATA:-/nonexistent}/Racket"; do
+    [ ! -e "$name" ] || return 0
+  done
+  return 1
+}
+
+if runnable racket || runnable raco || runnable racket.exe || runnable raco.exe || racket_trace; then
   fail "Racket is absent from this image"
 else
   pass "Racket is absent from this image"
@@ -156,25 +168,29 @@ else
 fi
 
 if [ -n "$TAMPERED" ]; then
-  COUNT=0
-  for CANARY in "$TAMPERED"/*; do
-    [ -f "$CANARY" ] || continue
-    COUNT=$((COUNT + 1))
-    NAME=$(basename -- "$CANARY")
+  ASSET=$(basename -- "$ARCHIVE")
+  for KIND in flipped-byte extra-file missing-file rewritten-manifest; do
+    NAME=$KIND-$ASSET
+    CANARY=$TAMPERED/$NAME
+    if [ ! -f "$CANARY" ]; then
+      fail "$NAME is present"
+      continue
+    fi
     if [ "$(sha256_of "$CANARY")" = "$WANT_ARCHIVE" ]; then
       fail "$NAME: the archive hash refuses it"
     else
       pass "$NAME: the archive hash refuses it"
     fi
     if [ "$HAVE_CHECK" = 1 ]; then
-      if unpack "$CANARY" "$WORK/canary" >/dev/null 2>&1 && tree_check "$WORK/canary"; then
+      if ! unpack "$CANARY" "$WORK/canary" >/dev/null 2>&1; then
+        fail "$NAME: it unpacks, so the documented tree check can judge it"
+      elif tree_check "$WORK/canary"; then
         fail "$NAME: the documented tree check refuses it"
       else
         pass "$NAME: the documented tree check refuses it"
       fi
     fi
   done
-  if [ "$COUNT" = 4 ]; then pass "four tampered archives fed to the checks"; else fail "four tampered archives fed to the checks ($COUNT found)"; fi
 fi
 
 if [ "$FAILURES" = 0 ]; then

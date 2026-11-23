@@ -243,6 +243,10 @@
           (call-with-input-file path (lambda (input) (gunzip-through-ports input output))))))
      (untar
       (open-input-bytes archive)
+      #:filter
+      (lambda (name destination kind size target seconds mode)
+        (or (and (memq kind '(file dir)) #t)
+            (begin (add! (slash-path name) kind (bitwise-and mode 4095) #f) #f)))
       #:handle-entry
       (lambda (kind name content size attributes)
         (add!
@@ -252,16 +256,29 @@
          (and (eq? kind 'file) (input-port? content) (read-bytes-exactly content size)))
         '())))
     ((zip)
-     (call-with-input-file
-      path
-      (lambda (input)
-        (unzip
-         input
-         (lambda (name directory? content)
-           (define text (regexp-replace #rx"/$" (bytes->string/utf-8 name #\�) ""))
-           (if directory?
-             (add! text 'directory 493 #f)
-             (add! text 'file 420 (port->bytes content))))))))
+     (define (collect read!)
+       (define found '())
+       (read!
+        (lambda (name directory? content)
+          (set! found
+            (cons (list name directory? (and (not directory?) (port->bytes content))) found))))
+       (sort found bytes<? #:key car))
+     (define streamed
+       (collect
+        (lambda (handler) (call-with-input-file path (lambda (input) (unzip input handler))))))
+     (define directory (read-zip-directory path))
+     (define central
+       (collect
+        (lambda (handler)
+          (for
+           ((name (in-list (zip-directory-entries directory))))
+           (unzip-entry path directory name handler)))))
+     (unless (equal? streamed central)
+       (raise-user-error 'release "the zip's local entries and its central directory differ"))
+     (for
+      ((item (in-list central)))
+      (define text (regexp-replace #rx"/$" (bytes->string/utf-8 (car item) #\�) ""))
+      (if (cadr item) (add! text 'directory 493 #f) (add! text 'file 420 (caddr item)))))
     (else (raise-argument-error 'read-archive "tgz or zip" kind)))
   (reverse entries))
 
@@ -319,8 +336,19 @@
         (else
          (unless (equal? (sha256-hex (hash-ref entry 'content)) (cadr match))
            (problem! (format "content: ~a" name)))
-         (unless (equal? (mode-text (bitwise-and (hash-ref entry 'mode) 511)) (caddr match))
+         (unless (equal? (mode-text (bitwise-and (hash-ref entry 'mode) 4095)) (caddr match))
            (problem! (format "mode: ~a" name))))))))
+    (unless (= (hash-ref manifest 'mode) 420) (problem! "mode: typify/MANIFEST.txt"))
+    (define parents
+      (for*/hash
+       ((name (in-list (cons manifest-path (hash-keys listed))))
+        (end (in-list (regexp-match-positions* #rx"/" name))))
+       (values (substring name 0 (car end)) #t)))
+    (for
+     ((entry (in-list entries)) #:when (eq? (hash-ref entry 'kind) 'directory))
+     (define name (hash-ref entry 'path))
+     (unless (hash-ref parents name #f) (problem! (format "extra directory: ~a" name)))
+     (unless (= (hash-ref entry 'mode) 493) (problem! (format "mode: ~a" name))))
     (define names
       (for/list
        ((row (in-list rows)))
