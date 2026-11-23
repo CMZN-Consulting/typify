@@ -44,31 +44,49 @@ def inventory(builds, verified=None):
         if verified is not None:
             names = [name + "-" + asset for name in CONTROLS]
             bad = files_exactly(verified / ("verify-" + platform) / "canaries", names)
-            negatives.extend(bad[name] for name in names)
+            negatives.extend((asset, bad[name]) for name in names)
     return subjects, negatives
+
+
+def verified_subjects(name, path, policy, expected):
+    output = subprocess.check_output(["gh", "attestation", "verify", path, *policy, "--format", "json"])
+    for result in json.loads(output):
+        rows = result["verificationResult"]["statement"]["subject"]
+        if subjects_match(rows, expected):
+            signed = {row["name"]: row["digest"]["sha256"] for row in rows}
+            if signed[name] == file_hash(path):
+                return signed
+    raise ValueError(f"{name}: no verified statement binds this file and all eight exact subjects")
+
+
+def verify_control(path, signed, policy):
+    if file_hash(path) in signed.values():
+        raise ValueError(f"{path.name}: control has a genuine signed digest")
+    result = subprocess.run(["gh", "attestation", "verify", path, *policy],
+                            capture_output=True, text=True)
+    # gh discards the underlying Sigstore error. Its issuer-stage refusal corroborates
+    # the digest mismatch established above using the authenticated local statement.
+    # Unknown CLI diagnostics must stop the check, even if the exit status is 1.
+    issuer_errors = {'Error: verifying with issuer "sigstore.dev"',
+                     'Error: verifying with issuer "GitHub, Inc."'}
+    if result.returncode != 1 or result.stdout.strip() or result.stderr.strip() not in issuer_errors:
+        raise ValueError(f"{path.name}: unexpected verification outcome (exit {result.returncode}): "
+                         f"{result.stderr.strip()}")
 
 
 def check(builds, verified, bundle, repo, ref, commit):
     subjects, negatives = inventory(builds, verified)
     digests = {name: file_hash(path) for name, path in subjects.items()}
-    if any(file_hash(path) in digests.values() for path in negatives):
-        raise ValueError("a negative control has the digest of a genuine subject")
     policy = ["--repo", repo, "--signer-workflow", repo + "/.github/workflows/release.yml",
               "--source-ref", ref, "--source-digest", commit, "--deny-self-hosted-runners"]
-    for path in subjects.values():
-        output = subprocess.check_output(["gh", "attestation", "verify", path, *policy, "--format", "json"])
-        verified_results = json.loads(output)
-        if not any(subjects_match(row["verificationResult"]["statement"]["subject"], digests)
-                   for row in verified_results):
-            raise ValueError(f"{path.name}: no verified statement names all eight exact subjects")
-    for path in negatives:
-        result = subprocess.run(["gh", "attestation", "verify", path, *policy, "--bundle", bundle],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.returncode != 1:
-            raise ValueError(f"{path.name}: expected digest refusal from the signed bundle, got {result.returncode}")
-    # A genuine member verifies with this same local bundle and policy.
-    subprocess.run(["gh", "attestation", "verify", next(iter(subjects.values())), *policy, "--bundle", bundle],
-                   check=True)
+    for name, path in subjects.items():
+        verified_subjects(name, path, policy, digests)
+    local_policy = [*policy, "--bundle", bundle]
+    signed_by_archive = {}
+    for asset, control in negatives:
+        if asset not in signed_by_archive:
+            signed_by_archive[asset] = verified_subjects(asset, subjects[asset], local_policy, digests)
+        verify_control(control, signed_by_archive[asset], local_policy)
     print(f"Verified {len(subjects)} signed subjects and rejected {len(negatives)} altered archives")
 
 
