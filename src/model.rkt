@@ -18,6 +18,7 @@
          model-key-classes
          model-write-key-classes
          model-state?
+         state-predicate?
          model-check-notes
          model-check-stacking-write!
          model-host-guards
@@ -153,7 +154,7 @@
                 (not
                  (member
                   (term-constructor expression)
-                  '("parent" "join" "split" "ancestors" "concat" "context" "inherited"))))
+                  '("parent" "join" "split" "ancestors" "concat" "context" "inherited" "and"))))
            (ormap expression-needs-facts? (term-arguments expression)))))
 
 (define (model-needs-facts? model)

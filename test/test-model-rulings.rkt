@@ -184,6 +184,115 @@
    (hash-ref (hash-ref final-report 'state) "entries")
    '()
    "delete is folded before final-state checks")
+  (define (conjoined predicate)
+    (body
+     "Conjunction"
+     (list
+      "cell : entries = shadow"
+      "primitive : put : canonical-path"
+      "writes : put : entries = put 1 \"stored\""
+      (string-append "ensure : put : jointly = " predicate)
+      "form : put : <canonical-path>"
+      "does : put <canonical-path>"
+      "default : put : /present")))
+  (for
+   ((fixture
+     (in-list
+      '(("(and (bound entries <1>) (bound entries /other))" ("/other"))
+        ("(and (bound entries /missing) (equal (parent /) /))" ("/missing"))
+        ("(and (equal a b) (bound entries /unread))" ())
+        ("(and (bound entries <1>) (equal a b))" ("/present"))
+        ("(and (equal a a) (and (bound entries <1>) (bound entries /nested)))" ("/nested"))))))
+   (define issues '())
+   (define report
+     (plan-program
+      (conjoined (car fixture))
+      "put : /present"
+      #:on-error
+      (lambda (item) (set! issues (cons item issues)))))
+   (check (hash-ref report 'status) "failed" "a false conjunction fails its final invariant")
+   (check
+    (map diagnostic-code issues)
+    '("E_ENSURE")
+    "a short-circuited library call is never evaluated")
+   (check
+    (hash-ref (diagnostic-data (car issues)) 'key)
+    (cadr fixture)
+    "the last evaluated state leaf supplies the invariant key"))
+  (define nested (conjoined "(and (absent entries /other) (and (bound entries <1>) (equal a a)))"))
+  (check (model-needs-facts? (language-model nested)) #f "a nested conjunction needs no collector")
+  (define nested-default (plan-program nested ""))
+  (check
+   (map (lambda (item) (hash-ref item 'ok)) (hash-ref nested-default 'ensure))
+   '(#t)
+   "defaulted terms run nested final invariants")
+  (define (rejection thunk)
+    (with-handlers ((exn:fail:typify? exn:fail:typify-diagnostic)) (thunk) #f))
+  (define required-error
+    (rejection
+     (lambda ()
+       (plan-program (conjoined "(and (equal a a) (equal (parent /) /))") "put : /present"))))
+  (check (diagnostic-code required-error) "E_LIBRARY_PARENT" "a reached library failure propagates")
+  (define observer
+    (body
+     "Observer"
+     '("cell : entries = shadow"
+       "primitive : inspect : canonical-path"
+       "effect : inspect = external"
+       "ensure : inspect : valid = (and (equal a b) (bound entries <1> <1>))"
+       "form : inspect : <canonical-path>"
+       "does : inspect <canonical-path>")))
+  (define wrong-width
+    (rejection
+     (lambda ()
+       (plan-programs
+        (list
+         (record nested "put : /writer" "writer")
+         (record observer "inspect : /subject" "observer"))))))
+  (check
+   (diagnostic-code wrong-width)
+   "E_DECLARATION"
+   "root composition supplies the other body's width")
+  (check
+   (hash-ref (diagnostic-data wrong-width) 'kind)
+   "arity"
+   "an unreachable state operand must fit the composed cell width")
+  (for
+   ((predicate '("(and)" "(and (equal a b))" "(and (equal a b) (equal c d) (equal e f))")))
+   (define d (rejection (lambda () (conjoined predicate))))
+   (check (diagnostic-code d) "E_TERM_CLASS" "and takes exactly two predicate operands")
+   (check
+    (hash-ref (diagnostic-data d) 'class)
+    "predicate predicate"
+    "wrong conjunction arity identifies the expected signature"))
+  (for
+   ((predicate
+     '("(and (equal a b) (bound undeclared /wrong))"
+       "(and (equal a b) (and (equal c d) (exists /wrong)))"
+       "(and (equal a b) (equal (owner /wrong) nobody))"
+       "(and (equal a b) (concat c d))"
+       "(and (equal a b) a-string)")))
+   (check
+    (diagnostic-code (rejection (lambda () (conjoined predicate))))
+    "E_DECLARATION"
+    "formation checks even unreachable right operands"))
+  (for
+   ((rule
+     '("rule : inspect <x> -> (if (and (equal a a) (equal b b)) (put <x>))"
+       "rule : inspect <x> -> (put (and (equal a a) (equal b b)))")))
+   (check
+    (diagnostic?
+     (rejection
+      (lambda ()
+        (body
+         "Elsewhere"
+         (list
+          "primitive : put : canonical-path"
+          "effect : put = external"
+          "term : inspect : canonical-path"
+          rule)))))
+    #t
+    "the ensure combinator is unavailable to an if or an ordinary string expression"))
   (define relative
     (body
      "RelativeGuard"

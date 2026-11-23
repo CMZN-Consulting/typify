@@ -1766,7 +1766,13 @@
           (term-data expression)
           "An ensure clause may only observe the final state or use library predicates"
           (model-ensure-span clause)))
-       (validate-predicate! expression constructors classes captures #f model void))))
+       (let validate ((predicate expression))
+         (if (and (term? predicate) (equal? (term-constructor predicate) "and"))
+           (let ((operands (term-arguments predicate)))
+             (unless (= (length operands) 2)
+               (expression-arity-fail predicate "predicate predicate"))
+             (for-each validate operands))
+           (validate-predicate! predicate constructors classes captures #f model void))))))
    (for
     ((clause (in-list (hash-ref (compiled-model-reads model) (constructor-name item) '())))
      #:when

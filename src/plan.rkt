@@ -294,6 +294,26 @@
      (list 'builtin name)
      (list 'declared name (compiled-class-source (hash-ref (language-classes body) name))))))
 
+(define (check-ensure-width! body invariant widths cell count)
+  (unless (= count (hash-ref widths cell))
+    (define row
+      (for/first
+       ((row (in-list (language-rows body)))
+        #:when
+        (and (eq? (hash-ref row 'kind) 'ensure)
+             (equal?
+              (hash-ref (hash-ref row 'captures) "constructor")
+              (model-ensure-constructor invariant))
+             (equal? (hash-ref (hash-ref row 'captures) "name") (model-ensure-name invariant))))
+       row))
+    (raise-typify
+     "E_DECLARATION"
+     "The invariant key arity disagrees with the root cell"
+     #:span
+     (model-ensure-span invariant)
+     #:data
+     (hash 'kind "arity" 'actual (hash-ref (hash-ref row 'captures) "value")))))
+
 (define (collect-cells programs)
   (define bodies
     (sort
@@ -389,7 +409,25 @@
        (model-write-span write)
        #:data
        (hash 'kind "conflict" 'actual (model-write-constructor write))))
-    (model-check-stacking-write! model write (hash-ref widths (model-write-cell write)))))
+    (model-check-stacking-write! model write (hash-ref widths (model-write-cell write))))
+   (define invariants (append* (hash-values (compiled-model-ensures model))))
+   (for
+    ((invariant
+      (in-list (sort invariants < #:key (lambda (i) (src-span-start-byte (model-ensure-span i))))))
+     #:when
+     (equal? (term-constructor (model-ensure-expression invariant)) "and"))
+    (let check ((predicate (model-ensure-expression invariant)))
+      (define name (term-constructor predicate))
+      (define args (term-arguments predicate))
+      (cond
+       ((equal? name "and") (for-each check args))
+       ((state-predicate? name)
+        (check-ensure-width!
+         body
+         invariant
+         widths
+         (literal-value (car args))
+         (length (cdr args))))))))
   (values cells widths))
 
 (define (tuple-key<? left right)
@@ -895,28 +933,9 @@
    (define program (hash-ref clause 'program))
    (define last-key '())
    (define (query name arguments source-origin)
-     (if (member name '("bound" "masked" "visible" "absent" "covered" "uncovered"))
+     (if (state-predicate? name)
        (let ((key (cdr arguments)))
-         (unless (= (length key) (hash-ref widths (car arguments)))
-           (define row
-             (for/first
-              ((row (in-list (language-rows body)))
-               #:when
-               (and (eq? (hash-ref row 'kind) 'ensure)
-                    (equal?
-                     (hash-ref (hash-ref row 'captures) "constructor")
-                     (model-ensure-constructor invariant))
-                    (equal?
-                     (hash-ref (hash-ref row 'captures) "name")
-                     (model-ensure-name invariant))))
-              row))
-           (raise-typify
-            "E_DECLARATION"
-            "The invariant key arity disagrees with the root cell"
-            #:span
-            (model-ensure-span invariant)
-            #:data
-            (hash 'kind "arity" 'actual (hash-ref (hash-ref row 'captures) "value"))))
+         (check-ensure-width! body invariant widths (car arguments) (length key))
          (set! last-key key)
          (state-query state cells name (cons (car arguments) key)))
        (query-fact name arguments source-origin)))
@@ -924,20 +943,25 @@
      (parameterize
       ((current-lookup-observer
         (lambda (observation) (record-lookup! observation (hash-ref clause 'program-index)))))
-      (evaluate-rule-expression
-       body
-       (model-ensure-expression invariant)
-       (ensure-bindings clause)
-       #:context
-       (context-callback program)
-       #:inherited
-       (inherited-callback program)
-       #:captures
-       (hash-ref program 'placeholders (hash))
-       #:fact
-       query
-       #:origin
-       origin)))
+      (define bindings (ensure-bindings clause))
+      (let evaluate ((predicate (model-ensure-expression invariant)))
+        (if (equal? (term-constructor predicate) "and")
+          (and (evaluate (car (term-arguments predicate)))
+               (evaluate (cadr (term-arguments predicate))))
+          (evaluate-rule-expression
+           body
+           predicate
+           bindings
+           #:context
+           (context-callback program)
+           #:inherited
+           (inherited-callback program)
+           #:captures
+           (hash-ref program 'placeholders (hash))
+           #:fact
+           query
+           #:origin
+           origin)))))
    (set! ensure-results
      (cons
       (hash

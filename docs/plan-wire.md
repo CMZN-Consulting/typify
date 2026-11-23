@@ -5,3 +5,13 @@ A root plan has a `schedule` array. Each entry names the source program, stage, 
 The schedule describes the plan. A failed read can retain proposed operations for diagnostics. Use the report status to decide whether the plan succeeded. A skipped operation can leave a gap in the sequence numbers. On a stacking cell, each surviving row records the sequence number of the write that established it. Within the same partition a later ancestor write covers an earlier descendant. A `first` cell keeps the original row's sequence when a later write has the same key.
 
 Run `typify --version` for the version and the reader-source SHA-256 on one line. Use `typify --version --json` for the `version` and `build` fields. The build is a digest over the sorted source manifest computed at compilation. Each UTF-8 line contains the lowercase SHA-256 of a Racket source file in the reader package, two spaces, its slash-separated path relative to the package, and LF. The `sha256:` prefix identifies the algorithm. Platform archives carry their own digests.
+
+## Conjunction in a final-state invariant
+
+```typify
+ensure : put : paired = (and (bound entries <1>) (bound entries /peer))
+```
+
+`ensure` accepts binary `(and P Q)`. The declaration checker validates both operands, including nested conjunctions. Each leaf must be a state or library predicate. Collector calls are forbidden throughout the expression. During final-state checking, the reader evaluates `P` first and evaluates `Q` only if `P` holds.
+
+If the example fails its first test, `E_ENSURE.data.key` contains the bound value of `<1>`. If the first test passes and `/peer` fails, the key is `["/peer"]`. In a longer expression the key comes from the last state predicate actually evaluated. It is `[]` when only library predicates were evaluated.
