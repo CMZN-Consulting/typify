@@ -207,15 +207,15 @@
         (lambda (gate)
           (member
            (hash-ref gate 'name)
-           '("house-mount-state"
-             "house-primitive-audit"
-             "house-rule-mutation"
+           '("consumer-mount-state"
+             "consumer-primitive-audit"
+             "consumer-rule-mutation"
              "plan-state-bounds"
              "facts-collector-agreement")))
         (hash-ref (hash-ref second 'stage2) 'gates)))
-      '("house-mount-state"
-        "house-primitive-audit"
-        "house-rule-mutation"
+      '("consumer-mount-state"
+        "consumer-primitive-audit"
+        "consumer-rule-mutation"
         "plan-state-bounds"
         "facts-collector-agreement")
       "stage two requires all five new gates beyond the original fourteen")
@@ -241,19 +241,68 @@
       "missing ask evidence cannot pass stage three")
      (check
       (map (lambda (gate) (hash-ref gate 'name)) (hash-ref (hash-ref third 'stage3) 'unscored))
-      '("house-mount-state" "house-primitive-audit" "house-rule-mutation")
-      "HOUSE providers stay visible as unscored stage-five evidence")
+      '("consumer-mount-state" "consumer-primitive-audit" "consumer-rule-mutation")
+      "Consumer gates stay visible as unscored stage-five evidence")
      (check
       (filter
-       (lambda (name) (member name '(house-mount-state house-primitive-audit house-rule-mutation)))
+       (lambda (name)
+         (member name '(consumer-mount-state consumer-primitive-audit consumer-rule-mutation)))
        (gate-names 3))
       '()
-      "HOUSE providers do not block stage-three acceptance")
+      "Consumer gates do not block stage-three acceptance")
      (check
       (filter (lambda (name) (member name '(ask-exact-replay ask-round-trip))) (gate-names 3))
       '(ask-exact-replay ask-round-trip)
       "both new ask measurements are required")
-     (check (refuses? (lambda () (gate-names 4))) #t "unsupported acceptance stages are refused")
+     (check
+      (refuses? (lambda () (gate-names 5)))
+      #t
+      "the release pipeline has its own acceptance criteria")
+     (define fourth
+       (aggregate (map (lambda (r) (at-stage r 4)) (list kernel language mutation)) #:stage 4))
+     (define fourth-gates (hash-ref (hash-ref fourth 'stage4) 'gates))
+     (check
+      (take (gate-names 4) (length (gate-names 3)))
+      (gate-names 3)
+      "stage four includes every stage-three criterion")
+     (check
+      (hash-ref (hash-ref fourth 'stage4) 'pass)
+      #f
+      "a complete synthetic replay cannot certify the release")
+     (check
+      (hash-ref
+       (findf (lambda (g) (equal? (hash-ref g 'name) "frozen-wire-replay")) fourth-gates)
+       'pass)
+      #f
+      "synthetic or unpinned expectations cannot satisfy the frozen-wire gate")
+     (check
+      (map (lambda (g) (hash-ref g 'status)) (take-right fourth-gates 4))
+      (make-list 4 "missing-provider")
+      "one-run synthetic data cannot stand in for independent providers")
+     (check
+      (hash-has-key? third 'provider-sha256)
+      #f
+      "the historical stage-three report shape stands")
+     (define provider-path (build-path directory "stage4-provider.json"))
+     (call-with-output-file
+      provider-path
+      (lambda (out)
+        (write-json (hash 'schema "typify-stage4-provider-v1" 'measurementMode "synthetic") out)))
+     (define with-provider
+       (keyword-apply
+        run-stage-aggregate
+        '(#:stage #:stage4-provider)
+        (list 4 provider-path)
+        paths))
+     (define provider-gates (hash-ref (hash-ref with-provider 'stage4) 'gates))
+     (check
+      (map (lambda (g) (hash-ref g 'status)) (take-right provider-gates 4))
+      (make-list 4 "invalid-provider")
+      "a stored synthetic provider is refused as release evidence")
+     (check
+      (string? (hash-ref with-provider 'provider-sha256))
+      #t
+      "a reviewed aggregate identifies its external provider by digest")
      (define ask-evidence
        (hash
         'total
@@ -350,58 +399,174 @@
       (gate-valid? 'plan-state-bounds (hash-set* bounds 'total 9999 'distinct-declarations 9999))
       #f
       "fewer than ten thousand declarations cannot pass")
-     (define rule-mutation
+     (define (receipt observations)
        (hash
         'total
-        10
+        (length observations)
         'failures
         0
-        'seeded
-        10
-        'killed
-        9
-        'registered
-        #t
         'complete
         #t
-        'baseline-valid
-        #t))
-     (check
-      (gate-valid? 'house-rule-mutation rule-mutation)
-      #t
-      "rule mutation accepts ninety percent")
-     (check
-      (gate-valid? 'house-rule-mutation (hash-set rule-mutation 'killed 8))
-      #f
-      "rule mutation below ninety percent is refused")
-     (check
-      (gate-valid? 'house-rule-mutation (hash-set rule-mutation 'baseline-valid #f))
-      #f
-      "invalid baseline never validates rule mutation")
-     (check
-      (gate-valid?
-       'house-mount-state
-       (hash 'total 17 'failures 0 'seats 17 'mismatches 0 'independent-observations #f))
-      #f
-      "mount states require independent observations")
-     (check
-      (gate-valid?
-       'house-primitive-audit
-       (hash
-        'total
-        16
-        'failures
-        0
+        'inventory
+        (reverse (map (lambda (row) (hash-ref row 'id)) observations))
+        'observations
+        observations))
+     (define mounts
+       (for/list
+        ((name '("red" "blue" "green")) (digit '(#\a #\b #\c)))
+        (hash
+         'id
+         name
+         'predicted-sha256
+         (make-string 64 digit)
+         'observed-sha256
+         (make-string 64 digit))))
+     (define mount-state (hash-set* (receipt mounts) 'independent-observations #t 'mismatches 0))
+     (define forms
+       (list
+        (hash 'id "open" 'primitives '("start"))
+        (hash 'id "close" 'primitives '("stop"))
+        (hash 'id "reopen" 'primitives '("stop" "start"))))
+     (define primitive-audit
+       (hash-set*
+        (receipt forms)
         'effect-forms
-        16
+        3
         'primitives
-        17
+        2
         'form-specific-except-keygen
         0
         'deriving-effects
         0))
+     (define mutants
+       (for/list ((i (in-range 10))) (hash 'id (format "mutant-~a" i) 'killed (< i 9))))
+     (define rule-mutation
+       (hash-set* (receipt mutants) 'seeded 10 'killed 9 'registered #t 'baseline-valid #t))
+     (for
+      ((name (in-list consumer-gate-names)) (data (list mount-state primitive-audit rule-mutation)))
+      (check
+       (gate-valid? name data)
+       #t
+       "all members of a differently sized inventory were observed")
+      (for
+       ((bad
+         (list
+          (hash-set data 'complete #f)
+          (hash-set data 'failures 1)
+          (hash-set data 'total 0)
+          (hash-set data 'total 1)
+          (hash-set data 'inventory '())
+          (hash-set data 'observations (cdr (hash-ref data 'observations)))
+          (hash-remove data 'observations)
+          (hash-set data 'observations (cons #f (cdr (hash-ref data 'observations))))
+          (hash-set data 'inventory (make-list (hash-ref data 'total) "duplicate")))))
+       (check
+        (gate-valid? name bad)
+        #f
+        "empty, failed, partial and duplicate inventories are refused")))
+     (check
+      (gate-valid?
+       'consumer-mount-state
+       (hash-set
+        mount-state
+        'observations
+        (cons (hash-set (car mounts) 'observed-sha256 (make-string 64 #\0)) (cdr mounts))))
       #f
-      "an audit cannot exceed sixteen primitives")
+      "a reported zero cannot conceal a mismatching seat")
+     (for
+      ((bad
+        (list
+         (hash-set mount-state 'independent-observations #f)
+         (hash-set mount-state 'mismatches 1)
+         (hash-set mount-state 'seats 2)
+         (hash-set
+          mount-state
+          'observations
+          (cons (hash-set (car mounts) 'id "unknown") (cdr mounts)))
+         (hash-set
+          mount-state
+          'observations
+          (cons (hash-set (car mounts) 'id "green") (cdr mounts)))
+         (hash-set
+          mount-state
+          'observations
+          (cons (hash-remove (car mounts) 'observed-sha256) (cdr mounts))))))
+      (check
+       (gate-valid? 'consumer-mount-state bad)
+       #f
+       "mount comparisons require each independent observation"))
+     (for
+      ((bad
+        (list
+         (hash-set primitive-audit 'primitives 1)
+         (hash-set primitive-audit 'effect-forms 2)
+         (hash-set primitive-audit 'form-specific-except-keygen 1)
+         (hash-set primitive-audit 'deriving-effects 1)
+         (hash-set*
+          primitive-audit
+          'primitives
+          4
+          'observations
+          (cons (hash-set (car forms) 'primitives '("alpha" "beta")) (cdr forms)))
+         (hash-set
+          primitive-audit
+          'observations
+          (cons (hash-remove (car forms) 'primitives) (cdr forms))))))
+      (check
+       (gate-valid? 'consumer-primitive-audit bad)
+       #f
+       "audit counts, mappings and primitive limits are checked"))
+     (define fewer-kills
+       (hash-set
+        rule-mutation
+        'observations
+        (cons (hash-set (car mutants) 'killed #f) (cdr mutants))))
+     (for
+      ((bad
+        (list
+         (hash-set fewer-kills 'killed 8)
+         fewer-kills
+         (hash-set rule-mutation 'baseline-valid #f)
+         (hash-set rule-mutation 'registered #f)
+         (hash-set rule-mutation 'seeded 9)
+         (hash-set
+          rule-mutation
+          'observations
+          (cons (hash-remove (car mutants) 'killed) (cdr mutants))))))
+      (check
+       (gate-valid? 'consumer-rule-mutation bad)
+       #f
+       "mutant registration, outcomes, denominator and threshold are checked"))
+     (check (consumer-gate-valid? 'unknown mount-state) #f "an unknown consumer gate cannot pass")
+     (define (aggregated-consumer-statuses mounts-receipt)
+       (define base-report (car stage-two))
+       (define tests (hash-ref (hash-ref base-report 'kernel) 'tests))
+       (define provider (car tests))
+       (define evidence
+         (hash
+          'consumer-mount-state
+          mounts-receipt
+          'consumer-primitive-audit
+          primitive-audit
+          'consumer-rule-mutation
+          rule-mutation))
+       (define revised-provider
+         (hash-set provider 'result (hash-set (hash-ref provider 'result) 'gates evidence)))
+       (define reports
+         (cons (with-tests base-report (cons revised-provider (cdr tests))) (cdr stage-two)))
+       (for/list
+        ((gate (in-list (hash-ref (hash-ref (aggregate reports #:stage 2) 'stage2) 'gates)))
+         #:when
+         (memq (string->symbol (hash-ref gate 'name)) consumer-gate-names))
+        (hash-ref gate 'status)))
+     (check
+      (aggregated-consumer-statuses mount-state)
+      '("measured" "measured" "measured")
+      "a provider is checked by the normal serialized report aggregation")
+     (check
+      (aggregated-consumer-statuses (hash-remove mount-state 'observations))
+      '("failed-evidence" "measured" "measured")
+      "an incomplete forwarded provider stays visible as a failed gate")
      (check
       (gate-valid? 'facts-collector-agreement (hash 'total 1 'failures 0 'independent #f))
       #f

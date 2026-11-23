@@ -11,9 +11,11 @@
          "../src/diagnostics.rkt"
          "../src/main.rkt"
          "../scripts/import-corpus.rkt"
+         "expectation-overlay.rkt"
          (only-in "test-decoder.rkt" parse-gbnf gbnf-accepts?))
 
 (provide run-blind-corpus
+         stable-v12-replay?
          blind-command-scope
          blind-stage-commands
          blind-stage-scope
@@ -24,11 +26,25 @@
 
 (define-runtime-path default-blind-root "corpus")
 
+(define-runtime-path stage4-overlay-path "overlays/v12-stage4.json")
+
+(define stage4-overlay-sha256 #f)
+
 (define archive-sha256 "b140479b001a0ade1babd3d23e3d689a73a21bb8348d32334a9b2552589fe406")
 
 (define tree-sha256 "7a895f8edc5f3ed4bd4dbcabdd484c14925ac38bef4edd5048e6b8925117d43d")
 
 (define receipt-sha256 "140bad4af9ad2261569c9018b94f40f95a1638bc9df333750561767087f2b6fe")
+
+(define (stable-v12-replay? report)
+  (and (string? stage4-overlay-sha256)
+       (hash? report)
+       (eq? (hash-ref report 'independent #f) #t)
+       (equal? (hash-ref report 'wire #f) "stage4")
+       (equal? (hash-ref report 'archive-sha256 #f) archive-sha256)
+       (equal? (hash-ref report 'tree-sha256 #f) tree-sha256)
+       (equal? (hash-ref report 'receipt-sha256 #f) receipt-sha256)
+       (equal? (hash-ref report 'overlay-sha256 #f) stage4-overlay-sha256)))
 
 (define missing (gensym 'missing))
 
@@ -571,12 +587,15 @@
 (define (run-blind-corpus
          #:root
          (root default-blind-root)
+         #:wire
+         (wire 'stage4)
          #:ids
          (ids #f)
          #:stop-on-failure?
          (stop-on-failure? #f)
          #:retain-observations?
          (retain-observations? #f))
+  (unless (memq wire '(v12 stage4)) (raise-argument-error 'run-blind-corpus "'v12 or 'stage4" wire))
   (define setup-error #f)
   (define receipt
     (with-handlers
@@ -585,7 +604,20 @@
   (define inventory
     (with-handlers
      ((exn:fail? (lambda (error) (set! setup-error (exn-message error)) '())))
-     (blind-case-inventory root)))
+     (define frozen (blind-case-inventory root))
+     (if (eq? wire 'v12)
+       frozen
+       (apply-frozen-overlay
+        stage4-overlay-path
+        stage4-overlay-sha256
+        (hash
+         'baselineArchiveSha256
+         archive-sha256
+         'baselineTreeSha256
+         tree-sha256
+         'baselineReceiptSha256
+         receipt-sha256)
+        frozen))))
   (define selected
     (if ids
       (append
@@ -741,84 +773,97 @@
            string<?)
           (sort inventory-cases string<?))))
   (define failures (count (lambda (result) (not (hash-ref result 'pass))) results))
-  (hash
-   'available
-   (and receipt #t)
-   'blind
-   (and receipt #t)
-   'independent
-   (and receipt #t)
-   'corpus
-   "test/corpus/"
-   'provenance
-   "Frozen external blind archive, imported verbatim and checked against its receipt"
-   'archive-sha256
-   archive-sha256
-   'tree-sha256
-   tree-sha256
-   'receipt-sha256
-   receipt-sha256
-   'total
-   attempted
-   'attempted
-   attempted
-   'requested
-   requested
-   'failures
-   failures
-   'case-total
-   (hash-count case-results)
-   'case-failures
-   (count not (hash-values case-results))
-   'corpus-case-total
-   (length (case-directories root))
-   'inventory-case-total
-   (length inventory-cases)
-   'deferred
-   deferred
-   'complete
-   complete?
-   'selected-complete
-   selected-complete?
-   'stopped-early
-   (< attempted requested)
-   'infrastructure-failures
-   infrastructure-count
-   'setup-error
-   (or setup-error 'null)
-   'comparison-policy
-   (hash
-    'semantic-objects
-    "exact-key-sets"
-    'lists
-    "ordered"
-    'compared-fields
-    '("exit_code" "stdout_json" "diagnostics")
-    'gbnf
-    "For emit --gbnf without --json only: root presence and accepts_lines/rejects_lines membership; raw text and helper rule names are not compared"
-    'other-expected-fields
-    "Author notes; aliases,verdict,SARIF/LSP and raw stdout_gbnf are not compared"
-    'unexpected-bound
-    "mismatch"
-    'semantic-provenance-key
-    "compared"
-    'diagnostics
-    "code,file,range and registered required data; native extras ignored"
-    'missing-required-data
-    "explicit mismatch with missing sentinel and discriminator"
-    'verdict-reporting
-    "exit0 with native JSON status unchecked is unchecked; otherwise exit status classification")
-   'results
-   (reverse results)
-   'mismatches
-   all-differences))
+  (define result
+    (hash
+     'available
+     (and receipt #t)
+     'blind
+     (and receipt #t)
+     'independent
+     (and receipt #t)
+     'corpus
+     "test/corpus/"
+     'provenance
+     "Frozen external blind archive, imported verbatim and checked against its receipt"
+     'archive-sha256
+     archive-sha256
+     'tree-sha256
+     tree-sha256
+     'receipt-sha256
+     receipt-sha256
+     'total
+     attempted
+     'attempted
+     attempted
+     'requested
+     requested
+     'failures
+     failures
+     'case-total
+     (hash-count case-results)
+     'case-failures
+     (count not (hash-values case-results))
+     'corpus-case-total
+     (length (case-directories root))
+     'inventory-case-total
+     (length inventory-cases)
+     'deferred
+     deferred
+     'complete
+     complete?
+     'selected-complete
+     selected-complete?
+     'stopped-early
+     (< attempted requested)
+     'infrastructure-failures
+     infrastructure-count
+     'setup-error
+     (or setup-error 'null)
+     'comparison-policy
+     (hash
+      'semantic-objects
+      "exact-key-sets"
+      'lists
+      "ordered"
+      'compared-fields
+      '("exit_code" "stdout_json" "diagnostics")
+      'gbnf
+      "For emit --gbnf without --json only: root presence and accepts_lines/rejects_lines membership; raw text and helper rule names are not compared"
+      'other-expected-fields
+      "Author notes; aliases,verdict,SARIF/LSP and raw stdout_gbnf are not compared"
+      'unexpected-bound
+      "mismatch"
+      'semantic-provenance-key
+      "compared"
+      'diagnostics
+      "code,file,range and registered required data; native extras ignored"
+      'missing-required-data
+      "explicit mismatch with missing sentinel and discriminator"
+      'verdict-reporting
+      "exit0 with native JSON status unchecked is unchecked; otherwise exit status classification")
+     'results
+     (reverse results)
+     'mismatches
+     all-differences))
+  (if (eq? wire 'v12)
+    result
+    (hash-set*
+     result
+     'wire
+     "stage4"
+     'overlay-sha256
+     (or stage4-overlay-sha256 'null)
+     'independent
+     (and receipt (not setup-error))
+     'provenance
+     "Frozen v12 corpus with separately pinned independent Stage 4 expected-field additions")))
 
 (define (blind-stage-commands stage)
   (case stage
     ((1) '("check" "emit"))
     ((2) '("check" "emit" "tree" "plan"))
-    ((3) '("check" "emit" "tree" "plan" "ask"))
-    (else (raise-argument-error 'blind-stage-commands "1, 2 or 3" stage))))
+    ((3 4) '("check" "emit" "tree" "plan" "ask"))
+    (else (raise-argument-error 'blind-stage-commands "1, 2, 3 or 4" stage))))
 
 (define (blind-stage-scope observed stage)
   (blind-command-scope observed (blind-stage-commands stage) #:stage stage))
@@ -871,12 +916,89 @@
     (lambda (difference) (member (hash-ref difference 'id) ids))
     (hash-ref observed 'mismatches '()))))
 
+(define (test-overlay! check)
+  (define folder (make-temporary-file "typify-replay~a" 'directory))
+  (dynamic-wind
+   void
+   (lambda ()
+     (define file (build-path folder "overlay.json"))
+     (define invocation '("typify" "plan" "decls" "." "--json"))
+     (define observed (hash 'stdout_json (hash 'state (hash 'tab (list (hash 'value "old"))))))
+     (define frozen (hash-set observed 'invocation invocation))
+     (define entry (hash 'id "one/test" 'directory folder 'expected frozen))
+     (define other (hash-set entry 'id "two"))
+     (define custody
+       (hash
+        'baselineArchiveSha256
+        (make-string 64 #\a)
+        'baselineTreeSha256
+        (make-string 64 #\b)
+        'baselineReceiptSha256
+        (make-string 64 #\c)))
+     (define marker (hash '$fixtureRoot "root"))
+     (define (addition path val) (hash 'path path 'value val))
+     (define inputs (addition '("stdout_json" "inputs") (hash 'root marker 'facts '())))
+     (define sequence (addition '("stdout_json" "state" "tab" 0 "sequence") 0))
+     (define row (hash 'id "one/test" 'invocation invocation 'add (list inputs sequence)))
+     (define (apply-rows rows #:pins (pins custody) #:wrong-digest? (bad? #f))
+       (display-to-file
+        (canonical-json (hash-set* pins 'schema "typify-v12-stage4-overlay-v1" 'entries rows))
+        file
+        #:exists
+        'truncate/replace)
+       (apply-frozen-overlay
+        file
+        (if bad? (make-string 64 #\0) (digest file))
+        custody
+        (list entry other)))
+     (define (refused? thunk) (with-handlers ((exn:fail? (lambda (_) #t))) (thunk) #f))
+     (define (error-add item)
+       (refused? (lambda () (apply-rows (list (hash-set row 'add (list item)))))))
+     (define active (apply-rows (list row)))
+     (define out (hash-ref (hash-ref (car active) 'expected) 'stdout_json))
+     (define resolved (hash-ref (hash-ref out 'inputs) 'root))
+     (check (string? resolved) #t)
+     (check
+      (string-suffix? resolved (string-append "/" (path->string (file-name-from-path folder))))
+      #t)
+     (check (hash-ref (car (hash-ref (hash-ref out 'state) 'tab)) 'sequence) 0)
+     (check (cadr active) other)
+     (check (hash-has-key? (hash-ref (hash-ref entry 'expected) 'stdout_json) 'inputs) #f)
+     (check (pair? (compare-observation (hash-ref (car active) 'expected) observed)) #t)
+     (check (pair? (compare-observation frozen (hash 'stdout_json out))) #t)
+     (check (refused? (lambda () (apply-rows (list row) #:wrong-digest? #t))) #t)
+     (check
+      (refused?
+       (lambda ()
+         (apply-rows (list row) #:pins (hash-set custody 'baselineReceiptSha256 "changed"))))
+      #t)
+     (check (refused? (lambda () (apply-rows (list row row)))) #t)
+     (check (refused? (lambda () (apply-rows (list (hash-set row 'id "other"))))) #t)
+     (check
+      (refused? (lambda () (apply-rows (list (hash-set row 'invocation '("typify" "other"))))))
+      #t)
+     (check
+      (refused? (lambda () (apply-rows (list (hash-set row 'add (list sequence sequence))))))
+      #t)
+     (check (error-add (addition '("stdout_json" "state" "unknown" 0 "sequence") 2)) #t)
+     (check (error-add (addition '("stdout_json" "state" "tab" 1 "sequence") 2)) #t)
+     (check (error-add (addition '("stdout_json" "state" "tab" 0 "value") "new")) #t)
+     (check (error-add (addition '("stdout_json" "unrecognized") 2)) #t)
+     (check (error-add (addition '("stdout_json" "schedule") (list marker))) #t)
+     (check
+      (error-add
+       (addition '("stdout_json" "inputs") (hash 'root (hash '$fixtureRoot "../outside"))))
+      #t)
+     (check (refused? (lambda () (apply-rows '()))) #t))
+   (lambda () (delete-directory/files folder))))
+
 (define (run-tests)
   (define checks 0)
   (define (check actual expected)
     (set! checks (add1 checks))
     (unless (equal? actual expected)
       (error 'blind-comparison "expected ~s, got ~s" expected actual)))
+  (test-overlay! check)
   (define usage
     (observe
      (hash
@@ -1189,7 +1311,8 @@
   (check (hash-ref second-stage 'scope) '("check" "emit" "tree" "plan"))
   (check (hash-ref second-stage 'total) 4)
   (check (blind-stage-commands 3) '("check" "emit" "tree" "plan" "ask"))
-  (check (with-handlers ((exn:fail? (lambda (_) #t))) (blind-stage-commands 4) #f) #t)
+  (check (blind-stage-commands 4) (blind-stage-commands 3))
+  (check (with-handlers ((exn:fail? (lambda (_) #t))) (blind-stage-commands 5) #f) #t)
   (check
    (expected-stage
     (hash
@@ -1314,4 +1437,12 @@
 
 (module+ test (run-tests))
 
-(module+ main (displayln (canonical-json (run-blind-corpus))))
+(module+
+ main
+ (define args (vector->list (current-command-line-arguments)))
+ (unless (or (null? args) (equal? args '("--legacy-v12")))
+   (displayln "usage: racket test/blind-corpus.rkt [--legacy-v12]" (current-error-port))
+   (exit 2))
+ (define report (run-blind-corpus #:wire (if (null? args) 'stage4 'v12)))
+ (displayln (canonical-json report))
+ (exit (if (and (hash-ref report 'complete) (zero? (hash-ref report 'failures))) 0 1)))

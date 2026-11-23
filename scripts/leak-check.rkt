@@ -146,6 +146,7 @@
                   "docs/plan-wire.md"
                   "mcp/README.md"
                   "test/corpus/MANIFEST.md"
+                  "test/overlays/README.md"
                   "test/ask-gate/README.md"))
                (member name references))))
      (issue! name 'markdown)))

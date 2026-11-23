@@ -11,9 +11,14 @@
          "../src/classes.rkt"
          "../src/diagnostics.rkt"
          "format.rkt"
+         "stage4-evidence.rkt"
          "leak-check.rkt")
 
-(provide run-kernel-check run-stage1-aggregate run-stage-aggregate)
+(provide run-kernel-check
+         run-stage1-aggregate
+         run-stage-aggregate
+         consumer-gate-names
+         consumer-gate-valid?)
 
 (define test-modules
   '("test/smoke.rkt"
@@ -21,6 +26,7 @@
     "test/test-classes.rkt"
     "test/test-syntax.rkt"
     "test/test-diagnostics.rkt"
+    "test/test-projections.rkt"
     "test/test-declaration-diagnostics.rkt"
     "test/test-declaration-recovery.rkt"
     "test/test-resolution-metadata.rkt"
@@ -33,6 +39,8 @@
     "test/test-recovery-rulings.rkt"
     "test/test-depth-literals.rkt"
     "test/test-ci-aggregation.rkt"
+    "test/test-stage4-evidence.rkt"
+    "test/test-consumer-release.rkt"
     "test/test-witness-report.rkt"
     "test/blind-corpus.rkt"
     "test/test-language.rkt"
@@ -51,6 +59,7 @@
     "test/test-keyed-counts.rkt"
     "test/test-lookups.rkt"
     "test/test-tree.rkt"
+    "test/test-inputs.rkt"
     "test/test-facts.rkt"
     "test/test-stage2-cli.rkt"
     "test/test-decoder.rkt"
@@ -87,29 +96,25 @@
     emission-contract
     meta-selfcheck))
 
+(define consumer-gate-names '(consumer-mount-state consumer-primitive-audit consumer-rule-mutation))
+
 (define stage-two-gate-names
-  '(house-mount-state
-    house-primitive-audit
-    house-rule-mutation
-    plan-state-bounds
-    facts-collector-agreement))
+  (append consumer-gate-names '(plan-state-bounds facts-collector-agreement)))
 
 (define stage-three-gate-names '(ask-exact-replay ask-round-trip))
 
-(define stage-five-gate-names '(house-mount-state house-primitive-audit house-rule-mutation))
-
 (define (unscored-gates stage)
-  (if (= stage 3)
+  (if (>= stage 3)
     (for/list
-     ((name (in-list stage-five-gate-names)))
+     ((name (in-list consumer-gate-names)))
      (hash 'name (symbol->string name) 'status "unscored-missing-evidence" 'stage 5))
     '()))
 
-(define (acceptance-stage? stage) (and (exact-integer? stage) (member stage '(1 2 3)) #t))
+(define (acceptance-stage? stage) (and (exact-integer? stage) (member stage '(1 2 3 4)) #t))
 
 (define (stage-key stage)
-  (unless (acceptance-stage? stage) (raise-argument-error 'stage-key "1, 2 or 3" stage))
-  (case stage ((1) 'stage1) ((2) 'stage2) ((3) 'stage3)))
+  (unless (acceptance-stage? stage) (raise-argument-error 'stage-key "1, 2, 3 or 4" stage))
+  (case stage ((1) 'stage1) ((2) 'stage2) ((3) 'stage3) ((4) 'stage4)))
 
 (define (gate-names stage)
   (stage-key stage)
@@ -117,10 +122,11 @@
    stage-one-gate-names
    (if (>= stage 2)
      (filter
-      (lambda (name) (or (= stage 2) (not (member name stage-five-gate-names))))
+      (lambda (name) (or (= stage 2) (not (member name consumer-gate-names))))
       stage-two-gate-names)
      '())
-   (if (= stage 3) stage-three-gate-names '())))
+   (if (>= stage 3) stage-three-gate-names '())
+   (if (= stage 4) stage4-gate-names '())))
 
 (define (field data key (default #f))
   (if (hash? data)
@@ -275,6 +281,53 @@
     'stderr
     (get-output-string errors))))
 
+(define (distinct-names? names)
+  (and (list? names) (andmap text? names) (not (check-duplicates names))))
+
+(define (consumer-gate-valid? name evidence)
+  (define total (field evidence 'total))
+  (define inventory (field evidence 'inventory))
+  (define observations (field evidence 'observations))
+  (define observed-ids (and (list? observations) (map (lambda (row) (field row 'id)) observations)))
+  (and (positive? total)
+       (equal? (field evidence 'failures) 0)
+       (eq? (field evidence 'complete) #t)
+       (not (equal? (field evidence 'status) "deferred-blind"))
+       (distinct-names? inventory)
+       (= total (length inventory))
+       (distinct-names? observed-ids)
+       (equal? (sort inventory string<?) (sort observed-ids string<?))
+       (case name
+         ((consumer-mount-state)
+          (and (eq? (field evidence 'independent-observations) #t)
+               (equal? (field evidence 'seats total) total)
+               (equal? (field evidence 'mismatches) 0)
+               (for/and
+                ((row (in-list observations)))
+                (define observed (field row 'observed-sha256))
+                (and (string? observed)
+                     (regexp-match? #px"^[0-9a-f]{64}$" observed)
+                     (equal? observed (field row 'predicted-sha256))))))
+         ((consumer-primitive-audit)
+          (define mappings (map (lambda (row) (field row 'primitives)) observations))
+          (define primitives (field evidence 'primitives))
+          (and (equal? (field evidence 'effect-forms) total)
+               (positive? primitives)
+               (<= primitives total)
+               (andmap distinct-names? mappings)
+               (= primitives (length (remove-duplicates (append* mappings))))
+               (equal? (field evidence 'form-specific-except-keygen) 0)
+               (equal? (field evidence 'deriving-effects) 0)))
+         ((consumer-rule-mutation)
+          (define killed (field evidence 'killed))
+          (and (eq? (field evidence 'registered) #t)
+               (eq? (field evidence 'baseline-valid) #t)
+               (equal? (field evidence 'seeded) total)
+               (andmap (lambda (row) (boolean? (field row 'killed 'absent))) observations)
+               (equal? killed (count (lambda (row) (field row 'killed)) observations))
+               (>= (* killed 100) (* total 90))))
+         (else #f))))
+
 (define (gate-valid? name evidence)
   (define total (field evidence 'total))
   (define failures (field evidence 'failures))
@@ -348,27 +401,8 @@
           (and (eq? (field evidence 'term-normalization) #t)
                (equal? (field evidence 'exemptions) 0)
                (positive? (field evidence 'primitive-count))))
-         ((house-mount-state)
-          (and (= total 17)
-               (equal? (field evidence 'seats) 17)
-               (equal? (field evidence 'mismatches) 0)
-               (eq? (field evidence 'independent-observations) #t)))
-         ((house-primitive-audit)
-          (and (equal? (field evidence 'effect-forms) 16)
-               (positive? (field evidence 'primitives))
-               (<= (field evidence 'primitives) 16)
-               (equal? (field evidence 'form-specific-except-keygen) 0)
-               (equal? (field evidence 'deriving-effects) 0)))
-         ((house-rule-mutation)
-          (define seeded (field evidence 'seeded))
-          (define killed (field evidence 'killed))
-          (and (eq? (field evidence 'registered) #t)
-               (eq? (field evidence 'complete) #t)
-               (eq? (field evidence 'baseline-valid) #t)
-               (positive? seeded)
-               (natural? killed)
-               (<= killed seeded)
-               (>= (* killed 100) (* seeded 90))))
+         ((consumer-mount-state consumer-primitive-audit consumer-rule-mutation)
+          (consumer-gate-valid? name evidence))
          ((plan-state-bounds)
           (and (eq? (field evidence 'complete) #t)
                (natural? (field evidence 'distinct-declarations))
@@ -409,6 +443,8 @@
       ((test tests) #:when (field (field (field test 'result) 'gates) evidence-name))
       (cons (field test 'name) (field (field (field test 'result) 'gates) evidence-name))))
    (cond
+    ((memq name stage4-gate-names)
+     (hasheq 'name (symbol->string name) 'pass #f 'status "requires-release-aggregate"))
     ((null? supplied) (hasheq 'name (symbol->string name) 'pass #f 'status "missing-evidence"))
     ((pair? (cdr supplied))
      (hasheq
@@ -598,8 +634,19 @@
 (define (run-stage1-aggregate kernel-path language-path mutation-path)
   (run-stage-aggregate kernel-path language-path mutation-path #:stage 1))
 
-(define (run-stage-aggregate kernel-path language-path mutation-path #:stage (stage 1))
+(define (run-stage-aggregate
+         kernel-path
+         language-path
+         mutation-path
+         #:stage
+         (stage 1)
+         #:stage4-provider
+         (provider-path #f)
+         #:extension-manifest-sha256
+         (extension-pin #f))
   (define acceptance-key (stage-key stage))
+  (when (and (not (= stage 4)) (or provider-path extension-pin))
+    (raise-arguments-error 'run-stage-aggregate "external evidence belongs to stage 4"))
   (define reports
     (for/list
      ((path (in-list (list kernel-path language-path mutation-path))))
@@ -689,7 +736,32 @@
       (field (field kernel-report 'kernel) 'tests))
      (field (field (cadr reports) 'kernel) 'tests)
      (field (field (caddr reports) 'kernel) 'tests)))
-  (define gates (measure-gates selected-tests #:stage stage))
+  (define provider
+    (and provider-path
+         (call-with-input-file
+          provider-path
+          (lambda (in)
+            (define value (read-json in))
+            (unless (and (hash? value) (eof-object? (read-json in)))
+              (error 'run-stage-aggregate "invalid stage 4 provider document"))
+            value))))
+  (define standard-gates (measure-gates selected-tests #:stage stage))
+  (define gates
+    (if (= stage 4)
+      (let* ((inventory ((dynamic-require blind-runner-path 'blind-case-inventory)))
+             (ids (map (lambda (row) (field row 'id)) inventory))
+             (pinned?
+              (and replay-valid?
+                   ((dynamic-require blind-runner-path 'stable-v12-replay?) language-baseline)
+                   (equal? (invocation-ids language-baseline) ids)
+                   (equal? (field language-baseline 'failures) 0)
+                   (null? (field language-baseline 'mismatches)))))
+        (append
+         (filter
+          (lambda (r) (not (memq (string->symbol (field r 'name)) stage4-gate-names)))
+          standard-gates)
+         (stage4-evidence provider revision extension-pin pinned? (length ids))))
+      standard-gates))
   (define reports-pass?
     (for/and
      ((report (in-list reports)))
@@ -712,94 +784,105 @@
         (string-append (field report 'suite-group) ":" (field test 'name))))
      reports))
   (define (total key) (for/sum ((report (in-list reports))) (field (field report 'kernel) key 0)))
+  (define result
+    (hash
+     'schema
+     "typify-ci-v1"
+     'source-revision
+     revision
+     'acceptance-stage
+     stage
+     'suite-group
+     "aggregate"
+     'report-complete
+     #t
+     'measurement-mode
+     "full"
+     'blind-deferred
+     #f
+     'replay-validation
+     (hash
+      'pass
+      replay-valid?
+      'baselines-present
+      baselines-present?
+      'full-baseline-equal
+      full-match?
+      'full-baseline-complete
+      full-complete?
+      'scoped-baseline-equal
+      scoped-match?
+      'scoped-baseline-complete
+      scoped-complete?
+      'full-invocation-ids-equal
+      (and baselines-present?
+           (equal? (invocation-ids language-baseline) (invocation-ids mutation-baseline)))
+      'scoped-invocation-ids-equal
+      (and baselines-present?
+           (equal? (invocation-ids language-scoped) (invocation-ids mutation-scoped)))
+      'comparison-policy-equal
+      (and baselines-present?
+           (equal?
+            (field language-baseline 'comparison-policy)
+            (field mutation-baseline 'comparison-policy))))
+     'input-reports
+     reports
+     'kernel
+     (hash
+      'pass
+      reports-pass?
+      'tests
+      selected-tests
+      'count
+      (for/sum ((test (in-list selected-tests))) (field test 'count))
+      'passed
+      (for/sum ((test (in-list selected-tests))) (field test 'passed))
+      'failed
+      (for/sum ((test (in-list selected-tests))) (field test 'failed))
+      'aborted-suite-count
+      (length aborted)
+      'aborted-suites
+      aborted)
+     'execution
+     (hash
+      'count
+      (total 'count)
+      'passed
+      (total 'passed)
+      'failed
+      (total 'failed)
+      'scope
+      "All reported checks across the internal job and both replay jobs; repeated internal checks are included. The kernel test list uses replay results for language and mutation gate evidence.")
+     acceptance-key
+     (hash
+      'pass
+      (and reports-pass? (andmap (lambda (gate) (field gate 'pass)) gates))
+      'status
+      (if replay-valid? "measured" "baseline-replay-disagreement")
+      'unscored
+      (unscored-gates stage)
+      'gates
+      gates)))
   (json-safe
-   (hash
-    'schema
-    "typify-ci-v1"
-    'source-revision
-    revision
-    'acceptance-stage
-    stage
-    'suite-group
-    "aggregate"
-    'report-complete
-    #t
-    'measurement-mode
-    "full"
-    'blind-deferred
-    #f
-    'replay-validation
-    (hash
-     'pass
-     replay-valid?
-     'baselines-present
-     baselines-present?
-     'full-baseline-equal
-     full-match?
-     'full-baseline-complete
-     full-complete?
-     'scoped-baseline-equal
-     scoped-match?
-     'scoped-baseline-complete
-     scoped-complete?
-     'full-invocation-ids-equal
-     (and baselines-present?
-          (equal? (invocation-ids language-baseline) (invocation-ids mutation-baseline)))
-     'scoped-invocation-ids-equal
-     (and baselines-present?
-          (equal? (invocation-ids language-scoped) (invocation-ids mutation-scoped)))
-     'comparison-policy-equal
-     (and baselines-present?
-          (equal?
-           (field language-baseline 'comparison-policy)
-           (field mutation-baseline 'comparison-policy))))
-    'input-reports
-    reports
-    'kernel
-    (hash
-     'pass
-     reports-pass?
-     'tests
-     selected-tests
-     'count
-     (for/sum ((test (in-list selected-tests))) (field test 'count))
-     'passed
-     (for/sum ((test (in-list selected-tests))) (field test 'passed))
-     'failed
-     (for/sum ((test (in-list selected-tests))) (field test 'failed))
-     'aborted-suite-count
-     (length aborted)
-     'aborted-suites
-     aborted)
-    'execution
-    (hash
-     'count
-     (total 'count)
-     'passed
-     (total 'passed)
-     'failed
-     (total 'failed)
-     'scope
-     "All reported checks across the internal job and both replay jobs; repeated internal checks are included. The kernel test list uses replay results for language and mutation gate evidence.")
-    acceptance-key
-    (hash
-     'pass
-     (and reports-pass? (andmap (lambda (gate) (field gate 'pass)) gates))
-     'status
-     (if replay-valid? "measured" "baseline-replay-disagreement")
-     'unscored
-     (unscored-gates stage)
-     'gates
-     gates))))
+   (if (= stage 4)
+     (hash-set*
+      result
+      'provider-sha256
+      (if provider (content-hash (canonical-json provider)) 'null)
+      'extension-manifest-sha256
+      (or extension-pin 'null))
+     result)))
 
 (module+ test-support (provide group-modules baseline-complete? gate-valid? gate-names stage-key))
 
 (module+
  main
  (define arguments (vector->list (current-command-line-arguments)))
+ (define provider-path #f)
+ (define extension-pin #f)
  (define (usage)
    (displayln
-    "usage: racket scripts/ci.rkt [--stage 1|2|3] [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--stage 1|2|3] [--output FILE]"
+    "usage: racket scripts/ci.rkt [--stage 1|2|3|4] [--output FILE] [--defer-blind] [--group all|kernel|language|mutation] | --aggregate KERNEL LANGUAGE MUTATION [--stage 1|2|3|4] [--stage4-provider FILE --extension-manifest-sha256 SHA] [--output FILE]"
     (current-error-port))
    (exit 2))
  (define-values
@@ -814,11 +897,13 @@
      remaining
      ('()
       (when (and aggregate-paths (or (not blind?) (not (equal? group "all")))) (usage))
+      (when (and (or provider-path extension-pin) (not (and aggregate-paths (equal? stage 4))))
+        (usage))
       (values output blind? group aggregate-paths (or stage 1)))
      ((list* "--defer-blind" rest)
       (if blind? (loop rest output #f group aggregate-paths stage) (usage)))
      ((list* "--stage" value rest)
-      (if (and (not stage) (member value '("1" "2" "3")))
+      (if (and (not stage) (member value '("1" "2" "3" "4")))
         (loop rest output blind? group aggregate-paths (string->number value))
         (usage)))
      ((list* "--group" name rest)
@@ -831,6 +916,14 @@
         (loop rest output blind? group (list kernel language mutation) stage)))
      ((list* "--output" path rest)
       (if output (usage) (loop rest path blind? group aggregate-paths stage)))
+     ((list* "--stage4-provider" path rest)
+      (when provider-path (usage))
+      (set! provider-path path)
+      (loop rest output blind? group aggregate-paths stage))
+     ((list* "--extension-manifest-sha256" value rest)
+      (when extension-pin (usage))
+      (set! extension-pin value)
+      (loop rest output blind? group aggregate-paths stage))
      (_ (usage)))))
  (define result
    (with-handlers
@@ -850,7 +943,11 @@
           'status
           (if aggregate-paths "evidence-unavailable" "kernel-unavailable"))))))
     (if aggregate-paths
-      (keyword-apply run-stage-aggregate '(#:stage) (list stage) aggregate-paths)
+      (keyword-apply
+       run-stage-aggregate
+       '(#:extension-manifest-sha256 #:stage #:stage4-provider)
+       (list extension-pin stage provider-path)
+       aggregate-paths)
       (run-kernel-check #:checkpoint output-path #:blind? blind? #:group group #:stage stage))))
  (when output-path
    (call-with-output-file
@@ -860,4 +957,5 @@
     'truncate/replace))
  (write-json result)
  (newline)
- (exit (if (field (field result (if aggregate-paths (stage-key stage) 'kernel)) 'pass) 0 1)))
+ (define acceptance-request? (or aggregate-paths (and (= stage 4) blind? (equal? group "all"))))
+ (exit (if (field (field result (if acceptance-request? (stage-key stage) 'kernel)) 'pass) 0 1)))

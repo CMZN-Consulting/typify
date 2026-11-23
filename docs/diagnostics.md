@@ -17,3 +17,25 @@ Native diagnostic positions use one-based lines and Unicode code point columns, 
 The LSP projection groups diagnostics under `documents`. Each entry contains the absolute document URI and a diagnostic list suitable for `textDocument/publishDiagnostics`. Lines start at zero. The character offset counts UTF-16 code units before each endpoint in the source text the reader actually analyzed. For example, in `tag : 🚀=bad`, the span of `bad` is columns 9–12 in the native diagnostic and characters 9–12 on zero-based line 0 in LSP. The rocket takes one code point and two UTF-16 units. The `unlocated` array carries native diagnostics with a null range, including file and usage errors. LSP requires a range on a document diagnostic. Native related data, fingerprints and the fix field remain available under the LSP diagnostic's `data` member. v1 emits a null fix. [LSP diagnostics](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic)
 
 The GitHub projection produces one escaped workflow command per diagnostic. Errors produce `::error` and notes produce `::notice`. Each title names the diagnostic code. Multiline spans identify the first and last included lines. A span ending at the start of the following line excludes that line. Single-line spans use one-based columns through the last included code point. Unlocated messages omit coordinates. [GitHub Actions annotations](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands)
+
+## Stage 4 release evidence
+
+Run the kernel, language and mutation jobs at `--stage 4` on the same source revision. Set `GITHUB_SHA` to the full candidate commit when replaying the workflow locally. Aggregate their JSON reports with the independently supplied measurements.
+
+```sh
+racket scripts/ci.rkt --stage 4 --aggregate kernel.json language.json mutation.json \
+  --stage4-provider provider.json --extension-manifest-sha256 "$FROZEN_EXTENSION_MANIFEST_SHA256" \
+  --output stage4.json
+```
+
+The aggregate requires every Stage 3 criterion, complete matching v12 replays against the separately pinned wire overlay, and the following provider fields. A failing release gate produces exit status 1. A single-platform kernel job may pass its own checks while the release gates remain open.
+
+| Provider member | Measured data |
+|---|---|
+| Header | `schema` is `typify-stage4-provider-v1`, `measurementMode` is `measured`, `sourceRevision` is the candidate commit, and `readerBuild` is the build from `--version --json`. |
+| `registry` | `previousTag` and `previousRevision` identify the pinned v1.0.0-rc.1 checkout. `result` is the unmodified result of `racket scripts/check-diagnostic-registry.rkt PREVIOUS_CHECKOUT`. |
+| `projections` | `sarifSchemaSha256` identifies the OASIS SARIF 2.1.0 OS schema. `sarifCodes` and `lspCodes` independently list every code measured in that format. `schemaDocuments` covers at least the v12 invocation count. `codeComparisons` and `rangeComparisons` each cover at least the registry size, counting agreement on a null range for unlocated diagnostics. `nonBmpComparisons` is positive. `schemaFailures`, `conversionFailures` and `rangeFailures` are zero. |
+| `extension` | `manifest` has the independently frozen `archiveSha256`, ordered invocation `ids`, and `doubleFailureId` naming the invocation with two failing library calls. `independent` is true. `results` has one object per frozen ID, with fields `id` and `pass`. |
+| `targets` | Four objects named by `target` with values `linux-x86_64`, `linux-aarch64`, `macos-aarch64` and `windows-x86_64`. Each reports `v12Invocations`, `extensionInvocations` and the lowercase `transcriptSha256` of the complete native CLI capture. Each count matches its inventory and all four digests agree. |
+
+The extension custodian supplies the SHA-256 of the manifest's compact canonical UTF-8 JSON, with sorted object keys, original array order and no final newline. The release job compares it with the measured manifest. Each platform job must capture the same ordered invocations and exact stdout, stderr and exit codes, preserving line endings and paths before hashing. The diagnostic and platform measurements come from the release jobs. The aggregate validates their receipts. It records the canonical provider digest and the independently supplied extension pin so a reviewer can identify the inputs used.
