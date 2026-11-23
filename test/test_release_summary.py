@@ -33,5 +33,22 @@ class NativeExtensionReceipt(unittest.TestCase):
             self.check(self.result | {"differences": False})
 
 
+class ForeignArchitectureReceipt(unittest.TestCase):
+    def test_header_evidence_is_required_for_every_foreign_executable(self):
+        launcher = dict(path="typify/bin/typify.exe", format="pe", architecture="x86_64",
+                        sha256="1" * 64, native=True)
+        dll = dict(launcher, path="typify/lib/runtime.dll", sha256="2" * 64)
+        build = {"platform": "windows-x86_64", "architecture": {"pass": True, "executables": [launcher, dll]}}
+        rows = [dict(row, native=False) for row in (launcher, dll)]
+        valid = {"pass": False, "platform": "linux-x86_64", "executables": rows}
+        check = module["check_foreign_headers"]
+        check(valid, "linux-x86_64", build)
+        for bad in ({"error": "bad archive", "executables": None}, {"executables": []}, {"executables": rows[:1]},
+                    {"executables": [launcher, rows[1]]}, {"executables": [dict(rows[0], format="elf"), rows[1]]},
+                    {"pass": True}, {"platform": "macos-aarch64"}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                check(valid | bad, "linux-x86_64", build)
+
+
 if __name__ == "__main__":
     unittest.main()

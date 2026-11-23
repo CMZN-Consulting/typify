@@ -31,12 +31,29 @@ def check_extension(extension, version, count, frozen):
             "the independent extension comparison did not pass for this reader and frozen corpus")
 
 
+def check_foreign_headers(report, target, foreign_build):
+    expected = foreign_build["architecture"]["executables"]
+    actual = report.get("executables")
+    require(foreign_build["platform"] != target and foreign_build["architecture"]["pass"] is True
+            and report.get("platform") == target and report.get("pass") is False
+            and isinstance(actual, list) and expected
+            and all(row["native"] is True for row in expected)
+            and actual == [dict(row, native=False) for row in expected],
+            f"{target}: wrong-platform control did not identify the foreign executables")
+
+
 def summarize(directory, commit, frozen):
     results = []
     versions = set()
     common_transcripts = set()
     for target in TARGETS:
         source = directory / ("verify-" + target)
+        for foreign in TARGETS:
+            if foreign != target:
+                build = read_json(directory / ("verify-" + foreign) / "build-a.json")
+                require(build["platform"] == foreign and build["source"]["commit"] == commit,
+                        "foreign architecture reference belongs to a different platform or build")
+                check_foreign_headers(read_json(source / f"foreign-{foreign}.json"), target, build)
         for replica in ("a", "b"):
             def record(kind):
                 return read_json(source / f"{kind}-{replica}.json")

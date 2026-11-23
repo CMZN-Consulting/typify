@@ -271,6 +271,15 @@
     (raise-user-error 'release "the archive ends inside an entry"))
   content)
 
+(define (input-archive-kind path)
+  (call-with-input-file
+   path
+   (lambda (input)
+     (case (read-bytes 2 input)
+       ((#"\37\213") 'tgz)
+       ((#"PK") 'zip)
+       (else (raise-user-error 'release "unrecognized archive header"))))))
+
 (define (tree-problems entries manifest-sha256)
   (define problems '())
   (define (problem! text) (set! problems (cons text problems)))
@@ -371,17 +380,15 @@
   (case (hash-ref platform 'os) ((linux) 'elf) ((macosx) 'mach-o) ((windows) 'pe)))
 
 (define (architecture-report entries platform)
-  (define windows? (eq? (hash-ref platform 'os) 'windows))
   (define program (program-path platform))
   (define rows
     (for/list
      ((entry (in-list entries))
       #:when
       (and (eq? (hash-ref entry 'kind) 'file)
-           (or (equal? (hash-ref entry 'path) program)
-               (if windows?
-                 (regexp-match? #rx"(?i:[.](exe|dll))$" (hash-ref entry 'path))
-                 (positive? (bitwise-and (hash-ref entry 'mode) 73))))))
+           (or (equal? (hash-ref entry 'path) "typify/bin/typify")
+               (regexp-match? #rx"(?i:[.](exe|dll))$" (hash-ref entry 'path))
+               (positive? (bitwise-and (hash-ref entry 'mode) 73)))))
      (define found (executable-format (hash-ref entry 'content)))
      (hasheq
       'path
@@ -960,7 +967,7 @@
        ((exn:fail?
          (lambda (error)
            (hasheq 'platform (hash-ref platform 'name) 'pass #f 'error (exn-message error)))))
-       (architecture-report (read-archive (cadr arguments) (hash-ref platform 'kind)) platform)))
+       (architecture-report (read-archive (cadr arguments) (input-archive-kind (cadr arguments))) platform)))
     (print-json result)
     (exit (if (hash-ref result 'pass) 0 1)))
    (("epoch")
