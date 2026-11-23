@@ -967,7 +967,9 @@
        ((exn:fail?
          (lambda (error)
            (hasheq 'platform (hash-ref platform 'name) 'pass #f 'error (exn-message error)))))
-       (architecture-report (read-archive (cadr arguments) (input-archive-kind (cadr arguments))) platform)))
+       (architecture-report
+        (read-archive (cadr arguments) (input-archive-kind (cadr arguments)))
+        platform)))
     (print-json result)
     (exit (if (hash-ref result 'pass) 0 1)))
    (("epoch")
