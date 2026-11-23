@@ -32,7 +32,7 @@ posix_path() { if [ "$WINDOWS" = 1 ]; then cygpath -u "$1"; else printf '%s\n' "
 native_path() { if [ "$WINDOWS" = 1 ]; then cygpath -w "$1"; else printf '%s\n' "$1"; fi; }
 BUILDS=$(posix_path "$BUILDS")
 FIXTURE_POSIX=$(posix_path "$FIXTURE")
-# Keep both roots deterministic across Windows drive S: and POSIX /Volumes/S.
+# The workflow pairs a physical C: directory on Windows with /Volumes/C on POSIX.
 BASELINE=$FIXTURE_POSIX/v12
 EXTENSION=$FIXTURE_POSIX/extension
 BASELINE_NATIVE=$(native_path "$BASELINE")
