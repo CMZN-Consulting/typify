@@ -136,11 +136,14 @@ Contributors and anyone who wants Typify before the release need Racket 9.3 CS. 
 
 ```sh
 raco pkg install --scope user --no-setup --deps fail --name typify --link ./src
+raco make src/main.rkt
 racket src/main.rkt --version
 racket src/main.rkt emit Typify
 ```
 
-`racket src/main.rkt --version` prints the same version and reader-source digest as a build of the same sources. The tests, the grammar validator they need, and the format and leak checks are described in the [README](../README.md). The license check, `racket scripts/license-check.rkt`, fails closed on a file, a data file, a notice or a locked dependency that the inventory `scripts/license-inventory.json` does not cover; a change that adds or alters a data file adds its inventory entry. The optional [MCP server](../mcp/README.md) has its own setup guide.
+After editing or pulling reader sources, run `raco make src/main.rkt` again. The digest is embedded at compilation. An existing Racket cache can still report the previous digest until it is rebuilt. After rebuilding, `racket src/main.rkt --version` reports the same digest as a standalone build from those sources.
+
+The [README](../README.md) describes the tests and grammar validator. Run `racket scripts/license-check.rkt` to check file coverage, third-party notices and locked dependencies against `scripts/license-inventory.json`. The optional [MCP server](../mcp/README.md) has its own setup guide.
 
 ## Pin Typify in a project
 

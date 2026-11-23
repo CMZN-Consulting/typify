@@ -66,6 +66,7 @@ With Racket 9.3 CS in a checkout, run the reader directly.
 
 ```sh
 raco pkg install --scope user --no-setup --deps fail --name typify --link ./src
+raco make src/main.rkt
 racket src/main.rkt --version
 racket src/main.rkt emit Typify
 ```
