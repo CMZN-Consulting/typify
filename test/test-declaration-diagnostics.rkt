@@ -5,6 +5,7 @@
          racket/string
          "../src/main.rkt"
          "../src/language.rkt"
+         (only-in "../src/meta.rkt" current-meta-classes)
          "../src/diagnostics.rkt")
 
 (provide run-tests)
@@ -92,6 +93,131 @@
    (diagnostic-data-projection (diagnostic-code cap-error) (diagnostic-data cap-error))
    (hash 'cap "states" 'limit 4096 'actual 4097)
    "declared cap compares limit and attempted value")
+  (define width-header
+    (string-append
+     "#lang typify\r\ndeclare : Counters\r\n"
+     "is : différence = \"🐢\"\r\nprimitive : tally : text\r\n"
+     "\r\ncell : écho-store = shadow\r\n"))
+  (define (width-source line)
+    (string-append
+     width-header
+     line
+     "\r\n"
+     (if (string-prefix? (string-trim line) "count :") "effect : tally = external\r\n" "")
+     "end!\r\n"))
+  (define (check-width label head token tail)
+    (define text (width-source (string-append head token tail)))
+    (define-values (decls diagnostics) (read-declarations/diagnostics text))
+    (define actual (filter (lambda (d) (equal? (diagnostic-severity d) "error")) diagnostics))
+    (check (map diagnostic-code actual) (list "E_CLASS") label)
+    (check (map diagnostic-data actual) (list (hash 'class "width" 'token token)) label)
+    (define span (diagnostic-range (car actual)))
+    (define before (string-append width-header head))
+    (define byte-start (bytes-length (string->bytes/utf-8 before)))
+    (check
+     (list
+      (src-span-start-line span)
+      (src-span-end-line span)
+      (src-span-start-column span)
+      (src-span-end-column span)
+      (src-span-start-byte span)
+      (src-span-end-byte span))
+     (list
+      7
+      7
+      (add1 (string-length head))
+      (add1 (+ (string-length head) (string-length token)))
+      byte-start
+      (+ byte-start (bytes-length (string->bytes/utf-8 token))))
+     label))
+  (check-width
+   "put width repeated in name and quoted value"
+   "  writes : tally : écho-store = put  "
+   "tally"
+   "  \"tally\" ")
+  (check-width "non-BMP write width" " writes : tally : écho-store = put " "🐢" " \"🐢\"")
+  (check-width "bare put width" "writes : tally : écho-store = put " "-4" "")
+  (check-width "noncanonical leading zero" "writes : tally : écho-store = put " "01" "")
+  (check-width "delete width" "writes : tally : écho-store = delete " "猫" "")
+  (check-width "keyed count width" " count : tally = 0..1 by " "-4" "")
+  (define-values
+   (emitted-body emitted-errors)
+   (read-declarations/diagnostics
+    (width-source "count : tally = 0..1 by 🐢")
+    #:meta
+    (meta-language)))
+  (check
+   (for/list
+    ((item (in-list emitted-errors)) #:when (equal? (diagnostic-code item) "E_CLASS"))
+    (diagnostic-data item))
+   (list (hash 'class "width" 'token "🐢"))
+   "the emitted meta selects the keyed width refusal")
+  (for
+   ((token (in-list '("-3" "wrong"))))
+   (define-values
+    (ignored recovered)
+    (parameterize
+     ((current-meta-classes (hash-set (current-meta-classes) "width" "/.*/")))
+     (read-declarations/diagnostics (width-source (string-append "count : tally = 1 by " token)))))
+   (check
+    (for/list
+     ((d (in-list recovered)) #:when (equal? (diagnostic-severity d) "error"))
+     (list (diagnostic-code d) (hash-ref (diagnostic-data d) 'actual #f)))
+    (list (list "E_TERM_CLASS" token))
+    "the kernel rejects an invalid synthesized width"))
+  (define alternative-meta
+    (hash-ref
+     (read-declarations
+      (source
+       '("primitive : declare-language : name"
+         "primitive : close-language"
+         "primitive : set-order : order-mode"
+         "primitive : declare-keyed-count : name multiplicity width"
+         "is : tail = \"star = 1 by bad\""
+         "form : open : <name>"
+         "does : declare-language <name>"
+         "form : finish!"
+         "does : close-language"
+         "form : count : <name> = <multiplicity> by <width>"
+         "does : declare-keyed-count <name> <multiplicity> <width>"
+         "form : count : <tail>"
+         "does : set-order strict"
+         "form : writes : <value>"
+         "does : set-order free")))
+     "Demo"))
+  (define (custom-order line)
+    (language-order
+     (hash-ref
+      (read-declarations
+       (string-append "#lang typify\nopen : Sample\n" line "\nfinish!\n")
+       #:meta
+       alternative-meta)
+      "Sample")))
+  (check
+   (custom-order "count : star = 1 by bad")
+   "strict"
+   "a complete fallback wins after a failed keyed capture")
+  (check
+   (custom-order "writes : star : écho-store = put -9")
+   "free"
+   "a custom writes form retains its own operation")
+  (define (write-verdict line)
+    (define-values (decls diagnostics) (read-declarations/diagnostics (width-source line)))
+    (for/list
+     ((item (in-list diagnostics)) #:when (= 7 (src-span-start-line (diagnostic-range item))))
+     (list (diagnostic-code item) (hash-ref (diagnostic-data item) 'kind #f))))
+  (for
+   ((line
+     (in-list
+      '("writes : tally : écho-store = put"
+        "writes : tally : écho-store = put one unquoted"
+        "writes : tally : écho-store = delete one \"extra\""))))
+   (check (write-verdict line) '(("E_DECLARATION" "syntax")) "malformed writes keep syntax"))
+  (check
+   (write-verdict "writes : tally : écho-store = put 2")
+   '(("E_DECLARATION" "arity"))
+   "decimal write exceeding arity keeps formation error")
+  (check (write-verdict "writes : tally : écho-store = put 1 \"1\"") '() "legal quoted put")
   (define directory (make-temporary-file "typify-declaration-order~a" 'directory))
   (dynamic-wind
    void
