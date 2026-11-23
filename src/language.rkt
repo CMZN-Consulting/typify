@@ -483,7 +483,7 @@
      "A nullary constructor has no trailing colon"
      (line-record-span record)))
   (define-values
-   (classified-hit class-failure)
+   (classified-hit class-failures)
    (if (current-reader-meta)
      (scan-forms (current-reader-meta) record)
      (scan-templates
@@ -494,9 +494,11 @@
   (unless classified-hit
     (refuse-form!
      record
-     (if (and class-failure (equal? (capture-failure-name class-failure) "constructor"))
-       (struct-copy capture-failure class-failure (name "name"))
-       class-failure)))
+     (for/list
+      ((failure (in-list class-failures)))
+      (if (equal? (capture-failure-name failure) "constructor")
+        (struct-copy capture-failure failure (name "name"))
+        failure))))
   (define from-language
     (and (current-reader-meta)
          (let ((hit classified-hit))
@@ -2390,8 +2392,8 @@
 (struct capture-failure (name token span limit) #:transparent)
 
 (define (scan-templates candidates record classes templates)
-  (define (field-failure parts captures offsets text span)
-    (for/first
+  (define (field-failures parts captures offsets text span)
+    (for/list
      ((part (in-list parts))
       #:when
       (and (slot? part)
@@ -2405,14 +2407,14 @@
       (hash-ref captures (slot-name part))
       (span-slice span text (car offset) (cdr offset))
       (hash-ref (compiled-class-caps (hash-ref classes (slot-name part))) 'token-length))))
-  (let loop ((remaining candidates) (first-failure #f))
+  (let loop ((remaining candidates) (failures '()))
     (cond
-     ((null? remaining) (values #f first-failure))
+     ((null? remaining) (values #f failures))
      (else
       (define candidate (car remaining))
       (define-values (kind left right) (templates candidate))
       (cond
-       ((not (eq? kind (line-record-kind record))) (loop (cdr remaining) first-failure))
+       ((not (eq? kind (line-record-kind record))) (loop (cdr remaining) failures))
        (else
         (define-values
          (left-captures left-offsets)
@@ -2423,24 +2425,26 @@
            (match-template/located right (line-record-right record))
            (values (hash) (hash))))
         (cond
-         ((not (and left-captures right-captures)) (loop (cdr remaining) first-failure))
+         ((not (and left-captures right-captures)) (loop (cdr remaining) failures))
          (else
-          (define failure
-            (or (field-failure
-                 left
-                 left-captures
-                 left-offsets
-                 (line-record-left record)
-                 (line-left-span record))
-                (and right
-                     (field-failure
-                      right
-                      right-captures
-                      right-offsets
-                      (line-record-right record)
-                      (line-right-span record)))))
-          (if failure
-            (loop (cdr remaining) (or first-failure failure))
+          (define rejected
+            (append
+             (field-failures
+              left
+              left-captures
+              left-offsets
+              (line-record-left record)
+              (line-left-span record))
+             (if right
+               (field-failures
+                right
+                right-captures
+                right-offsets
+                (line-record-right record)
+                (line-right-span record))
+               '())))
+          (if (pair? rejected)
+            (loop (cdr remaining) (if (null? failures) rejected (list (car failures))))
             (values
              (cons
               candidate
@@ -2448,7 +2452,7 @@
                ((captures left-captures))
                (((key value) (in-hash right-captures)))
                (hash-set captures key value)))
-             first-failure))))))))))
+             '()))))))))))
 
 (define (scan-forms body record)
   (scan-templates
@@ -2458,9 +2462,29 @@
    (lambda (candidate)
      (values (form-kind candidate) (form-left candidate) (form-right candidate)))))
 
-(define (find-form body record) (define-values (hit failure) (scan-forms body record)) hit)
+(define (find-form body record) (define-values (hit failures) (scan-forms body record)) hit)
 
-(define (refuse-form! record failure)
+(define (capture-failure-diagnostic failure)
+  (define token (capture-failure-token failure))
+  (define limit (capture-failure-limit failure))
+  (define span (capture-failure-span failure))
+  (if (> (string-length token) limit)
+    (make-diagnostic
+     "E_CAP"
+     "The captured token exceeds the length cap"
+     #:span
+     span
+     #:data
+     (hash 'cap "length" 'limit limit 'actual (string-length token)))
+    (make-diagnostic
+     "E_CLASS"
+     "The captured token fails its class"
+     #:span
+     span
+     #:data
+     (hash 'class (capture-failure-name failure) 'token token))))
+
+(define (refuse-form! record failures)
   (cond
    ((eq? (line-record-kind record) 'unclassified)
     (fail
@@ -2468,24 +2492,7 @@
      "The line has none of the three shapes"
      (line-record-span record)
      (hash 'actual (line-record-raw record))))
-   (failure
-    (if (> (string-length (capture-failure-token failure)) (capture-failure-limit failure))
-      (fail
-       "E_CAP"
-       "The captured token exceeds the length cap"
-       (capture-failure-span failure)
-       (hash
-        'cap
-        "length"
-        'limit
-        (capture-failure-limit failure)
-        'actual
-        (string-length (capture-failure-token failure))))
-      (fail
-       "E_CLASS"
-       "The captured token fails its class"
-       (capture-failure-span failure)
-       (hash 'class (capture-failure-name failure) 'token (capture-failure-token failure)))))
+   ((pair? failures) (raise-diagnostics (map capture-failure-diagnostic failures)))
    (else
     (fail
      "E_FORM_NONE"
@@ -3278,8 +3285,8 @@
           (cond
            ((question-line? record) (validate-question! record))
            (else
-            (define-values (hit failure) (scan-forms body record))
-            (unless hit (refuse-form! record failure))
+            (define-values (hit failures) (scan-forms body record))
+            (unless hit (refuse-form! record failures))
             (define candidate (car hit))
             (when (and
                    (equal? (language-order body) "strict")

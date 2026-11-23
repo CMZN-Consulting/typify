@@ -119,6 +119,54 @@
    (lambda () (check-program "pair:9-8" same-side))
    "E_CLASS"
    (hash 'class "zfirst" 'token "9"))
+  (define (items text language)
+    (hash-ref (check-program/diagnostics text language #:file "pair.typify") 'diagnostics))
+  (check
+   (map diagnostic-range (items "9:[8]" both-sides))
+   (list (src-span "pair.typify" 1 1 1 2 0 1) (src-span "pair.typify" 1 4 1 5 3 4))
+   "both structurally located fields retain their own ranges")
+  (define same-field-errors (items "pair:9-😀" same-side))
+  (check
+   (map diagnostic-data same-field-errors)
+   (list (hash 'class "zfirst" 'token "9") (hash 'class "asecond" 'token "😀"))
+   "failed slots in one template follow source order")
+  (check
+   (map diagnostic-range same-field-errors)
+   (list (src-span "pair.typify" 1 6 1 7 5 6) (src-span "pair.typify" 1 8 1 9 7 11))
+   "the second rejected token retains its multibyte range")
+  (define mixed
+    (check-program/diagnostics
+     (string-append "pair:" (make-string 33 #\b) "-7\npair:a-b\nmalformed")
+     same-side))
+  (check
+   (map diagnostic-code (hash-ref mixed 'diagnostics))
+   '("E_CAP" "E_CLASS" "E_LINE_SHAPE")
+   "length refusal and sibling class error precede errors on following lines")
+  (check
+   (diagnostic-data (car (hash-ref mixed 'diagnostics)))
+   (hash 'cap "length" 'actual 33 'limit 32)
+   "a token over the cap keeps its cap diagnostic")
+  (check (hash-ref mixed 'terms) '(("pair" "a" "b")) "only the valid line supplies a term")
+  (define overlapping-shapes
+    (body
+     '("is : first = \"a\""
+       "is : second = \"b\""
+       "is : third = \"c\""
+       "is : fourth = \"d\""
+       "primitive : ab : first second"
+       "primitive : cd : third fourth"
+       "form : pair : <first>-<second>"
+       "does : ab <first> <second>"
+       "form : pair : <third>-<fourth>"
+       "does : cd <third> <fourth>")))
+  (check
+   (map diagnostic-data (items "pair:c-z" overlapping-shapes))
+   (list (hash 'class "first" 'token "c"))
+   "ambiguous structural failures retain the first candidate's original fallback")
+  (check
+   (hash-ref (check-program "pair:c-d" overlapping-shapes) 'terms)
+   '(("cd" "c" "d"))
+   "a valid alternative discards both provisional slot failures")
   (define unicode
     (body
      '("is : broad = /[a-z0-9😀]+/"
@@ -163,6 +211,13 @@
    (lambda () (read-declarations "#lang typify\ndeclare : Sample\ncap : unknown = 3\nend!\n"))
    "E_CLASS"
    (hash 'class "limit" 'token "unknown"))
+  (define-values
+   (partial invalid-cap)
+   (read-declarations/diagnostics "#lang typify\ndeclare : Sample\ncap : unknown = xx\nend!\n"))
+  (check
+   (map diagnostic-data invalid-cap)
+   (list (hash 'class "limit" 'token "unknown") (hash 'class "number" 'token "xx"))
+   "the bootstrapped reader retains all located meta capture errors")
   (reject
    (lambda () (read-declarations "#lang typify\nunknown : value\n"))
    "E_FORM_NONE"
