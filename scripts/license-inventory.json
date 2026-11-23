@@ -755,6 +755,7 @@
    "match": [
     "README.md",
     "docs/diagnostics.md",
+    "docs/install.md",
     "docs/inputs.md",
     "docs/plan-wire.md",
     "test/overlays/README.md"

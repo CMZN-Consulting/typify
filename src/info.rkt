@@ -6,7 +6,8 @@
 
 (define deps '("base"))
 
-(define pkg-desc "A metalanguage for line-oriented languages.")
+(define pkg-desc
+  "Typify declares line-oriented languages, checks their programs and builds their meanings as data.")
 
 (define license 'MIT)
 
