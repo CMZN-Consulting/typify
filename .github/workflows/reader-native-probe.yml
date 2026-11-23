@@ -1,26 +1,43 @@
-name: Native reader preflight
+name: Native archive qualification
 
 on:
   push:
     branches: [pr/stable-1.0.0]
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  reader:
-    name: Native reader on ${{ matrix.host }}
-    runs-on: ${{ matrix.host }}
-    timeout-minutes: 35
+  build:
+    name: Build ${{ matrix.platform }} (${{ matrix.replica }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        host: [ubuntu-22.04, ubuntu-22.04-arm, macos-15, windows-2022]
+        platform: [linux-x86_64, linux-aarch64, macos-aarch64, windows-x86_64]
+        replica: [a, b]
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-22.04
+          - platform: linux-aarch64
+            runner: ubuntu-22.04-arm
+          - platform: macos-aarch64
+            runner: macos-15
+          - platform: windows-x86_64
+            runner: windows-2022
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Verify installer, compile reader, relocate and exercise the distribution
+      - name: Build from the pinned Racket archive
         shell: bash
-        run: ${{ runner.os == 'Windows' && 'python' || 'python3' }} .github/scripts/native-reader-probe.py ${{ matrix.host }}
+        run: bash scripts/release.sh build --platform "${{ matrix.platform }}" --output "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: build-${{ matrix.platform }}-${{ matrix.replica }}
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+          retention-days: 30
