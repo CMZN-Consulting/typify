@@ -12,8 +12,8 @@ import tempfile
 from pathlib import Path
 
 
-SOURCE_TREE = "a1a11f0dcfb37490a479780313b33824cacbe5ab"
-READER_VERSION = "1.0.0 sha256:5de3834eb86861cb6be0674071e80c79cc8f9e71051ef62b9021c41be79bc0be"
+SOURCE_TREE = "242b5ca929beb1225da7f21c1eb52dcb1fb7bb04"
+READER_VERSION = "1.0.0 sha256:1c084bfd9da45bf19aa474d953f01f2182580d4d186fd4382f7159298a13b04a"
 TARGETS = {
     "ubuntu-22.04": ("Linux", "x86_64", "racket-9.3-x86_64-linux-buster-cs.sh", 272724156,
                      "30dc59d9b5af083eacf793253d35782c5231e8bfb7a7331fe32ccd9a41fd792f"),
