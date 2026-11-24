@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require net/uri-codec
-         net/url
+         net/url-string
          racket/list
          racket/path
          racket/promise
