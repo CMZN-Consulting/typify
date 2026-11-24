@@ -237,9 +237,9 @@ jobs:
         run: |
           B=$RUNNER_TEMP/build
           if command -v sha256sum >/dev/null 2>&1; then
-            MANIFEST=$(sha256sum "$B/${{ matrix.platform }}.MANIFEST.txt" | cut -d ' ' -f 1)
+            MANIFEST=$(sha256sum <"$B/${{ matrix.platform }}.MANIFEST.txt" | cut -d ' ' -f 1)
           else
-            MANIFEST=$(shasum -a 256 "$B/${{ matrix.platform }}.MANIFEST.txt" | cut -d ' ' -f 1)
+            MANIFEST=$(shasum -a 256 <"$B/${{ matrix.platform }}.MANIFEST.txt" | cut -d ' ' -f 1)
           fi
           bash scripts/docs-smoke.sh --archive "$B/${{ matrix.asset }}" \
             --sha256 "$(cut -d ' ' -f 1 "$B/${{ matrix.asset }}.sha256")" --manifest-sha256 "$MANIFEST" \

@@ -44,9 +44,9 @@ trap 'rm -rf -- "$WORK"' EXIT
 
 sha256_of() {
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | cut -d ' ' -f 1
+    sha256sum <"$1" | cut -d ' ' -f 1
   else
-    shasum -a 256 "$1" | cut -d ' ' -f 1
+    shasum -a 256 <"$1" | cut -d ' ' -f 1
   fi
 }
 
@@ -64,7 +64,7 @@ unpack() {
   rm -rf -- "$2"
   mkdir -p -- "$2"
   case "$1" in
-    *.zip) powershell -NoProfile -NonInteractive -Command "Expand-Archive -LiteralPath '$(native_path "$1")' -DestinationPath '$(native_path "$2")'" ;;
+    *.zip) powershell -NoProfile -NonInteractive -Command "\$ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '$(native_path "$1")' -DestinationPath '$(native_path "$2")'" ;;
     *) (cd "$2" && tar -xpzf "$1") ;;
   esac
 }
