@@ -95,7 +95,7 @@ class SemanticComparisonTests(unittest.TestCase):
 
     def test_marker_validates_original_capture_directory(self):
         with tempfile.TemporaryDirectory() as tmp:
-            cwd = Path(tmp)
+            cwd = Path(tmp).resolve(strict=True)
             for kind in ("tree", "plan"):
                 argv = ["typify", kind, "decl.typify", ".", "--json"]
                 spec = {
@@ -107,6 +107,56 @@ class SemanticComparisonTests(unittest.TestCase):
                 primary = self.capture({"inputs": {"root": expected_path}, "diagnostics": []})
                 self.assertEqual(gate["primary_differences"](spec, primary, cwd), [])
                 self.assertTrue(gate["primary_differences"](spec, primary, cwd / "somewhere-else"))
+
+    def test_main_resolves_temporary_fixture_directory_before_execution(self):
+        with tempfile.TemporaryDirectory() as outer:
+            real_tmp = Path(outer).resolve(strict=True) / "real-temp"
+            real_tmp.mkdir()
+            alias_tmp = Path(outer).resolve(strict=True) / "alias-temp"
+            os.symlink(real_tmp, alias_tmp)
+            exe = real_tmp / "reader"
+            exe.write_text("#!/bin/sh\nexit 0\n")
+            exe.chmod(0o755)
+            archive = real_tmp / "ext.tar"
+            archive.write_bytes(b"")
+            report = real_tmp / "report.json"
+            seen = []
+
+            class FakeTempDir:
+                def __enter__(self):
+                    return str(alias_tmp)
+
+                def __exit__(self, *exc):
+                    return False
+
+            class DummyCtx:
+                def __enter__(self):
+                    return None
+
+                def __exit__(self, *exc):
+                    return False
+
+            def fake_unpack(_archive, root, _pin):
+                seen.append(root)
+                return DummyCtx()
+
+            with (
+                patch.object(sys, "argv", ["check-release-extension.py", str(exe), str(archive), str(report)]),
+                patch.object(tempfile, "TemporaryDirectory", return_value=FakeTempDir()),
+                patch.dict(gate["CAPTURE"], {"unpack_extension": fake_unpack}),
+                patch.dict(
+                    gate["main"].__globals__,
+                    {
+                        "inventory": lambda _f: ([], {}),
+                        "reader_identity": lambda _e, _f: {"build": gate["READER_BUILD"]},
+                        "measure": lambda *_a: [{"id": "x", "differences": []}],
+                        "save_report": lambda *_a: {"pass": True},
+                    },
+                ),
+            ):
+                rc = gate["main"]()
+            self.assertEqual(rc, 0)
+            self.assertEqual(seen, [real_tmp / "fixtures"])
 
     def test_sarif_and_lsp_read_native_file_id_ranges_and_properties(self):
         diag = {"code": "E_X", "file": "example.typify"}

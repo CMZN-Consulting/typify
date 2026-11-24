@@ -454,12 +454,12 @@ def main():
     try:
         exe = args.executable.resolve(strict=True)
         with tempfile.TemporaryDirectory(prefix="typify-extension-") as tmp:
-            fixture = Path(tmp) / "fixtures"
+            fixture = Path(tmp).resolve(strict=True) / "fixtures"
             with CAPTURE["unpack_extension"](args.extension_archive, fixture, ARCHIVE_SHA256):
                 runs, specs = inventory(fixture)
                 primary = read_transcript(args.transcript, runs) if args.transcript else None
                 reader = reader_identity(exe, fixture)
-                rows = measure(exe, fixture, runs, specs, primary, args.root or fixture)
+                rows = measure(exe, fixture, runs, specs, primary, args.root.resolve() if args.root else fixture)
                 summary = save_report(args.private_report, reader, rows, ARCHIVE_SHA256, TREE_SHA256)
         print(json.dumps(summary, sort_keys=True))
         return 0 if summary["pass"] else 1
