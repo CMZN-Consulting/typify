@@ -89,6 +89,7 @@ expect() {
 : >"$OUTPUT/summary.txt"
 ASSET=$(asset_of "$PLATFORM")
 PROGRAM=$(program_of "$PLATFORM")
+if [ "$WINDOWS" = 1 ]; then PYTHON=python; else PYTHON=python3; fi
 EPOCH=
 for REPLICA in a b; do
   DIRECTORY=$BUILDS/build-$PLATFORM-$REPLICA
@@ -103,6 +104,13 @@ for REPLICA in a b; do
   cp -- "$DIRECTORY/$PLATFORM.build.json" "$OUTPUT/build-$REPLICA.json"
   expect "build $REPLICA: archive hash, manifest tree and architecture" 0 "verify-$REPLICA.json" \
     rkt scripts/release.rkt verify "$(native_path "$ARCHIVE")" --platform "$PLATFORM" --sha256 "$WANT" --manifest-sha256 "$MANIFEST"
+  expect "build $REPLICA: inspect native archive content" 0 "native-inspect-$REPLICA.json" \
+    "$PYTHON" -I "$(native_path "$REPOSITORY/scripts/inspect-native.py")" "$(native_path "$ARCHIVE")" --sha256 "$WANT"
+  expect "build $REPLICA: no embedded runtime native library paths" 0 "native-runtime-paths-$REPLICA.json" \
+    "$PYTHON" -I -c 'import json, pathlib, sys; d = json.loads(pathlib.Path(sys.argv[1]).read_bytes()); print(json.dumps({"runtimePaths": d["runtimePaths"]})); sys.exit(0 if d["runtimePaths"] == {} else 1)' \
+    "$(native_path "$OUTPUT/native-inspect-$REPLICA.json")"
+  expect "build $REPLICA: native library inventory and notices match archive" 0 "native-license-$REPLICA.json" \
+    rkt scripts/license-check.rkt --release --root "$(native_path "$REPOSITORY")" --native-receipt "$(native_path "$OUTPUT/native-inspect-$REPLICA.json")"
   unpack "$ARCHIVE" "$WORK/$REPLICA"
   expect "build $REPLICA: license provenance, packed LICENSE.md and manifest" 0 "license-$REPLICA.json" \
     rkt scripts/license-check.rkt --release --root "$(native_path "$REPOSITORY")" --archive "$(native_path "$WORK/$REPLICA")"
@@ -148,7 +156,6 @@ mkdir -p -- "$BASELINE"
 cp -R "$REPOSITORY/test/corpus/." "$BASELINE/"
 FROZEN=$REPOSITORY/test/release-fixtures
 MANIFEST_PIN=$(cat "$FROZEN/stage4-manifest.sha256")
-if [ "$WINDOWS" = 1 ]; then PYTHON=python; else PYTHON=python3; fi
 for REPLICA in a b; do
   [ -x "$WORK/$REPLICA/$PROGRAM" ] || continue
   EXECUTABLE=$(native_path "$WORK/$REPLICA/$PROGRAM")

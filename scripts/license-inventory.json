@@ -821,8 +821,8 @@
   {
    "authorship": "Original independently authored Stage 4 behavioral fixtures and additive v12 expectations. The author granted redistribution under the project MIT License and confirmed the frozen manifest digest.",
    "confirmed": true,
-   "confirmed-by": "OC, fixture author",
-   "confirmed-on": "2026-11-23",
+   "confirmed-by": "independent fixture author; CMZN LTD. maintainer",
+   "confirmed-on": "2026-11-24",
    "id": "stage4-corpus-handoff",
    "license": "MIT",
    "match": [
@@ -860,6 +860,12 @@
   "Chez-Scheme-NOTICE": {
    "notice": "Chez Scheme Version 10.5.0"
   },
+  "GNU-libiconv-1.15-notice": {
+   "notice": "GNU libiconv 1.15 (Windows x86_64 archive)"
+  },
+  "LGPL-2.0-or-later": {
+   "notice": "GNU LIBRARY GENERAL PUBLIC LICENSE"
+  },
   "MIT": {
    "notice": "MIT License"
   },
@@ -869,6 +875,9 @@
   "MPL-2.0": {
    "notice": "Mozilla Public License, version 2.0"
   },
+  "Native-libraries-notice": {
+   "notice": "Native libraries in the binary archives"
+  },
   "Unicode-3.0": {
    "notice": "UNICODE LICENSE V3"
   },
@@ -877,6 +886,66 @@
   }
  },
  "lockfile": "mcp/bun.lock",
+ "native-content": [
+  {
+   "bytes": 1124923,
+   "component": "GNU libiconv",
+   "kind": "embedded",
+   "license": "LGPL-2.0-or-later",
+   "name": "libiconv-2.dll",
+   "origin": "racket-9.3-x86_64-win32-cs.exe (sha256 5bea9560f8bc6c9d31d55b52a2f83fb5947e57cf625e1865e6091a428c13fe60): lib/libiconv-2.dll, stored whole",
+   "platform": "windows-x86_64",
+   "sha256": "5b44dbed5cc61d881e2ca841ccb974f85e0008c5145084fd1d8c373057bf5ae8",
+   "upstream": {
+    "sha256": "ccf536620a45458d26ba83887a983b96827001e92a13847b45e4925cc8913178",
+    "url": "https://ftp.gnu.org/gnu/libiconv/libiconv-1.15.tar.gz",
+    "version": "1.15"
+   },
+   "version": "1.15"
+  },
+  {
+   "bytes": 124438,
+   "component": "longdouble (Racket source)",
+   "kind": "embedded",
+   "license": "MIT",
+   "name": "longdouble.dll",
+   "origin": "racket-9.3-x86_64-win32-cs.exe (sha256 5bea9560f8bc6c9d31d55b52a2f83fb5947e57cf625e1865e6091a428c13fe60): lib/longdouble.dll, stored whole",
+   "platform": "windows-x86_64",
+   "sha256": "9b2ae0bd0ba549974c2a2fba095dc300fafc78ebe687170031c5a67390cf36ce",
+   "upstream": {
+    "sha256": "7ec7ca73bed36ecbd632e9c3974e87a640582bdc504f5531ddf2145392049517",
+    "url": "https://github.com/racket/racket/blob/v9.3/racket/src/bc/src/longdouble/longdouble.c",
+    "version": "v9.3"
+   },
+   "version": "9.3"
+  },
+  {
+   "bytes": 14550016,
+   "component": "Racket CS runtime",
+   "kind": "embedded",
+   "license": "Apache-2.0",
+   "name": "libracketcs_exmf9c.dll",
+   "origin": "racket-9.3-x86_64-win32-cs.exe (sha256 5bea9560f8bc6c9d31d55b52a2f83fb5947e57cf625e1865e6091a428c13fe60): lib/libracketcs_exmf9c.dll, stored whole",
+   "platform": "windows-x86_64",
+   "sha256": "5f9d6b7faaf7e20cf2636228560780d6c0b991427ef84f4b979d6b038b714f5d",
+   "upstream": {
+    "sha256": "e2595b19b5ca137b9f6a4f1c299c25db5cbaf17314dd4368037ad559bfe9b1d8",
+    "url": "https://github.com/racket/racket/blob/v9.3/racket/src/LICENSE.txt",
+    "version": "v9.3"
+   },
+   "version": "9.3"
+  }
+ ],
+ "native-content-none": [
+  "linux-x86_64",
+  "linux-aarch64",
+  "macos-aarch64"
+ ],
+ "native-runtime-files": [
+  "typify/bin/typify",
+  "typify/bin/typify.exe",
+  "typify/lib/plt/racketcs-9.3"
+ ],
  "runtime-notices": [
   {
    "component": "Racket CS 9.3 runtime in the binary archives",
@@ -938,6 +1007,33 @@
    "upstream": {
     "sha256": "e2595b19b5ca137b9f6a4f1c299c25db5cbaf17314dd4368037ad559bfe9b1d8",
     "url": "https://github.com/racket/racket/blob/v9.3/racket/src/LICENSE.txt",
+    "version": "v9.3"
+   }
+  },
+  {
+   "component": "GNU libiconv 1.15 notice",
+   "license": "GNU-libiconv-1.15-notice",
+   "upstream": {
+    "sha256": "ccf536620a45458d26ba83887a983b96827001e92a13847b45e4925cc8913178",
+    "url": "https://ftp.gnu.org/gnu/libiconv/libiconv-1.15.tar.gz",
+    "version": "1.15"
+   }
+  },
+  {
+   "component": "GNU libiconv 1.15 COPYING.LIB",
+   "license": "LGPL-2.0-or-later",
+   "upstream": {
+    "sha256": "56bdea73b6145ef6ac5259b3da390b981d840c24cb03b8e1cbc678de7ecfa18d",
+    "url": "https://ftp.gnu.org/gnu/libiconv/libiconv-1.15.tar.gz",
+    "version": "1.15"
+   }
+  },
+  {
+   "component": "native library summary per platform",
+   "license": "Native-libraries-notice",
+   "upstream": {
+    "sha256": "a7087e8193b282ee66e88a6e78dde01a8bd2c037266603dcdd85d349daea1a6b",
+    "url": "https://github.com/racket/racket/blob/v9.3/racket/src/native-libs/README.txt",
     "version": "v9.3"
    }
   }

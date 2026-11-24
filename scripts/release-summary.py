@@ -63,6 +63,8 @@ def summarize(directory, commit, frozen):
             semantic = record("semantic")
             verification = record("verify")
             extension = record("extension")
+            native_inspect = record("native-inspect")
+            native_license = record("native-license")
             version = (source / f"version-{replica}.txt").read_text().strip()
             transcript = (source / f"transcript-{replica}.json").read_bytes()
             digest = hashlib.sha256(transcript).hexdigest()
@@ -83,12 +85,21 @@ def summarize(directory, commit, frozen):
                     and verification["manifest_sha256"] == build["manifest_sha256"]
                     and verification["executables"] == build["architecture"]["executables"] and build["architecture"]["pass"]
                     and record("license")["pass"], f"{target}: archive eligibility")
+            require(native_inspect["asset"]["name"] == build["asset"]
+                    and native_inspect["asset"]["sha256"] == build["archive_sha256"]
+                    and native_inspect["runtimePaths"] == {}
+                    and native_license["pass"] is True,
+                    f"{target}: native archive content or license inventory mismatch")
             versions.add(version)
             common_transcripts.add(digest)
             results.append({"target": target, "replica": replica, "readerVersion": version, "capture": capture,
                             "asset": build["asset"], "archiveSha256": build["archive_sha256"],
                             "manifestSha256": build["manifest_sha256"], "source": build["source"],
                             "installer": build["racket"], "executables": build["architecture"]["executables"],
+                            "nativeContent": {"shipped": native_inspect["shipped"],
+                                              "embedded": native_inspect["embedded"],
+                                              "linked": native_inspect["linked"],
+                                              "runtimePaths": native_inspect["runtimePaths"]},
                             "v12Passed": semantic["total"], "extension": extension})
     require(len(versions) == len(common_transcripts) == 1, "the native reader builds or transcripts disagree")
     return {"commit": commit, "readerVersion": versions.pop(), "transcriptSha256": common_transcripts.pop(),

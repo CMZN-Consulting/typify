@@ -118,7 +118,9 @@
          #:unicode-source
          (unicode-source #f)
          #:archive
-         (archive #f))
+         (archive #f)
+         #:native-receipt
+         (native-receipt #f))
   (define root (simplify-path (path->complete-path root-given)))
   (define issues '())
   (define (issue! file kind (detail ""))
@@ -252,6 +254,54 @@
    (define id (format "runtime:~a" (hash-ref entry 'component "?")))
    (check-provenance! id entry)
    (needs-notice! id (hash-ref entry 'license #f)))
+  (define native (hash-ref inventory 'native-content '()))
+  (for
+   ((row (in-list native)))
+   (define id (format "native:~a:~a" (hash-ref row 'platform "?") (hash-ref row 'name "?")))
+   (unless (member (hash-ref row 'kind #f) '("shipped" "embedded")) (issue! id 'native-kind))
+   (unless (regexp-match? hex-digest (format "~a" (hash-ref row 'sha256 "")))
+     (issue! id 'native-sha256))
+   (check-provenance! id row)
+   (needs-notice! id (hash-ref row 'license #f)))
+  (when native-receipt
+    (define receipt (call-with-input-file native-receipt read-json))
+    (define asset (hash-ref (hash-ref receipt 'asset (hasheq)) 'name ""))
+    (define named (regexp-match #px"^typify-(.+)[.](?:tar[.]gz|zip)$" (format "~a" asset)))
+    (define platform (and named (cadr named)))
+    (cond
+     ((not platform) (issue! (format "~a" asset) 'native-receipt-asset))
+     (else
+      (define rows (filter (lambda (row) (equal? (hash-ref row 'platform #f) platform)) native))
+      (define runtime-files (hash-ref inventory 'native-runtime-files '()))
+      (define seen (make-hash))
+      (define (account! kind name sha)
+        (define row
+          (for/first
+           ((row (in-list rows))
+            #:when
+            (and (equal? (hash-ref row 'kind #f) kind)
+                 (equal? (hash-ref row (if (equal? kind "shipped") 'path 'name) #f) name)))
+           row))
+        (cond
+         ((not row) (issue! (format "~a:~a" platform name) 'native-unlisted))
+         (else
+          (hash-set! seen row #t)
+          (unless (equal? (hash-ref row 'sha256 #f) sha)
+            (issue! (format "~a:~a" platform name) 'native-changed)))))
+      (for
+       ((item (in-list (hash-ref receipt 'shipped '()))))
+       (when (and
+              (equal? (hash-ref item 'kind #f) "file")
+              (string? (hash-ref item 'format #f))
+              (not (member (hash-ref item 'path #f) runtime-files)))
+         (account! "shipped" (hash-ref item 'path #f) (hash-ref item 'sha256 #f))))
+      (for
+       ((item (in-list (hash-ref receipt 'embedded '()))))
+       (account! "embedded" (hash-ref item 'exportName #f) (hash-ref item 'sha256 #f)))
+      (for
+       ((row (in-list rows)))
+       (unless (hash-ref seen row #f)
+         (issue! (format "~a:~a" platform (hash-ref row 'name "?")) 'native-missing))))))
   (define lock-path (build-path root (hash-ref inventory 'lockfile "mcp/bun.lock")))
   (when (pair? dependencies)
     (define allowed (hash-ref inventory 'allowed-dependency-licenses '()))
@@ -320,6 +370,7 @@
  (define release? #f)
  (define unicode-source #f)
  (define archive #f)
+ (define native-receipt-path #f)
  (define root (current-directory))
  (define inventory-path #f)
  (let loop ((remaining (vector->list (current-command-line-arguments))))
@@ -328,6 +379,9 @@
     ((equal? (car remaining) "--release") (set! release? #t) (loop (cdr remaining)))
     ((and (pair? (cdr remaining)) (equal? (car remaining) "--unicode"))
      (set! unicode-source (cadr remaining))
+     (loop (cddr remaining)))
+    ((and (pair? (cdr remaining)) (equal? (car remaining) "--native-receipt"))
+     (set! native-receipt-path (cadr remaining))
      (loop (cddr remaining)))
     ((and (pair? (cdr remaining)) (equal? (car remaining) "--archive"))
      (set! archive (cadr remaining))
@@ -340,7 +394,7 @@
      (loop (cddr remaining)))
     (else
      (displayln
-      "usage: racket scripts/license-check.rkt [--root DIR] [--inventory FILE] [--release] [--unicode FILE] [--archive DIR]"
+      "usage: racket scripts/license-check.rkt [--root DIR] [--inventory FILE] [--release] [--unicode FILE] [--archive DIR] [--native-receipt FILE]"
       (current-error-port))
      (exit 2))))
  (define inventory
@@ -358,7 +412,9 @@
     #:unicode-source
     (and unicode-source (string->path unicode-source))
     #:archive
-    archive))
+    archive
+    #:native-receipt
+    native-receipt-path))
  (write-json result)
  (newline)
  (exit (if (hash-ref result 'pass) 0 1)))

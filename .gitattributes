@@ -2,6 +2,7 @@ src/**/*.rkt text eol=lf
 test/corpus/** -text
 test/ask-gate/** -text
 scripts/*.sh text eol=lf
+scripts/*.py text eol=lf
 LICENSE.md text eol=lf
 README.md text eol=lf
 docs/install.md text eol=lf

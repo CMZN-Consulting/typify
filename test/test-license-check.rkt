@@ -187,8 +187,20 @@
            #:unicode-source
            (source #f)
            #:archive
-           (archive #f))
-    (check-licenses root inv #:release? release? #:unicode-source source #:archive archive))
+           (archive #f)
+           #:native-receipt
+           (native-receipt #f))
+    (check-licenses
+     root
+     inv
+     #:release?
+     release?
+     #:unicode-source
+     source
+     #:archive
+     archive
+     #:native-receipt
+     native-receipt))
   (define (changed! root name text) (write-text! root name text))
   (check
    (regexp-match? (glob->regexp "src/**") "src/lang/reader.rkt")
@@ -488,6 +500,168 @@
    (kinds (run without-lock))
    '("lockfile-missing")
    "a missing lockfile fails when dependencies are listed")
+  (define sha-a (make-string 64 #\a))
+  (define sha-b (make-string 64 #\b))
+  (define native-upstream
+    (hasheq 'url "https://example.test/openssl" 'version "3.4.1" 'sha256 (make-string 64 #\c)))
+  (define dylib-row
+    (hasheq
+     'platform
+     "macos-aarch64"
+     'kind
+     "shipped"
+     'name
+     "libcrypto.3.dylib"
+     'path
+     "typify/lib/x/libcrypto.3.dylib"
+     'sha256
+     sha-a
+     'license
+     "Apache-2.0"
+     'upstream
+     native-upstream))
+  (define dll-row
+    (hasheq
+     'platform
+     "windows-x86_64"
+     'kind
+     "embedded"
+     'name
+     "libssl-3-x64.dll"
+     'sha256
+     sha-b
+     'license
+     "Apache-2.0"
+     'upstream
+     native-upstream))
+  (define (native-inventory rows)
+    (hash-set
+     (hash-set (inventory pin) 'native-content rows)
+     'native-runtime-files
+     '("typify/bin/typify" "typify/bin/typify.exe")))
+  (define (receipt name asset shipped embedded)
+    (define path (build-path parent name))
+    (call-with-output-file
+     path
+     (lambda (out)
+       (write-json (hasheq 'asset (hasheq 'name asset) 'shipped shipped 'embedded embedded) out))
+     #:exists
+     'truncate/replace)
+    path)
+  (define (file-entry path format sha) (hasheq 'kind "file" 'path path 'format format 'sha256 sha))
+  (define mac-ok
+    (receipt
+     "mac-ok.json"
+     "typify-macos-aarch64.tar.gz"
+     (list
+      (file-entry "typify/LICENSE.md" 'null sha-a)
+      (file-entry "typify/bin/typify" "macho" sha-b)
+      (file-entry "typify/lib/x/libcrypto.3.dylib" "macho" sha-a))
+     '()))
+  (define (native-run inv path) (run (fresh) inv #:native-receipt path))
+  (check
+   (kinds (native-run (native-inventory (list dylib-row dll-row)) mac-ok))
+   '()
+   "a receipt that matches its listed native files passes")
+  (check
+   (kinds (native-run (native-inventory '()) mac-ok))
+   '("native-unlisted")
+   "a shipped native library that no row lists fails, and the program itself is exempt")
+  (check
+   (kinds (native-run (native-inventory (list (hash-set dylib-row 'sha256 sha-b) dll-row)) mac-ok))
+   '("native-changed")
+   "a shipped native library whose sha256 differs from its row fails")
+  (check
+   (kinds
+    (native-run
+     (native-inventory
+      (list dylib-row (hash-set dylib-row 'path "typify/lib/y/other.dylib") dll-row))
+     mac-ok))
+   '("native-missing")
+   "a listed native library that the archive does not hold fails")
+  (define win-ok
+    (receipt
+     "win-ok.json"
+     "typify-windows-x86_64.zip"
+     (list (file-entry "typify/bin/typify.exe" "pe" sha-a))
+     (list (hasheq 'exportName "libssl-3-x64.dll" 'sha256 sha-b))))
+  (check
+   (kinds (native-run (native-inventory (list dylib-row dll-row)) win-ok))
+   '()
+   "an embedded image that its row lists passes")
+  (check
+   (kinds (native-run (native-inventory (list dylib-row)) win-ok))
+   '("native-unlisted")
+   "an embedded image that no row lists fails")
+  (define win-changed
+    (receipt
+     "win-changed.json"
+     "typify-windows-x86_64.zip"
+     '()
+     (list (hasheq 'exportName "libssl-3-x64.dll" 'sha256 sha-a))))
+  (check
+   (kinds (native-run (native-inventory (list dylib-row dll-row)) win-changed))
+   '("native-changed")
+   "an embedded image of another sha256 fails")
+  (define win-none (receipt "win-none.json" "typify-windows-x86_64.zip" '() '()))
+  (check
+   (kinds (native-run (native-inventory (list dylib-row dll-row)) win-none))
+   '("native-missing")
+   "a listed embedded image that is gone fails")
+  (define linux-ok
+    (receipt
+     "linux-ok.json"
+     "typify-linux-x86_64.tar.gz"
+     (list (file-entry "typify/bin/typify" "elf" sha-a))
+     '()))
+  (check
+   (kinds (native-run (native-inventory (list dylib-row dll-row)) linux-ok))
+   '()
+   "a platform with no native rows passes when it ships none")
+  (define linux-stray
+    (receipt
+     "linux-stray.json"
+     "typify-linux-x86_64.tar.gz"
+     (list (file-entry "typify/lib/libssl.so.3" "elf" sha-a))
+     '()))
+  (check
+   (kinds (native-run (native-inventory (list dylib-row dll-row)) linux-stray))
+   '("native-unlisted")
+   "a stray library in a platform with no rows fails")
+  (define odd (receipt "odd.json" "something.bin" '() '()))
+  (check
+   (kinds (native-run (native-inventory '()) odd))
+   '("native-receipt-asset")
+   "a receipt for an unnamed asset fails")
+  (check
+   (has?
+    "provenance-incomplete"
+    (run
+     (fresh)
+     (native-inventory
+      (list (hash-set dylib-row 'upstream (hasheq 'url "http://x" 'version "1" 'sha256 sha-a))))))
+   #t
+   "a native row without a complete upstream record fails")
+  (check
+   (has?
+    "notice-missing"
+    (run (fresh) (native-inventory (list (hash-set dylib-row 'license "Zlib")))))
+   #f
+   "a native row of a license whose notice is present passes")
+  (check
+   (has?
+    "license-unknown"
+    (run (fresh) (native-inventory (list (hash-set dylib-row 'license "GPL-9")))))
+   #t
+   "a native row of an undefined license fails")
+  (check
+   (has? "native-kind" (run (fresh) (native-inventory (list (hash-set dylib-row 'kind "linked")))))
+   #t
+   "a native row of another kind fails")
+  (check
+   (has? "native-sha256" (run (fresh) (native-inventory (list (hash-set dylib-row 'sha256 "abc")))))
+   #t
+   "a native row without a sha256 fails")
   (define archive (build-path parent "archive"))
   (write-text! archive "typify/LICENSE.md" license-text)
   (write-text!

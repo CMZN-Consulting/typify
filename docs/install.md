@@ -13,7 +13,7 @@ One archive per platform, with names that carry no version:
 | macOS aarch64 (Apple silicon) | macOS 15 | `typify-macos-aarch64.tar.gz` |
 | Windows x86_64 | Windows Server 2022 | `typify-windows-x86_64.zip` |
 
-No other platform has an archive. Each archive unpacks to a directory `typify/` holding the program, `typify/share/typify.typify` (the self-declaration, which you can check with `typify check typify/share/typify.typify --json`), `typify/LICENSE.md` (the license of Typify and the notices of the Racket runtime inside the archive) and `typify/MANIFEST.txt`. No Racket needs to be installed.
+No other platform has an archive. Each archive unpacks to a directory `typify/` holding the program, `typify/share/typify.typify` (the self-declaration, which you can check with `typify check typify/share/typify.typify --json`), `typify/LICENSE.md` (the license of Typify and the notices of the Racket runtime and of the native libraries inside the archive) and `typify/MANIFEST.txt`. No Racket needs to be installed.
 
 ## Download
 
@@ -31,17 +31,21 @@ curl.exe -fLO https://github.com/CMZN-Consulting/typify/releases/download/vX.Y.Z
 
 ## Unpack and run
 
-Verify the archive first (next section). On Linux and macOS:
+Verify the archive first (next section). Unpack into a new, empty directory that does not hold the archive: the check below counts anything beside `typify/` as an extra entry. On Linux and macOS:
 
 ```sh
-tar -xpzf typify-linux-x86_64.tar.gz
+mkdir typify-install
+tar -xpzf typify-linux-x86_64.tar.gz -C typify-install
+cd typify-install
 typify/bin/typify --version
 ```
 
 On Windows, in PowerShell:
 
 ```powershell
-Expand-Archive typify-windows-x86_64.zip -DestinationPath .
+New-Item -ItemType Directory typify-install | Out-Null
+Expand-Archive typify-windows-x86_64.zip -DestinationPath typify-install
+Set-Location typify-install
 .\typify\bin\typify.exe --version
 ```
 
@@ -66,7 +70,7 @@ The commands require the file's SHA-256 in an attestation signed by the reposito
 
 **By hand.** Compare the archive's sha256 with the hash from the attestation or from a pin you committed earlier: `sha256sum ARCHIVE` on Linux, `shasum -a 256 ARCHIVE` on macOS, `Get-FileHash -Algorithm SHA256 ARCHIVE` in PowerShell (it prints upper case; compare without regard to case). The release notes come from the same place as the archives, so a match with them shows only that the download is complete.
 
-**The unpacked tree.** Run from the directory that holds `typify/`. On Linux and macOS, after `tar -xp` (without `-p`, a umask such as `077` clears mode bits and the mode check fails):
+**The unpacked tree.** Run from the new, empty directory that now holds `typify/` and nothing else. On Linux and macOS, after `tar -xp` (without `-p`, a umask such as `077` clears mode bits and the mode check fails):
 
 ```sh
 if command -v sha256sum >/dev/null; then
@@ -94,13 +98,19 @@ if [ "$FOUND" -ne "$LISTED" ]; then
   echo "files: $FOUND, listed: $LISTED"
   BAD=1
 fi
+[ "$(ls -A)" = typify ] || { echo "entries beside typify/"; BAD=1; }
+[ -z "$(find typify ! -type f ! -type d)" ] || { echo "links or special files"; BAD=1; }
+[ -z "$(find typify -type f -links +1)" ] || { echo "hard links"; BAD=1; }
+[ -z "$(find typify -type d ! -perm 0755)" ] || { echo "directory modes"; BAD=1; }
+[ -z "$(find typify -type d -empty)" ] || { echo "empty directories"; BAD=1; }
+[ -n "$(find typify/MANIFEST.txt -perm 0644)" ] || { echo "mode: typify/MANIFEST.txt"; BAD=1; }
 if [ "$BAD" -eq 0 ]; then echo ok; else echo FAILED; fi
 [ "$BAD" -eq 0 ]
 ```
 
-It prints each missing file or one whose sha256 or mode differs, counts the entries under `typify/` against the manifest's lines, and ends with `ok` or `FAILED`. First check the manifest itself: verify its attestation, or compare `sha256sum typify/MANIFEST.txt` with the manifest hash from the attestation or your pin.
+It prints each listed file that is missing or whose sha256 or mode differs, counts the files under `typify/` against the manifest's lines, and refuses entries beside `typify/`, links or special files, hard links, a directory whose mode is not `0755`, an empty directory, and a `MANIFEST.txt` whose mode is not `0644`; it ends with `ok` or `FAILED`. An extra file inside `typify/` is reported by the two counts, not by name. First check the manifest itself: verify its attestation, or compare `sha256sum typify/MANIFEST.txt` with the manifest hash from the attestation or your pin.
 
-On Windows, in PowerShell, from the same directory (the files carry no modes, so every line of the manifest reads `0644` and only the sha256 column and the entry count are compared):
+On Windows, in PowerShell, from the same new directory (the files carry no modes, so every line of the manifest reads `0644` and the sha256 column and the entry count are compared; it also refuses entries beside `typify/`, links, and empty directories, and it prints `ok` or `FAILED` without setting an exit status):
 
 ```powershell
 (Get-FileHash -Algorithm SHA256 typify/MANIFEST.txt).Hash.ToLower()
@@ -116,19 +126,25 @@ foreach ($line in $lines) {
 $manifest = (Get-Item -LiteralPath typify/MANIFEST.txt).FullName
 $found = @(Get-ChildItem typify -Recurse -Force | Where-Object { (-not $_.PSIsContainer -or $_.LinkType) -and $_.FullName -ne $manifest }).Count
 if ($found -ne $lines.Count) { "files: $found, listed: $($lines.Count)"; $bad = 1 }
+$beside = @(Get-ChildItem -Force . | Where-Object { $_.Name -ne 'typify' })
+if ($beside.Count -gt 0 -or -not (Test-Path -LiteralPath typify -PathType Container)) { 'entries beside typify/'; $bad = 1 }
+$links = @(Get-ChildItem typify -Recurse -Force | Where-Object { $_.LinkType })
+if ($links.Count -gt 0) { 'links in typify/'; $bad = 1 }
+$empty = @(Get-ChildItem typify -Recurse -Force -Directory | Where-Object { @(Get-ChildItem -LiteralPath $_.FullName -Force).Count -eq 0 })
+if ($empty.Count -gt 0) { 'empty directories'; $bad = 1 }
 if ($bad -eq 0) { 'ok' } else { 'FAILED' }
 ```
 
-The Linux and macOS loop was run, unchanged, on a Linux archive built from this reader: it printed `ok` on a clean tree and `FAILED` with the named file for an altered file, a changed mode, an extra file and a removed file. The PowerShell version has not been run.
+Both checks were run on a stand-in archive that has the release layout, unpacked into a new empty directory each time (the shell check with GNU tools on Linux, the PowerShell check with PowerShell 7.7 on Linux). Each printed `ok` on the genuine tree and `FAILED` for an altered file, a removed file, an extra file, an entry beside `typify/`, the archive left beside `typify/`, an empty directory and a link; the shell check also refused a changed file mode, a directory mode of `0775`, a hard link and a `MANIFEST.txt` of mode `0666`. Neither check has been run on macOS or on Windows.
 
 **Tags.** Release tags will be signed with the maintainer's key, which does not exist yet, so the tags of 1.0.x are unsigned; for a 1.0.x archive, the attestation is the check. Every tag the repository holds today is unsigned (`git verify-tag v1.0.0-rc.1` stops with `error: no signature found`). When a tag is signed, `git verify-tag vX.Y.Z` must exit with status 0 and `git rev-list -n 1 vX.Y.Z` must print the commit the attestation names; for an SSH signature `git verify-tag` exits with status 1 unless `gpg.ssh.allowedSignersFile` lists the maintainer's key, even when it prints `Good "git" signature`.
 
 ## What macOS and Windows may show
 
-The programs in the 1.0 archives carry no publisher's code signature, and the macOS program is not notarized. Both systems may warn before the first run of such a program that came from a browser download. What they show for `typify` has not been observed; the release's clean-box run on macOS 15 and Windows Server 2022 will record it, and until then the paths below are what the vendors document, not what was seen.
+The programs in the 1.0 archives carry no publisher's code signature, and the macOS program is not notarized. Both systems may warn before the first run of such a program that came from a browser download. What they show for `typify` has not been observed. The release's automated docs run on macOS 15 and Windows Server 2022 checks that the program runs; it does not record what the systems show. Until a run records that, the paths below are what the vendors document, not what was seen.
 
 - **macOS.** Apple's Platform Security guide says Gatekeeper "requests user approval before opening downloaded software for the first time". Apple Support's "Safely open apps on your Mac" describes opening an app that has not been notarized: try to open it, then open System Settings, Privacy & Security, scroll down and click Open Anyway. Removing the quarantine attribute from the unpacked directory is the other way: `xattr -dr com.apple.quarantine typify`.
-- **Windows.** Microsoft's Smart App Control, on a Windows 11 machine where it is on, blocks an app that is unsigned. Microsoft's `Unblock-File` page says the cmdlet "removes the Zone.Identifier alternate data stream", the mark that files downloaded from the internet carry: `Unblock-File typify-windows-x86_64.zip` before unpacking, or `Get-ChildItem -Recurse typify | Unblock-File` on an unpacked directory. SmartScreen may also warn; its wording for `typify` is not recorded.
+- **Windows.** Microsoft's Smart App Control, on a Windows 11 machine where it is on, asks a cloud service about an app first and checks the signature only when the service cannot make a confident prediction; it blocks an app that is then found unsigned. Microsoft's `Unblock-File` page says the cmdlet "removes the Zone.Identifier alternate data stream", the mark that files downloaded from the internet carry: `Unblock-File typify-windows-x86_64.zip` before unpacking, or `Get-ChildItem -Recurse typify | Unblock-File` on an unpacked directory. Microsoft's pages do not say that removing the mark lifts a Smart App Control block: the Smart App Control page says there is currently no way to bypass it for individual apps and offers turning it off or a signed app. SmartScreen may also warn; its wording for `typify` is not recorded.
 
 Whether a download made with `curl` or `curl.exe`, or the unpacking of an archive, leaves such a mark depends on the tool and the system; this guide does not promise either way.
 
