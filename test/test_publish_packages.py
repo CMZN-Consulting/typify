@@ -15,6 +15,18 @@ MOD = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 SPEC.loader.exec_module(MOD)
 
+ALLOWED_REPOS = frozenset(
+    {"cmzn-consulting/typify"}
+    | {f"cmzn-consulting/typify-{spec['platform']}" for spec in MOD.TARGETS}
+)
+
+
+def resolve_allowed_repo(candidate: str) -> str | None:
+    for allowed in ALLOWED_REPOS:
+        if candidate == allowed:
+            return allowed
+    return None
+
 
 class MockOciState:
     def __init__(self):
@@ -50,8 +62,9 @@ def make_handler(state: MockOciState):
                 return
 
             if parsed.path.startswith("/v2/") and "/manifests/" in parsed.path:
-                repo, ref = parsed.path[len("/v2/"):].split("/manifests/", 1)
-                entry = state.manifests.get((repo, ref))
+                raw_repo, ref = parsed.path[len("/v2/"):].split("/manifests/", 1)
+                repo = resolve_allowed_repo(raw_repo)
+                entry = state.manifests.get((repo, ref)) if repo is not None else None
                 if not entry:
                     self.send_response(404)
                     self.end_headers()
@@ -70,8 +83,9 @@ def make_handler(state: MockOciState):
         def do_HEAD(self):
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path.startswith("/v2/") and "/blobs/" in parsed.path:
-                repo, digest = parsed.path[len("/v2/"):].split("/blobs/", 1)
-                data = state.blobs.get((repo, digest))
+                raw_repo, digest = parsed.path[len("/v2/"):].split("/blobs/", 1)
+                repo = resolve_allowed_repo(raw_repo)
+                data = state.blobs.get((repo, digest)) if repo is not None else None
                 if data is None:
                     self.send_response(404)
                     self.end_headers()
@@ -86,7 +100,12 @@ def make_handler(state: MockOciState):
         def do_POST(self):
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path.startswith("/v2/") and parsed.path.endswith("/blobs/uploads/"):
-                repo = parsed.path[len("/v2/"):-len("/blobs/uploads/")]
+                raw_repo = parsed.path[len("/v2/"):-len("/blobs/uploads/")]
+                repo = resolve_allowed_repo(raw_repo)
+                if repo is None:
+                    self.send_response(404)
+                    self.end_headers()
+                    return
                 state.counter += 1
                 uid = f"u{state.counter}"
                 state.uploads[uid] = repo
@@ -104,27 +123,33 @@ def make_handler(state: MockOciState):
             body = self.rfile.read(length) if length > 0 else b""
 
             if parsed.path.startswith("/v2/") and "/blobs/uploads/" in parsed.path:
-                repo, uid = parsed.path[len("/v2/"):].split("/blobs/uploads/", 1)
-                if state.uploads.get(uid) != repo:
+                raw_repo, uid = parsed.path[len("/v2/"):].split("/blobs/uploads/", 1)
+                repo = resolve_allowed_repo(raw_repo)
+                if repo is None or state.uploads.get(uid) != repo:
                     self.send_response(404)
                     self.end_headers()
                     return
                 qs = urllib.parse.parse_qs(parsed.query)
-                digest = qs.get("digest", [""])[0]
+                requested_digest = qs.get("digest", [""])[0]
                 actual = "sha256:" + hashlib.sha256(body).hexdigest()
-                if digest != actual:
+                if requested_digest != actual:
                     self.send_response(400)
                     self.end_headers()
                     return
-                state.blobs[(repo, digest)] = body
+                state.blobs[(repo, actual)] = body
                 self.send_response(201)
-                self.send_header("Docker-Content-Digest", digest)
+                self.send_header("Docker-Content-Digest", actual)
                 self.send_header("Content-Length", "0")
                 self.end_headers()
                 return
 
             if parsed.path.startswith("/v2/") and "/manifests/" in parsed.path:
-                repo, ref = parsed.path[len("/v2/"):].split("/manifests/", 1)
+                raw_repo, ref = parsed.path[len("/v2/"):].split("/manifests/", 1)
+                repo = resolve_allowed_repo(raw_repo)
+                if repo is None:
+                    self.send_response(404)
+                    self.end_headers()
+                    return
                 ctype = self.headers.get("Content-Type", "")
                 digest = "sha256:" + hashlib.sha256(body).hexdigest()
                 state.manifests[(repo, ref)] = (ctype, body)

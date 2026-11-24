@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 from pathlib import Path
 
 EXPECTED_TOOLCHAIN = "leanprover/lean4:v4.36.0"
@@ -81,6 +82,15 @@ class GateFailure(Exception):
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def is_external_or_repo_link(url: str) -> bool:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme or parsed.netloc or url.startswith("/"):
+        return True
+    first_segment = parsed.path.split("/", 1)[0].lower()
+    host = first_segment.split(":", 1)[0]
+    return host == "github.com" or host.endswith(".github.com")
 
 
 def scan_lean_formatting(rel_path: str, text: str) -> None:
@@ -1138,7 +1148,7 @@ def check_full_gate(
             )
 
         links = extract_markdown_links(page_text)
-        ext_links = [(lbl, url) for lbl, url in links if "://" in url or url.startswith("/") or "github.com" in url]
+        ext_links = [(lbl, url) for lbl, url in links if is_external_or_repo_link(url)]
         if len(ext_links) != 2:
             raise GateFailure(
                 "source-link-count",
