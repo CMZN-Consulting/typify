@@ -1,0 +1,163 @@
+{
+  "schema": "typify-metalogic-conformance-v1",
+  "declarations": [
+    {
+      "id": "witness-base",
+      "language": "Witness",
+      "expectValid": true,
+      "metaLines": [
+        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
+        {"kind": "isClass", "name": "peer", "literals": ["ada", "ben"]},
+        {"kind": "termUnary", "ctor": "member", "argClass": "person"},
+        {"kind": "formUnary", "verb": "member", "slot": "person"},
+        {"kind": "doesUnary", "ctor": "member", "slot": "person"}
+      ]
+    },
+    {
+      "id": "witness-extended",
+      "language": "Witness",
+      "expectValid": true,
+      "metaLines": [
+        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
+        {"kind": "isClass", "name": "peer", "literals": ["ada", "ben"]},
+        {"kind": "termUnary", "ctor": "member", "argClass": "person"},
+        {"kind": "formUnary", "verb": "member", "slot": "person"},
+        {"kind": "doesUnary", "ctor": "member", "slot": "person"},
+        {"kind": "termBinary", "ctor": "knows", "argClass1": "person", "argClass2": "peer"},
+        {"kind": "formBinary", "verb": "knows", "slot1": "person", "sep": " = ", "slot2": "peer"},
+        {"kind": "doesBinary", "ctor": "knows", "slot1": "person", "slot2": "peer"}
+      ]
+    },
+    {
+      "id": "decl-reject-separator-overlap",
+      "language": "OverlapControl",
+      "expectValid": false,
+      "expectedDiagnosticCode": "E_CLASS_OVERLAP",
+      "metaLines": [
+        {"kind": "isClass", "name": "lefty", "literals": ["a=", "b"]},
+        {"kind": "isClass", "name": "righty", "literals": ["c"]},
+        {"kind": "termBinary", "ctor": "pair", "argClass1": "lefty", "argClass2": "righty"},
+        {"kind": "formBinary", "verb": "pair", "slot1": "lefty", "sep": "==", "slot2": "righty"},
+        {"kind": "doesBinary", "ctor": "pair", "slot1": "lefty", "slot2": "righty"}
+      ]
+    },
+    {
+      "id": "decl-reject-duplicate-verb-shadow",
+      "language": "ShadowControl",
+      "expectValid": false,
+      "expectedDiagnosticCode": "E_FORM_SHADOW",
+      "metaLines": [
+        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
+        {"kind": "termUnary", "ctor": "member", "argClass": "person"},
+        {"kind": "formUnary", "verb": "member", "slot": "person"},
+        {"kind": "doesUnary", "ctor": "member", "slot": "person"},
+        {"kind": "formUnary", "verb": "member", "slot": "person"},
+        {"kind": "doesUnary", "ctor": "member", "slot": "person"}
+      ]
+    },
+    {
+      "id": "decl-reject-reserved-class-name",
+      "language": "ReservedControl",
+      "expectValid": false,
+      "expectedDiagnosticCode": "E_DECLARATION",
+      "metaLines": [
+        {"kind": "isClass", "name": "value", "literals": ["ada"]},
+        {"kind": "termUnary", "ctor": "member", "argClass": "value"},
+        {"kind": "formUnary", "verb": "member", "slot": "value"},
+        {"kind": "doesUnary", "ctor": "member", "slot": "value"}
+      ]
+    },
+    {
+      "id": "decl-reject-arity-mismatch",
+      "language": "ArityControl",
+      "expectValid": false,
+      "expectedDiagnosticCode": "E_TERM_CLASS",
+      "metaLines": [
+        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
+        {"kind": "isClass", "name": "peer", "literals": ["ada", "ben"]},
+        {"kind": "termBinary", "ctor": "member", "argClass1": "person", "argClass2": "peer"},
+        {"kind": "formUnary", "verb": "member", "slot": "person"},
+        {"kind": "doesUnary", "ctor": "member", "slot": "person"}
+      ]
+    }
+  ],
+  "programs": [
+    {
+      "id": "base-accept-member-ada",
+      "declarationId": "witness-base",
+      "lines": ["member : ada"],
+      "expectAccepted": true,
+      "expectedTerms": [["member", "ada"]]
+    },
+    {
+      "id": "base-accept-comments-and-blanks",
+      "declarationId": "witness-base",
+      "lines": ["# roster", "  member : ben  ", ""],
+      "expectAccepted": true,
+      "expectedTerms": [["member", "ben"]]
+    },
+    {
+      "id": "base-reject-unextended-knows",
+      "declarationId": "witness-base",
+      "lines": ["knows : ada = ben"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_FORM_NONE"
+    },
+    {
+      "id": "base-reject-class-unknown",
+      "declarationId": "witness-base",
+      "lines": ["member : unknown"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_CLASS"
+    },
+    {
+      "id": "base-reject-shapeless-line",
+      "declarationId": "witness-base",
+      "lines": ["member ada"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_LINE_SHAPE"
+    },
+    {
+      "id": "ext-accept-preserved-member",
+      "declarationId": "witness-extended",
+      "lines": ["member : ada"],
+      "expectAccepted": true,
+      "expectedTerms": [["member", "ada"]]
+    },
+    {
+      "id": "ext-accept-two-lines",
+      "declarationId": "witness-extended",
+      "lines": ["member : ada", "knows : ada = ben"],
+      "expectAccepted": true,
+      "expectedTerms": [["member", "ada"], ["knows", "ada", "ben"]]
+    },
+    {
+      "id": "ext-accept-reversed-binary",
+      "declarationId": "witness-extended",
+      "lines": ["knows : ben = ada"],
+      "expectAccepted": true,
+      "expectedTerms": [["knows", "ben", "ada"]]
+    },
+    {
+      "id": "ext-reject-class-right",
+      "declarationId": "witness-extended",
+      "lines": ["knows : ada = unknown"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_CLASS"
+    },
+    {
+      "id": "ext-reject-missing-separator",
+      "declarationId": "witness-extended",
+      "lines": ["knows : ada ben"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_FORM_NONE"
+    },
+    {
+      "id": "ext-reject-extra-inner-space",
+      "declarationId": "witness-extended",
+      "lines": ["knows : ada  = ben"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_CLASS"
+    }
+  ]
+}

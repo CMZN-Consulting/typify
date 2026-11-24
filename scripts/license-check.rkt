@@ -4,7 +4,7 @@
 
 (provide check-licenses glob->regexp parse-general-category merge-intervals unicode-tables)
 
-(define skipped-names '(".git" "compiled" "node_modules"))
+(define skipped-names '(".git" "compiled" "node_modules" ".lake"))
 
 (define hex-digest #px"^[0-9a-f]{64}$")
 

@@ -788,6 +788,17 @@
    "origin": "original"
   },
   {
+   "id": "lean-metalogic",
+   "license": "MIT",
+   "match": [
+    "lean/lean-toolchain",
+    "lean/lakefile.toml",
+    "lean/lake-manifest.json",
+    "lean/TypifyMetalogic/*.lean"
+   ],
+   "origin": "original"
+  },
+  {
    "id": "mcp-server",
    "license": "MIT",
    "match": [
@@ -802,7 +813,8 @@
     "test/*.rkt",
     "test/*.sh",
     "test/*.py",
-    "test/decoder-corpus.json"
+    "test/decoder-corpus.json",
+    "test/metalogic-conformance.json"
    ],
    "origin": "original"
   },

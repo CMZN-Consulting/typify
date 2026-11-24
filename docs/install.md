@@ -29,6 +29,14 @@ On Windows, PowerShell has `curl.exe`:
 curl.exe -fLO https://github.com/CMZN-Consulting/typify/releases/download/vX.Y.Z/typify-windows-x86_64.zip
 ```
 
+**GitHub Packages (OCI).** The same four attested archives and their `<platform>.MANIFEST.txt` files are also published as OCI artifacts on [GitHub Packages](https://github.com/orgs/CMZN-Consulting/packages?repo_name=typify) under `ghcr.io/cmzn-consulting/typify-<platform>:vX.Y.Z` (`linux-x86_64`, `linux-aarch64`, `macos-aarch64`, `windows-x86_64`) and indexed together under `ghcr.io/cmzn-consulting/typify:vX.Y.Z`. With an OCI client such as `oras`:
+
+```sh
+oras pull ghcr.io/cmzn-consulting/typify-linux-x86_64:v1.0.0
+```
+
+ Verify the pulled archive and manifest with `gh attestation verify` and the unpacked tree check below in the exact same way as a release download.
+
 ## Unpack and run
 
 Verify the archive first (next section). Unpack into a new, empty directory that does not hold the archive: the check below counts anything beside `typify/` as an extra entry. On Linux and macOS:

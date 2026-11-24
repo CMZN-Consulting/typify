@@ -206,6 +206,19 @@
       "source-comment-check-retained"
       (lambda () (issue? (check-repository comment-root) "source-comment" "src/sample.rkt"))
       #t)
+     (write-bytes-file
+      (build-path comment-root "lean" "clean.lean")
+      (string->bytes/utf-8 "def sampleArrow (p q : Prop) : Prop := p -> q\n"))
+     (write-bytes-file
+      (build-path comment-root "lean" "sample.lean")
+      (string->bytes/utf-8 (string-append "def x : Nat := 1\n" "-" "-" " forbidden\n")))
+     (check
+      "lean-source-comment-check"
+      (lambda ()
+        (define result (check-repository comment-root))
+        (and (issue? result "source-comment" "lean/sample.lean")
+             (not (issue? result "source-comment" "lean/clean.lean"))))
+      #t)
      (define gate-source (build-path temporary "gate-source"))
      (define reference-bytes
        #"#lang racket/base\n; frozen reference data\n(error 'reference \"must never run\")\n")

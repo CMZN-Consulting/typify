@@ -148,9 +148,58 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  lean:
+    name: Lean / zero sorry
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install verified Racket 9.3 CS
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://download.racket-lang.org/releases/9.3/installers/racket-9.3-x86_64-linux-buster.sh \
+            --output "$RUNNER_TEMP/racket-installer.sh"
+          printf '%s  %s\n' \
+            30dc59d9b5af083eacf793253d35782c5231e8bfb7a7331fe32ccd9a41fd792f \
+            "$RUNNER_TEMP/racket-installer.sh" | sha256sum --check --strict
+          sh "$RUNNER_TEMP/racket-installer.sh" --create-dir --in-place --dest "$RUNNER_TEMP/racket"
+          printf '%s\n' "$RUNNER_TEMP/racket/bin" >> "$GITHUB_PATH"
+      - name: Link source package without fetching dependencies
+        run: raco pkg install --scope user --no-setup --deps fail --name typify --link ./src
+      - name: Install verified Lean 4.36.0
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://github.com/leanprover/lean4/releases/download/v4.36.0/lean-4.36.0-linux.tar.zst \
+            --output "$RUNNER_TEMP/lean-4.36.0-linux.tar.zst"
+          printf '%s  %s\n' \
+            2b7ab1ed8b92d2e6abfaf41344823b510064dbc9c0260cac73eb496ab2dea6eb \
+            "$RUNNER_TEMP/lean-4.36.0-linux.tar.zst" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/lean4"
+          tar --use-compress-program=unzstd -xf "$RUNNER_TEMP/lean-4.36.0-linux.tar.zst" \
+            -C "$RUNNER_TEMP/lean4" --strip-components=1
+          printf '%s\n' "$RUNNER_TEMP/lean4/bin" >> "$GITHUB_PATH"
+      - name: Compile every tracked Lean module, audit axioms and run conformance
+        shell: bash
+        run: |
+          python3 -B scripts/metalogic-check.py --mode ci --repo-dir . \
+            --source-ref "${{ github.sha }}" --lean-bin "$RUNNER_TEMP/lean4/bin" \
+            --output "$RUNNER_TEMP/lean-zero-sorry.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: lean-zero-sorry
+          path: ${{ runner.temp }}/lean-zero-sorry.json
+          if-no-files-found: error
+          retention-days: 30
+
   acceptance:
     name: Acceptance
-    needs: [kernel, language-replay, mutation-replay]
+    needs: [kernel, language-replay, mutation-replay, lean]
     if: ${{ always() && needs.kernel.outputs.blind-mode == 'full' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -182,6 +231,26 @@ jobs:
         with:
           name: mutation-replay
           path: ${{ runner.temp }}/evidence/mutation
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: lean-zero-sorry
+          path: ${{ runner.temp }}/evidence/lean
+      - name: Require passing Lean / zero sorry receipt for this commit
+        if: always()
+        shell: python
+        env:
+          LEAN_RESULT: ${{ needs.lean.result }}
+        run: |
+          import json, os
+          from pathlib import Path
+          doc = json.loads(Path(os.environ["RUNNER_TEMP"], "evidence/lean/lean-zero-sorry.json").read_text(encoding="utf-8"))
+          if (
+              os.environ.get("LEAN_RESULT") != "success"
+              or doc.get("pass") is not True
+              or doc.get("sourceCommit") != os.environ.get("GITHUB_SHA")
+              or len(doc.get("laws", [])) != 3
+          ):
+              raise SystemExit("Refusing acceptance without a green Lean / zero sorry receipt on GITHUB_SHA")
       - name: Require complete evidence and every registered gate for the selected stage
         if: always()
         run: |

@@ -183,7 +183,9 @@ jobs:
           exit "$STATUS"
 
       - name: Prove an omitted attestation subject or control is refused
-        run: python3 -B test/test_release_attestations.py
+        run: |
+          python3 -B test/test_release_attestations.py
+          python3 -B test/test_publish_packages.py
       - name: Save the native evidence for this exact revision
         shell: bash
         run: |
@@ -245,10 +247,59 @@ jobs:
             --sha256 "$(cut -d ' ' -f 1 "$B/${{ matrix.asset }}.sha256")" --manifest-sha256 "$MANIFEST" \
             --tampered "$RUNNER_TEMP/verify/canaries" --work "$RUNNER_TEMP/docs"
 
+  lean:
+    name: Lean / zero sorry
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: build-linux-x86_64-a
+          path: ${{ runner.temp }}/build
+      - name: Unpack packaged Linux x86_64 release reader
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/unpack"
+          tar -xzf "$RUNNER_TEMP/build/typify-linux-x86_64.tar.gz" -C "$RUNNER_TEMP/unpack"
+          test -x "$RUNNER_TEMP/unpack/typify/bin/typify"
+      - name: Install verified Lean 4.36.0
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://github.com/leanprover/lean4/releases/download/v4.36.0/lean-4.36.0-linux.tar.zst \
+            --output "$RUNNER_TEMP/lean-4.36.0-linux.tar.zst"
+          printf '%s  %s\n' \
+            2b7ab1ed8b92d2e6abfaf41344823b510064dbc9c0260cac73eb496ab2dea6eb \
+            "$RUNNER_TEMP/lean-4.36.0-linux.tar.zst" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/lean4"
+          tar --use-compress-program=unzstd -xf "$RUNNER_TEMP/lean-4.36.0-linux.tar.zst" \
+            -C "$RUNNER_TEMP/lean4" --strip-components=1
+      - name: Compile every tracked Lean module, audit axioms and verify conformance against packaged reader
+        shell: bash
+        run: |
+          python3 -B scripts/metalogic-check.py --mode ci --repo-dir . \
+            --source-ref "${{ github.sha }}" --lean-bin "$RUNNER_TEMP/lean4/bin" \
+            --reader-bin "$RUNNER_TEMP/unpack/typify/bin/typify" \
+            --output "$RUNNER_TEMP/lean-zero-sorry.json"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: release-lean-zero-sorry
+          path: ${{ runner.temp }}/lean-zero-sorry.json
+          if-no-files-found: error
+          retention-days: 30
+
   attest:
     name: Attest archives and manifests
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build, registry, verify, parity, docs]
+    needs: [build, registry, verify, parity, docs, lean]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     permissions:
@@ -260,6 +311,22 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: release-lean-zero-sorry
+          path: ${{ runner.temp }}/lean-gate
+      - name: Require passing Lean / zero sorry receipt for released SHA
+        shell: python
+        run: |
+          import json, os
+          from pathlib import Path
+          doc = json.loads(Path(os.environ["RUNNER_TEMP"], "lean-gate/lean-zero-sorry.json").read_text(encoding="utf-8"))
+          if (
+              doc.get("pass") is not True
+              or doc.get("sourceCommit") != os.environ.get("GITHUB_SHA")
+              or len(doc.get("laws", [])) != 3
+          ):
+              raise SystemExit("Refusing tag attestation without a green Lean / zero sorry receipt for GITHUB_SHA")
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           pattern: build-*-a
@@ -349,3 +416,37 @@ jobs:
           [[ ${#BUNDLES[@]} == 1 && -s "${BUNDLES[0]}" ]]
           python3 scripts/check-release-attestations.py verify "$RUNNER_TEMP/builds" "$RUNNER_TEMP/verify" \
             "${BUNDLES[0]}" "$GITHUB_REPOSITORY" "$GITHUB_REF" "$(git rev-parse HEAD)"
+
+  packages:
+    name: Publish shipped binaries to GitHub Packages
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: attestation-check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: build-*-a
+          path: ${{ runner.temp }}/builds
+      - name: Publish verified platform binaries and OCI index to GitHub Packages
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 -B scripts/publish-packages.py --builds "$RUNNER_TEMP/builds" \
+            --repository "$GITHUB_REPOSITORY" --tag "$GITHUB_REF_NAME" \
+            --commit "$(git rev-parse HEAD)" --output "$RUNNER_TEMP/release-packages.json"
+          cat "$RUNNER_TEMP/release-packages.json" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-packages
+          path: ${{ runner.temp }}/release-packages.json
+          if-no-files-found: error
+          retention-days: 30

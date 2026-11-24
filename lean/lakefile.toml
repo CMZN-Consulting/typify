@@ -1,0 +1,13 @@
+name = "typify-metalogic"
+version = "1.0.0"
+defaultTargets = [
+  "TypifyMetalogic.FormalityStatement",
+  "TypifyMetalogic.FormalityProof",
+  "TypifyMetalogic.ExtensionStatement",
+  "TypifyMetalogic.ExtensionProof",
+  "TypifyMetalogic.OntologyStatement",
+  "TypifyMetalogic.OntologyProof"
+]
+
+[[lean_lib]]
+name = "TypifyMetalogic"

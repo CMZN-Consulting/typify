@@ -9,11 +9,11 @@
          racket/string
          "import-corpus.rkt")
 
-(provide check-repository source-comment-offset frozen-reference-files)
+(provide check-repository source-comment-offset lean-comment-offset frozen-reference-files)
 
 (define required-top-level '("README.md" "LICENSE.md" "src" "test" "scripts" ".github"))
 
-(define top-level (append required-top-level '("mcp" "docs" ".gitignore" ".gitattributes")))
+(define top-level (append required-top-level '("mcp" "docs" "lean" ".gitignore" ".gitattributes")))
 
 (define corpus-network-addresses
   (for/list
@@ -66,6 +66,36 @@
       index)
      (else (loop (add1 index) #f)))))
 
+(define (lean-comment-offset text)
+  (define size (string-length text))
+  (let loop ((index 0) (quoted? #f))
+    (cond
+     ((>= index size) #f)
+     (quoted?
+      (case (string-ref text index)
+        ((#\\) (loop (+ index 2) #t))
+        ((#\") (loop (add1 index) #f))
+        (else (loop (add1 index) #t))))
+     ((char=? (string-ref text index) #\") (loop (add1 index) #t))
+     ((and (< (+ index 2) size)
+           (char=? (string-ref text index) #\')
+           (char=? (string-ref text (add1 index)) #\\))
+      (let skip ((next (+ index 3)))
+        (if (and (< next size) (not (char=? (string-ref text next) #\')))
+          (skip (add1 next))
+          (loop (min size (add1 next)) #f))))
+     ((and (< (+ index 2) size)
+           (char=? (string-ref text index) #\')
+           (char=? (string-ref text (+ index 2)) #\'))
+      (loop (+ index 3) #f))
+     ((and (< (add1 index) size)
+           (or (and (char=? (string-ref text index) #\-)
+                    (char=? (string-ref text (add1 index)) #\-))
+               (and (char=? (string-ref text index) #\/)
+                    (char=? (string-ref text (add1 index)) #\-))))
+      index)
+     (else (loop (add1 index) #f)))))
+
 (define (relative root path)
   (string-replace (path->string (find-relative-path root path)) "\\" "/"))
 
@@ -85,7 +115,8 @@
       root
       (lambda (path)
         (and (not (link-exists? path))
-             (not (member (path->string (file-name-from-path path)) '(".git" "compiled")))))))
+             (not
+              (member (path->string (file-name-from-path path)) '(".git" "compiled" ".lake")))))))
     #:unless
     (or (directory-exists? path) (equal? (file-name-from-path path) (string->path ".git"))))
    path))
@@ -141,8 +172,8 @@
                 '("README.md"
                   "LICENSE.md"
                   "docs/diagnostics.md"
-                  "docs/inputs.md"
                   "docs/install.md"
+                  "docs/inputs.md"
                   "docs/plan-wire.md"
                   "docs/stage5.md"
                   "mcp/README.md"
@@ -182,6 +213,16 @@
            admissions)))
       (when (and (regexp-match? #rx"[.]rkt$" (path->string path)) (not (member name references)))
         (define offset (source-comment-offset text))
+        (when offset
+          (issue!
+           name
+           'source-comment
+           (add1
+            (for/sum
+             ((char (in-string (substring text 0 offset))))
+             (if (char=? char #\newline) 1 0))))))
+      (when (regexp-match? #rx"[.]lean$" (path->string path))
+        (define offset (lean-comment-offset text))
         (when offset
           (issue!
            name
