@@ -4,7 +4,7 @@ An editor or model can ask what a word means in a particular Typify language and
 
 ## Run locally
 
-Use Bun 1.4.5 and an executable Typify v1 reader with `ask` and `check`. If you are using a source checkout with Racket 9.3 CS, the following commands link the reader and create its launcher. Run them from the Typify repository root on a new installation.
+Use the latest released Bun and an executable Typify v1 reader with `ask` and `check`. If you are using a source checkout with Racket 9.3 CS, the following commands link the reader and create its launcher. Run them from the Typify repository root on a new installation.
 
 ```sh
 raco pkg install --scope user --deps fail --name typify --link ./src
@@ -23,8 +23,10 @@ Point a stdio MCP client at the Bun executable and the server. Use the absolute 
       "command": "/absolute/path/to/bun",
       "args": [
         "/absolute/path/to/typify/mcp/server.ts",
-        "--reader", "/absolute/path/to/typify-reader",
-        "--declarations", "/absolute/path/to/catalog-language.typify"
+        "--reader",
+        "/absolute/path/to/typify-reader",
+        "--declarations",
+        "/absolute/path/to/catalog-language.typify"
       ]
     }
   }
@@ -35,11 +37,11 @@ Point a stdio MCP client at the Bun executable and the server. Use the absolute 
 
 With the Catalog declarations from the [repository example](../README.md), pass these arguments to the corresponding tools.
 
-| Tool | Arguments | Result |
-|---|---|---|
-| `ask` | `{"language":"Catalog","word":"item"}` | The reader's declaration and accepted forms for `item`. An unknown word returns `status: "undeclared"`. |
-| `check` | `{}` | The declaration file's validation result and diagnostics. |
-| `check` | `{"language":"Catalog","program":"item : journal = Survey"}` | The reader returns `["item","journal","Survey"]` in its terms. |
+| Tool    | Arguments                                                    | Result                                                                                                  |
+| ------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `ask`   | `{"language":"Catalog","word":"item"}`                       | The reader's declaration and accepted forms for `item`. An unknown word returns `status: "undeclared"`. |
+| `check` | `{}`                                                         | The declaration file's validation result and diagnostics.                                               |
+| `check` | `{"language":"Catalog","program":"item : journal = Survey"}` | The reader returns `["item","journal","Survey"]` in its terms.                                          |
 
 To check a proposed change to the language itself, pass its complete source in `declarations`. To check a program whose declaration binds part of its filename, also pass the logical relative `programPath`. The server writes both texts under a fresh temporary directory per call. Native diagnostics retain their codes and source ranges in `structuredContent`. Rejected input sets the MCP tool error flag.
 
