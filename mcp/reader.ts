@@ -5,7 +5,7 @@ import { join } from "node:path";
 type JsonResult = { body: Record<string, unknown>; failed: boolean };
 type JsonOptions = {
   input?: string;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   timeoutMs?: number;
   env?: Record<string, string | undefined>;
   cwd?: string;
@@ -23,8 +23,8 @@ export async function runJson(
   stop.throwIfAborted();
   const grouped = process.platform !== "win32";
   const child = Bun.spawn(command, {
-    cwd: options.cwd,
-    env: options.env,
+    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    ...(options.env === undefined ? {} : { env: options.env }),
     stdin: options.input === undefined ? "ignore" : new Blob([options.input]),
     stdout: "pipe",
     stderr: "pipe",
@@ -90,10 +90,10 @@ export async function runJson(
 }
 
 type ReaderOptions = {
-  language?: string;
-  word?: string;
-  program?: string;
-  programPath?: string;
+  language?: string | undefined;
+  word?: string | undefined;
+  program?: string | undefined;
+  programPath?: string | undefined;
 };
 
 export async function readTypify(
@@ -121,7 +121,7 @@ export async function readTypify(
     );
 
   const declarationPath =
-    programPath.split("/")[0].toLowerCase() === "declarations.typify"
+    (programPath.split("/")[0] ?? "").toLowerCase() === "declarations.typify"
       ? "language.typify"
       : "declarations.typify";
   const args = ["--json", "--", operation, declarationPath];

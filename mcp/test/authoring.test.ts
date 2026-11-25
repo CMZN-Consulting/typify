@@ -54,15 +54,17 @@ async function withClient(
   args: string[],
   run: (client: Client) => Promise<void>,
 ) {
+  const runtime = Bun.argv[0];
+  if (runtime === undefined) throw new Error("Bun.argv names no runtime");
   const client = new Client({ name: "typify-author-test", version: "1.0.0" });
   const transport = new StdioClientTransport({
-    command: Bun.argv[0],
+    command: runtime,
     args: [server, "--reader", reader, ...args],
     cwd: project,
     stderr: "inherit",
     env: {
       HOME: project,
-      PATH: [dirname(Bun.argv[0]), Bun.env.PATH].join(delimiter),
+      PATH: [dirname(runtime), Bun.env["PATH"]].join(delimiter),
       LANG: "C.UTF-8",
     },
   });

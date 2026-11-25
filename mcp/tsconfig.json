@@ -7,7 +7,17 @@
     "strict": true,
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
-    "types": ["bun"]
+    "types": ["bun"],
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false
   },
   "include": ["**/*.ts"]
 }
