@@ -86,7 +86,7 @@
      'id
      "own"
      'match
-     '("src/own.rkt" "scripts/**" "LICENSE.md" "mcp/**")
+     '("src/own.rkt" "scripts/**" "LICENSE" "mcp/**")
      'origin
      "original"
      'license
@@ -155,7 +155,7 @@
 
 (define (build-root parent name pin)
   (define root (build-path parent name))
-  (write-text! root "LICENSE.md" license-text)
+  (write-text! root "LICENSE" license-text)
   (write-text! root "src/own.rkt" "#lang racket/base\n")
   (write-text! root "src/classes.rkt" (string-replace classes-text "PIN" pin))
   (write-text! root "test/facts-path.py" (string-replace python-text "PIN" pin))
@@ -250,20 +250,17 @@
    '("ambiguous")
    "a file in two groups fails")
   (define without-notice (fresh))
-  (changed!
-   without-notice
-   "LICENSE.md"
-   (string-replace license-text "UNICODE LICENSE V3" "removed"))
+  (changed! without-notice "LICENSE" (string-replace license-text "UNICODE LICENSE V3" "removed"))
   (check
    (sort (remove-duplicates (kinds (run without-notice))) string<?)
    '("notice-missing")
-   "a license whose notice text is gone from LICENSE.md fails")
+   "a license whose notice text is gone from LICENSE fails")
   (define no-license-file (fresh))
-  (delete-file (build-path no-license-file "LICENSE.md"))
+  (delete-file (build-path no-license-file "LICENSE"))
   (check
    (and (member "license-file-missing" (kinds (run no-license-file))) #t)
    #t
-   "a missing LICENSE.md fails")
+   "a missing LICENSE fails")
   (check
    (and (member
          "license-unknown"
@@ -554,7 +551,7 @@
      "mac-ok.json"
      "typify-macos-aarch64.tar.gz"
      (list
-      (file-entry "typify/LICENSE.md" 'null sha-a)
+      (file-entry "typify/LICENSE" 'null sha-a)
       (file-entry "typify/bin/typify" "macho" sha-b)
       (file-entry "typify/lib/x/libcrypto.3.dylib" "macho" sha-a))
      '()))
@@ -663,11 +660,11 @@
    #t
    "a native row without a sha256 fails")
   (define archive (build-path parent "archive"))
-  (write-text! archive "typify/LICENSE.md" license-text)
+  (write-text! archive "typify/LICENSE" license-text)
   (write-text!
    archive
    "typify/MANIFEST.txt"
-   (string-append (sha256-text license-text) "  0644  typify/LICENSE.md\n"))
+   (string-append (sha256-text license-text) "  0644  typify/LICENSE\n"))
   (check
    (kinds (run (fresh) (inventory pin) #:archive archive))
    '()
@@ -679,17 +676,17 @@
    '("archive-license-missing" "archive-manifest-missing")
    "an archive with no license and no manifest fails")
   (define different (build-path parent "different"))
-  (write-text! different "typify/LICENSE.md" "MIT License\n")
+  (write-text! different "typify/LICENSE" "MIT License\n")
   (write-text!
    different
    "typify/MANIFEST.txt"
-   (string-append (sha256-text "MIT License\n") "  0644  typify/LICENSE.md\n"))
+   (string-append (sha256-text "MIT License\n") "  0644  typify/LICENSE\n"))
   (check
    (kinds (run (fresh) (inventory pin) #:archive different))
    '("archive-license-differs")
    "an archive with another license text fails")
   (define unlisted-archive (build-path parent "unlisted-archive"))
-  (write-text! unlisted-archive "typify/LICENSE.md" license-text)
+  (write-text! unlisted-archive "typify/LICENSE" license-text)
   (write-text!
    unlisted-archive
    "typify/MANIFEST.txt"
@@ -699,11 +696,11 @@
    '("archive-license-unlisted")
    "an archive whose manifest omits the license fails")
   (define stale-hash (build-path parent "stale-hash"))
-  (write-text! stale-hash "typify/LICENSE.md" license-text)
+  (write-text! stale-hash "typify/LICENSE" license-text)
   (write-text!
    stale-hash
    "typify/MANIFEST.txt"
-   (string-append (make-string 64 #\0) "  0644  typify/LICENSE.md\n"))
+   (string-append (make-string 64 #\0) "  0644  typify/LICENSE\n"))
   (check
    (kinds (run (fresh) (inventory pin) #:archive stale-hash))
    '("archive-license-manifest-hash")

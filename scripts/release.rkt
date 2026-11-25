@@ -845,7 +845,7 @@
      top
      (build-path source "src")
      (build-path top "bin" (hash-ref platform 'program))))
-  (copy-file (build-path source "LICENSE.md") (build-path top "LICENSE.md"))
+  (copy-file (build-path source "LICENSE") (build-path top "LICENSE"))
   (define entries (with-manifest (staged-entries stage windows?)))
   (define scan (scan-paths entries root checkout))
   (unless (hash-ref scan 'pass)

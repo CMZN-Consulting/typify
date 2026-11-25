@@ -170,7 +170,7 @@ COMMIT=$(git -C "$REPOSITORY" rev-parse --verify 'HEAD^{commit}')
 TREE=$(git -C "$REPOSITORY" rev-parse --verify 'HEAD^{tree}')
 EPOCH=$(git -C "$REPOSITORY" log -1 --format=%ct HEAD)
 mkdir -p -- "$ROOT/typify"
-git -C "$REPOSITORY" -c core.autocrlf=false -c core.eol=lf archive --format=tar HEAD -- src LICENSE.md | tar -xf - -C "$ROOT/typify"
+git -C "$REPOSITORY" -c core.autocrlf=false -c core.eol=lf archive --format=tar HEAD -- src LICENSE | tar -xf - -C "$ROOT/typify"
 mkdir -p -- "$OUTPUT"
 
 "$RACKET" "$(native_path "$REPOSITORY/scripts/release.rkt")" build \

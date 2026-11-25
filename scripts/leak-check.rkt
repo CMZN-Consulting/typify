@@ -11,7 +11,7 @@
 
 (provide check-repository source-comment-offset lean-comment-offset frozen-reference-files)
 
-(define required-top-level '("README.md" "LICENSE.md" "src" "test" "scripts" ".github"))
+(define required-top-level '("README.md" "LICENSE" "src" "test" "scripts" ".github"))
 
 (define top-level (append required-top-level '("mcp" "docs" "lean" ".gitignore" ".gitattributes")))
 
@@ -170,7 +170,6 @@
            (or (member
                 name
                 '("README.md"
-                  "LICENSE.md"
                   "docs/diagnostics.md"
                   "docs/install.md"
                   "docs/inputs.md"

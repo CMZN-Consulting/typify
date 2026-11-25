@@ -13,7 +13,7 @@ One archive per platform, with names that carry no version:
 | macOS aarch64 (Apple silicon) | macOS 15                   | `typify-macos-aarch64.tar.gz` |
 | Windows x86_64                | Windows Server 2022        | `typify-windows-x86_64.zip`   |
 
-No other platform has an archive. Each archive unpacks to a directory `typify/` holding the program, `typify/share/typify.typify` (the self-declaration, which you can check with `typify check typify/share/typify.typify --json`), `typify/LICENSE.md` (the license of Typify and the notices of the Racket runtime and of the native libraries inside the archive) and `typify/MANIFEST.txt`. No Racket needs to be installed.
+No other platform has an archive. Each archive unpacks to a directory `typify/` holding the program, `typify/share/typify.typify` (the self-declaration, which you can check with `typify check typify/share/typify.typify --json`), `typify/LICENSE` (the license of Typify and the notices of the Racket runtime and of the native libraries inside the archive) and `typify/MANIFEST.txt`. No Racket needs to be installed.
 
 ## Download
 

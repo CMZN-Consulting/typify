@@ -130,7 +130,7 @@
   (define data (hash-ref inventory 'data '()))
   (define embedded (hash-ref inventory 'embedded '()))
   (define dependencies (hash-ref inventory 'dependencies '()))
-  (define license-name (hash-ref inventory 'license-file "LICENSE.md"))
+  (define license-name (hash-ref inventory 'license-file "LICENSE"))
   (define license-path (build-path root license-name))
   (define license-text (if (file-exists? license-path) (file->string license-path) #f))
   (unless license-text (issue! license-name 'license-file-missing))

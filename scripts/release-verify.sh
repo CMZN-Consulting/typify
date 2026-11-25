@@ -112,7 +112,7 @@ for REPLICA in a b; do
   expect "build $REPLICA: native library inventory and notices match archive" 0 "native-license-$REPLICA.json" \
     rkt scripts/license-check.rkt --release --root "$(native_path "$REPOSITORY")" --native-receipt "$(native_path "$OUTPUT/native-inspect-$REPLICA.json")"
   unpack "$ARCHIVE" "$WORK/$REPLICA"
-  expect "build $REPLICA: license provenance, packed LICENSE.md and manifest" 0 "license-$REPLICA.json" \
+  expect "build $REPLICA: license provenance, packed LICENSE and manifest" 0 "license-$REPLICA.json" \
     rkt scripts/license-check.rkt --release --root "$(native_path "$REPOSITORY")" --archive "$(native_path "$WORK/$REPLICA")"
   expect "build $REPLICA: native $PROGRAM --version" 0 "version-$REPLICA.txt" "$WORK/$REPLICA/$PROGRAM" --version
 done

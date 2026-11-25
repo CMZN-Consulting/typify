@@ -42,7 +42,7 @@
   (for
    ((directory '("src" "test" "scripts" ".github")))
    (make-directory* (build-path root directory)))
-  (for ((file '("README.md" "LICENSE.md"))) (write-bytes-file (build-path root file) #""))
+  (for ((file '("README.md" "LICENSE"))) (write-bytes-file (build-path root file) #""))
   (when fixtures?
     (for
      ((fixture fixture-hashes))

@@ -29,12 +29,12 @@ irm https://typify.science/install.ps1 | iex
 
 The 1.0.0 release publishes standalone archives on [GitHub Releases](https://github.com/CMZN-Consulting/typify/releases/tag/v1.0.0) and OCI binary artifacts under [GitHub Packages](https://github.com/orgs/CMZN-Consulting/packages?repo_name=typify) (`ghcr.io/cmzn-consulting/typify:1.0.0` multi-platform index plus per-platform packages). No Racket installation is required.
 
-| Platform | Release archive | GitHub Package (OCI) |
-| --- | --- | --- |
-| Linux `x86_64` | [typify-linux-x86_64.tar.gz](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-linux-x86_64.tar.gz) | [`ghcr.io/cmzn-consulting/typify-linux-x86_64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-linux-x86_64) |
-| Linux `ARM64` | [typify-linux-aarch64.tar.gz](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-linux-aarch64.tar.gz) | [`ghcr.io/cmzn-consulting/typify-linux-aarch64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-linux-aarch64) |
-| macOS `ARM64` | [typify-macos-aarch64.tar.gz](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-macos-aarch64.tar.gz) | [`ghcr.io/cmzn-consulting/typify-macos-aarch64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-macos-aarch64) |
-| Windows `x86_64` | [typify-windows-x86_64.zip](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-windows-x86_64.zip) | [`ghcr.io/cmzn-consulting/typify-windows-x86_64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-windows-x86_64) |
+| Platform         | Release archive                                                                                                               | GitHub Package (OCI)                                                                                                                    |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Linux `x86_64`   | [typify-linux-x86_64.tar.gz](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-linux-x86_64.tar.gz)   | [`ghcr.io/cmzn-consulting/typify-linux-x86_64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-linux-x86_64)     |
+| Linux `ARM64`    | [typify-linux-aarch64.tar.gz](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-linux-aarch64.tar.gz) | [`ghcr.io/cmzn-consulting/typify-linux-aarch64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-linux-aarch64)   |
+| macOS `ARM64`    | [typify-macos-aarch64.tar.gz](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-macos-aarch64.tar.gz) | [`ghcr.io/cmzn-consulting/typify-macos-aarch64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-macos-aarch64)   |
+| Windows `x86_64` | [typify-windows-x86_64.zip](https://github.com/CMZN-Consulting/typify/releases/download/v1.0.0/typify-windows-x86_64.zip)     | [`ghcr.io/cmzn-consulting/typify-windows-x86_64:1.0.0`](https://github.com/CMZN-Consulting/typify/pkgs/container/typify-windows-x86_64) |
 
 The [installation guide](docs/install.md) describes SLSA attestation (`gh attestation verify`) and manifest tree checks. To unpack an archive manually on Linux or macOS, start in a directory containing only your downloaded archive:
 
@@ -96,11 +96,11 @@ The answer includes the form you can write, the term it produces, its count and 
 
 [`lean/`](lean) mechanizes a facts-only declaration fragment of Typify v1 under `leanprover/lean4:v4.36.0` with zero comments, zero user axioms, and zero `sorry` placeholders:
 
-| Law | Wiki page | Statement & Proof |
-| --- | --- | --- |
-| **Formality** | [Metalogic-Formality](https://github.com/CMZN-Consulting/typify/wiki/Metalogic-Formality) | [`FormalityStatement.lean`](lean/TypifyMetalogic/FormalityStatement.lean) · [`FormalityProof.lean`](lean/TypifyMetalogic/FormalityProof.lean) |
-| **Conservative Extension** | [Metalogic-Extension](https://github.com/CMZN-Consulting/typify/wiki/Metalogic-Extension) | [`ExtensionStatement.lean`](lean/TypifyMetalogic/ExtensionStatement.lean) · [`ExtensionProof.lean`](lean/TypifyMetalogic/ExtensionProof.lean) |
-| **Ontology Representation** | [Metalogic-Ontology](https://github.com/CMZN-Consulting/typify/wiki/Metalogic-Ontology) | [`OntologyStatement.lean`](lean/TypifyMetalogic/OntologyStatement.lean) · [`OntologyProof.lean`](lean/TypifyMetalogic/OntologyProof.lean) |
+| Law                         | Wiki page                                                                                 | Statement & Proof                                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Formality**               | [Metalogic-Formality](https://github.com/CMZN-Consulting/typify/wiki/Metalogic-Formality) | [`FormalityStatement.lean`](lean/TypifyMetalogic/FormalityStatement.lean) · [`FormalityProof.lean`](lean/TypifyMetalogic/FormalityProof.lean) |
+| **Conservative Extension**  | [Metalogic-Extension](https://github.com/CMZN-Consulting/typify/wiki/Metalogic-Extension) | [`ExtensionStatement.lean`](lean/TypifyMetalogic/ExtensionStatement.lean) · [`ExtensionProof.lean`](lean/TypifyMetalogic/ExtensionProof.lean) |
+| **Ontology Representation** | [Metalogic-Ontology](https://github.com/CMZN-Consulting/typify/wiki/Metalogic-Ontology)   | [`OntologyStatement.lean`](lean/TypifyMetalogic/OntologyStatement.lean) · [`OntologyProof.lean`](lean/TypifyMetalogic/OntologyProof.lean)     |
 
 The release-blocking check `Lean / zero sorry` (`scripts/metalogic-check.py`) compiles every tracked `.lean` module, audits kernel axiom dependencies, reflects each `Prop` mechanically into canonical TeX, and replays [`test/metalogic-conformance.json`](test/metalogic-conformance.json) against the packaged reader.
 
@@ -108,7 +108,7 @@ The release-blocking check `Lean / zero sorry` (`scripts/metalogic-check.py`) co
 
 - **Guides & Reference**: [Documentation Wiki](https://github.com/CMZN-Consulting/typify/wiki) · [Language](https://github.com/CMZN-Consulting/typify/wiki/Language) · [Command line](https://github.com/CMZN-Consulting/typify/wiki/Command-line) · [Examples](https://github.com/CMZN-Consulting/typify/wiki/Examples)
 - **Repository Specs**: [Installing & Verifying Typify](docs/install.md) · [Diagnostic Formats](docs/diagnostics.md) · [Ordered Plan Wire Format](docs/plan-wire.md) · [Observed Inputs](docs/inputs.md) · [Stage 5 Consumer Gate](docs/stage5.md)
-- **Conformance & Tooling**: [Public Conformance Corpus](test/corpus/MANIFEST.md) · [MCP Authoring Server](mcp/README.md) · [License & Third-Party Notices](LICENSE.md)
+- **Conformance & Tooling**: [Public Conformance Corpus](test/corpus/MANIFEST.md) · [MCP Authoring Server](mcp/README.md) · [License & Third-Party Notices](LICENSE)
 
 ## Work from source
 

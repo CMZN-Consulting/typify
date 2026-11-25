@@ -759,7 +759,7 @@
     {
       "id": "license-text",
       "license": "MIT",
-      "match": ["LICENSE.md"],
+      "match": ["LICENSE"],
       "origin": "notice"
     },
     {
@@ -844,7 +844,7 @@
       "origin": "contributed"
     }
   ],
-  "license-file": "LICENSE.md",
+  "license-file": "LICENSE",
   "licenses": {
     "Apache-2.0": {
       "notice": "Apache License"
