@@ -17,7 +17,10 @@
         "syntax": "field-name colon optional-whitespace field-value optional-whitespace"
       },
       "restriction": "Alphabetic/hyphen field names and bounded alphabetic, space and hyphen values. The Typify kernel's colon trimming is not an HTTP message parser.",
-      "classes": [["field", "/[A-Za-z][A-Za-z-]{0,15}/"], ["field-content", "/[A-Za-z][A-Za-z -]{0,23}/"]],
+      "classes": [
+        ["field", "/[A-Za-z][A-Za-z-]{0,15}/"],
+        ["field-content", "/[A-Za-z][A-Za-z -]{0,23}/"]
+      ],
       "production": "<field> : <field-content>",
       "slots": ["field", "field-content"],
       "examples": ["Example-Field: sample", "Sample: plain value"],
@@ -32,10 +35,16 @@
         "syntax": "BindPaths=source:destination"
       },
       "restriction": "One source/destination pair, bounded absolute ASCII paths, no options or expansion.",
-      "classes": [["source", "/\\/[a-z\\/]{1,23}/"], ["destination", "/\\/[a-z\\/]{1,23}/"]],
+      "classes": [
+        ["source", "/\\/[a-z\\/]{1,23}/"],
+        ["destination", "/\\/[a-z\\/]{1,23}/"]
+      ],
       "production": "BindPaths=<source>:<destination>",
       "slots": ["source", "destination"],
-      "examples": ["BindPaths=/srv/source:/run/target", "BindPaths=/data/one:/data/two"],
+      "examples": [
+        "BindPaths=/srv/source:/run/target",
+        "BindPaths=/data/one:/data/two"
+      ],
       "refusals": ["BindPaths=relative:/run/target", "BindPaths=/srv/source:"]
     },
     {
@@ -47,11 +56,22 @@
         "syntax": "RemoteForward bind-address:port host:hostport"
       },
       "restriction": "An explicit dotted IPv4 listening address, numeric ports and a bounded alphabetic destination name; no forwarding is executed.",
-      "classes": [["address", "/[0-9.]{1,15}/"], ["listen", "/[0-9]{1,5}/"], ["host", "/[a-z][a-z.]{0,23}/"], ["target", "/[0-9]{1,5}/"]],
+      "classes": [
+        ["address", "/[0-9.]{1,15}/"],
+        ["listen", "/[0-9]{1,5}/"],
+        ["host", "/[a-z][a-z.]{0,23}/"],
+        ["target", "/[0-9]{1,5}/"]
+      ],
       "production": "RemoteForward <address>:<listen> <host>:<target>",
       "slots": ["address", "listen", "host", "target"],
-      "examples": ["RemoteForward 127.0.0.1:8080 example.test:80", "RemoteForward 127.0.0.1:9000 service.test:443"],
-      "refusals": ["RemoteForward 127.0.0.1:port example.test:80", "RemoteForward 127.0.0.1:8080 example.test:"]
+      "examples": [
+        "RemoteForward 127.0.0.1:8080 example.test:80",
+        "RemoteForward 127.0.0.1:9000 service.test:443"
+      ],
+      "refusals": [
+        "RemoteForward 127.0.0.1:port example.test:80",
+        "RemoteForward 127.0.0.1:8080 example.test:"
+      ]
     },
     {
       "id": "apt-one-line-source",
@@ -62,11 +82,23 @@
         "syntax": "deb [options] uri suite component"
       },
       "restriction": "One arch option, fixed https scheme, bounded host/repository names, one suite and one component; no source is contacted.",
-      "classes": [["arch", "\"amd64\" | \"arm64\""], ["host", "/[a-z][a-z.]{0,23}/"], ["repo", "/[a-z][a-z-]{0,15}/"], ["suite", "\"stable\" | \"testing\""], ["component", "\"main\" | \"contrib\""]],
+      "classes": [
+        ["arch", "\"amd64\" | \"arm64\""],
+        ["host", "/[a-z][a-z.]{0,23}/"],
+        ["repo", "/[a-z][a-z-]{0,15}/"],
+        ["suite", "\"stable\" | \"testing\""],
+        ["component", "\"main\" | \"contrib\""]
+      ],
       "production": "deb [arch=<arch>] https://<host>/<repo> <suite> <component>",
       "slots": ["arch", "host", "repo", "suite", "component"],
-      "examples": ["deb [arch=amd64] https://mirror.test/archive stable main", "deb [arch=arm64] https://packages.test/repo testing contrib"],
-      "refusals": ["deb [arch=unknown] https://mirror.test/archive stable main", "deb [arch=amd64] https://mirror.test/archive stable"]
+      "examples": [
+        "deb [arch=amd64] https://mirror.test/archive stable main",
+        "deb [arch=arm64] https://packages.test/repo testing contrib"
+      ],
+      "refusals": [
+        "deb [arch=unknown] https://mirror.test/archive stable main",
+        "deb [arch=amd64] https://mirror.test/archive stable"
+      ]
     },
     {
       "id": "passwd-record",
@@ -77,11 +109,33 @@
         "syntax": "name:password:UID:GID:GECOS:directory:shell"
       },
       "restriction": "Synthetic account records with an x marker, bounded decimal IDs, display labels, synthetic /srv directories and two shell names. No host account data is read or written.",
-      "classes": [["account", "/[a-z][a-z0-9_-]{0,11}/"], ["password", "\"x\""], ["uid", "/[0-9]{1,5}/"], ["gid", "uid"], ["label", "/[A-Za-z][A-Za-z ]{0,15}/"], ["directory", "/\\/srv\\/[a-z]{1,12}/"], ["shell", "/\\/bin\\/(sh|bash)/"]],
+      "classes": [
+        ["account", "/[a-z][a-z0-9_-]{0,11}/"],
+        ["password", "\"x\""],
+        ["uid", "/[0-9]{1,5}/"],
+        ["gid", "uid"],
+        ["label", "/[A-Za-z][A-Za-z ]{0,15}/"],
+        ["directory", "/\\/srv\\/[a-z]{1,12}/"],
+        ["shell", "/\\/bin\\/(sh|bash)/"]
+      ],
       "production": "<account>:<password>:<uid>:<gid>:<label>:<directory>:<shell>",
-      "slots": ["account", "password", "uid", "gid", "label", "directory", "shell"],
-      "examples": ["sample:x:1000:1000:Sample User:/srv/sample:/bin/sh", "guest:x:2000:2000:Guest:/srv/guest:/bin/bash"],
-      "refusals": ["sample:x:uid:1000:Sample:/srv/sample:/bin/sh", "sample:x:1000:1000:Sample:/srv/sample"]
+      "slots": [
+        "account",
+        "password",
+        "uid",
+        "gid",
+        "label",
+        "directory",
+        "shell"
+      ],
+      "examples": [
+        "sample:x:1000:1000:Sample User:/srv/sample:/bin/sh",
+        "guest:x:2000:2000:Guest:/srv/guest:/bin/bash"
+      ],
+      "refusals": [
+        "sample:x:uid:1000:Sample:/srv/sample:/bin/sh",
+        "sample:x:1000:1000:Sample:/srv/sample"
+      ]
     }
   ]
 }

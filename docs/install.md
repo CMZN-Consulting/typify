@@ -6,12 +6,12 @@ The commands below apply to the four packaged readers when they appear on the [1
 
 One archive per platform, with names that carry no version:
 
-| Platform | Oldest system supported | Archive |
-| --- | --- | --- |
-| Linux x86_64 | Ubuntu 22.04 and its glibc | `typify-linux-x86_64.tar.gz` |
-| Linux aarch64 (ARM64) | Ubuntu 22.04 and its glibc | `typify-linux-aarch64.tar.gz` |
-| macOS aarch64 (Apple silicon) | macOS 15 | `typify-macos-aarch64.tar.gz` |
-| Windows x86_64 | Windows Server 2022 | `typify-windows-x86_64.zip` |
+| Platform                      | Oldest system supported    | Archive                       |
+| ----------------------------- | -------------------------- | ----------------------------- |
+| Linux x86_64                  | Ubuntu 22.04 and its glibc | `typify-linux-x86_64.tar.gz`  |
+| Linux aarch64 (ARM64)         | Ubuntu 22.04 and its glibc | `typify-linux-aarch64.tar.gz` |
+| macOS aarch64 (Apple silicon) | macOS 15                   | `typify-macos-aarch64.tar.gz` |
+| Windows x86_64                | Windows Server 2022        | `typify-windows-x86_64.zip`   |
 
 No other platform has an archive. Each archive unpacks to a directory `typify/` holding the program, `typify/share/typify.typify` (the self-declaration, which you can check with `typify check typify/share/typify.typify --json`), `typify/LICENSE.md` (the license of Typify and the notices of the Racket runtime and of the native libraries inside the archive) and `typify/MANIFEST.txt`. No Racket needs to be installed.
 
@@ -35,7 +35,7 @@ curl.exe -fLO https://github.com/CMZN-Consulting/typify/releases/download/vX.Y.Z
 oras pull ghcr.io/cmzn-consulting/typify-linux-x86_64:v1.0.0
 ```
 
- Verify the pulled archive and manifest with `gh attestation verify` and the unpacked tree check below in the exact same way as a release download.
+Verify the pulled archive and manifest with `gh attestation verify` and the unpacked tree check below in the exact same way as a release download.
 
 ## Unpack and run
 

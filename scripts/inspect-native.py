@@ -88,8 +88,12 @@ def pe_header(data, base):
     if optsize < dirs_at:
         return None
     size_of_headers = struct.unpack_from("<I", data, opt + 60)[0]
-    ndirs = min(struct.unpack_from("<I", data, opt + count_at)[0], 16, (optsize - dirs_at) // 8)
-    dirs = [struct.unpack_from("<II", data, opt + dirs_at + 8 * i) for i in range(ndirs)]
+    ndirs = min(
+        struct.unpack_from("<I", data, opt + count_at)[0], 16, (optsize - dirs_at) // 8
+    )
+    dirs = [
+        struct.unpack_from("<II", data, opt + dirs_at + 8 * i) for i in range(ndirs)
+    ]
     sections = []
     table = opt + optsize
     if table + 40 * nsections > len(data):
@@ -102,10 +106,15 @@ def pe_header(data, base):
     if len(dirs) > 4 and dirs[4][0]:  # the certificate table is a file offset
         extent = max(extent, dirs[4][0] + dirs[4][1])
     symbols, nsymbols = struct.unpack_from("<II", data, pe + 12)
-    if symbols and nsymbols:  # a COFF symbol table, then its string table, ends a MinGW file
+    if (
+        symbols and nsymbols
+    ):  # a COFF symbol table, then its string table, ends a MinGW file
         strings_at = base + symbols + 18 * nsymbols
         if strings_at + 4 <= len(data):
-            extent = max(extent, symbols + 18 * nsymbols + struct.unpack_from("<I", data, strings_at)[0])
+            extent = max(
+                extent,
+                symbols + 18 * nsymbols + struct.unpack_from("<I", data, strings_at)[0],
+            )
     return dict(
         base=base,
         machine=PE_MACHINES.get(machine, hex(machine)),
@@ -222,7 +231,9 @@ def macho_slice(data, base):
         end, size = ">", 28
     else:
         return None
-    cputype, _, filetype, ncmds, sizeofcmds = struct.unpack_from(end + "iiIII", data, base + 4)
+    cputype, _, filetype, ncmds, sizeofcmds = struct.unpack_from(
+        end + "iiIII", data, base + 4
+    )
     row = dict(
         cpu=MACHO_CPUS.get(cputype, hex(cputype)),
         filetype=MACHO_TYPES.get(filetype, filetype),
@@ -240,7 +251,9 @@ def macho_slice(data, base):
         if cmdsize < 8:
             break
         if cmd in MACHO_DYLIB_COMMANDS or cmd in (0x8000001C, 0xE):
-            name = cstring(data, at + struct.unpack_from(end + "I", data, at + 8)[0], at + cmdsize)
+            name = cstring(
+                data, at + struct.unpack_from(end + "I", data, at + 8)[0], at + cmdsize
+            )
             if cmd == 0xD:
                 row["id"] = name
             elif cmd == 0x8000001C:
@@ -286,7 +299,12 @@ def elf(data):
     if data[:4] != b"\x7fELF" or len(data) < 64:
         return None
     if data[4] != 2 or data[5] != 1:
-        return dict(machine=None, type=None, needed=None, note="not ELF64 little-endian; not parsed")
+        return dict(
+            machine=None,
+            type=None,
+            needed=None,
+            note="not ELF64 little-endian; not parsed",
+        )
     etype, machine = struct.unpack_from("<HH", data, 16)
     phoff = struct.unpack_from("<Q", data, 32)[0]
     phentsize, phnum = struct.unpack_from("<HH", data, 54)
@@ -295,7 +313,9 @@ def elf(data):
         p = phoff + i * phentsize
         if p + 56 > len(data):
             break
-        ptype, _, offset, vaddr, _, filesz, _, _ = struct.unpack_from("<IIQQQQQQ", data, p)
+        ptype, _, offset, vaddr, _, filesz, _, _ = struct.unpack_from(
+            "<IIQQQQQQ", data, p
+        )
         if ptype == 1:
             loads.append((vaddr, offset, filesz))
         elif ptype == 2:
@@ -317,7 +337,14 @@ def elf(data):
         if tag == 5:
             strtab = value
         entries.append((tag, value))
-    base = next((o + strtab - v for v, o, n in loads if strtab is not None and v <= strtab < v + n), None)
+    base = next(
+        (
+            o + strtab - v
+            for v, o, n in loads
+            if strtab is not None and v <= strtab < v + n
+        ),
+        None,
+    )
     if base is None:
         return row
     for tag, value in entries:
@@ -350,12 +377,20 @@ RUNTIME_SO = re.compile(
 
 def runtime_paths(data):
     rows = {
-        (m.group(1).decode("latin-1"), m.group(2).decode("latin-1"), m.group(3).decode("latin-1").strip(),
-         m.group(4).decode("latin-1"))
+        (
+            m.group(1).decode("latin-1"),
+            m.group(2).decode("latin-1"),
+            m.group(3).decode("latin-1").strip(),
+            m.group(4).decode("latin-1"),
+        )
         for m in RUNTIME_SO.finditer(data)
     }
-    return [dict(module=a, so=b, versions=c or None, resolved=None if d == "#f" else d[2:-1])
-            for a, b, c, d in sorted(rows)]
+    return [
+        dict(
+            module=a, so=b, versions=c or None, resolved=None if d == "#f" else d[2:-1]
+        )
+        for a, b, c, d in sorted(rows)
+    ]
 
 
 def named_as_strings(data, form, regions):
@@ -373,6 +408,7 @@ def named_as_strings(data, form, regions):
 
 
 # ---------------------------------------------------------------- archive
+
 
 def members(blob, asset):
     if asset.endswith(".zip"):
@@ -392,7 +428,10 @@ def members(blob, asset):
                 elif m.isdir():
                     yield m.name, "dir", m.mode & 0o7777, None
                 else:
-                    kind = {tarfile.SYMTYPE: "symlink", tarfile.LNKTYPE: "hardlink"}.get(m.type, repr(m.type))
+                    kind = {
+                        tarfile.SYMTYPE: "symlink",
+                        tarfile.LNKTYPE: "hardlink",
+                    }.get(m.type, repr(m.type))
                     yield m.name, kind, m.mode & 0o7777, None
     else:
         raise SystemExit(f"inspect-native: unknown archive type: {asset}")
@@ -406,7 +445,9 @@ def load_reference(folder):
         for n in sorted(names):
             full = os.path.join(root, n)
             with open(full, "rb") as f:
-                files[top + "/" + os.path.relpath(full, folder).replace(os.sep, "/")] = f.read()
+                files[
+                    top + "/" + os.path.relpath(full, folder).replace(os.sep, "/")
+                ] = f.read()
     return files
 
 
@@ -422,7 +463,9 @@ def inspect(blob, asset, reference=None):
             continue
         row.update(bytes=len(data), sha256=sha256(data), format=None)
         for rel in ref_by_sha.get(row["sha256"], []):
-            origins.setdefault(path, []).append(dict(path=rel, bytes=len(data), sha256=row["sha256"], match="same file"))
+            origins.setdefault(path, []).append(
+                dict(path=rel, bytes=len(data), sha256=row["sha256"], match="same file")
+            )
         outer = pe_header(data, 0)
         slices = None if outer else macho(data)
         elf_row = None if outer or slices else elf(data)
@@ -433,7 +476,9 @@ def inspect(blob, asset, reference=None):
         if outer:
             described = pe_describe(data, outer)
             row.update(format="pe", machine=described["machine"], dll=described["dll"])
-            linked[path] = dict(imports=described["imports"], delayImports=described["delayImports"])
+            linked[path] = dict(
+                imports=described["imports"], delayImports=described["delayImports"]
+            )
             regions = []
             for h, image in pe_embedded(data, outer):
                 name = image["exportName"] or f"image@{image['offset']}"
@@ -442,28 +487,65 @@ def inspect(blob, asset, reference=None):
                 for rel, content in (reference or {}).items():
                     if data[at : at + len(content)] == content:
                         origins.setdefault(f"{path}!{name}", []).append(
-                            dict(path=rel, bytes=len(content), sha256=sha256(content), match="whole file at the image's offset"))
-                linked[f"{path}!{name}"] = dict(imports=image["imports"], delayImports=image["delayImports"])
-                regions.append((f"{path}!{name}", image["offset"], image["offset"] + image["bytes"]))
+                            dict(
+                                path=rel,
+                                bytes=len(content),
+                                sha256=sha256(content),
+                                match="whole file at the image's offset",
+                            )
+                        )
+                linked[f"{path}!{name}"] = dict(
+                    imports=image["imports"], delayImports=image["delayImports"]
+                )
+                regions.append(
+                    (
+                        f"{path}!{name}",
+                        image["offset"],
+                        image["offset"] + image["bytes"],
+                    )
+                )
             regions.append((path, 0, outer["extent"]))
             strings.update(named_as_strings(data, "pe", regions))
         elif slices:
-            row.update(format="macho", slices=[dict(cpu=s["cpu"], filetype=s["filetype"]) for s in slices])
+            row.update(
+                format="macho",
+                slices=[dict(cpu=s["cpu"], filetype=s["filetype"]) for s in slices],
+            )
             linked[path] = [
-                dict(cpu=s["cpu"], id=s["id"], loads=s["loads"], rpaths=s["rpaths"],
-                     dylinker=s["dylinker"], codeSignature=s["codeSignature"])
+                dict(
+                    cpu=s["cpu"],
+                    id=s["id"],
+                    loads=s["loads"],
+                    rpaths=s["rpaths"],
+                    dylinker=s["dylinker"],
+                    codeSignature=s["codeSignature"],
+                )
                 for s in slices
             ]
             strings.update(named_as_strings(data, "macho", [(path, 0, len(data))]))
         elif elf_row:
-            row.update(format="elf", machine=elf_row["machine"], elfType=elf_row["type"])
-            linked[path] = {k: v for k, v in elf_row.items() if k in ("needed", "soname", "runpath", "note")}
+            row.update(
+                format="elf", machine=elf_row["machine"], elfType=elf_row["type"]
+            )
+            linked[path] = {
+                k: v
+                for k, v in elf_row.items()
+                if k in ("needed", "soname", "runpath", "note")
+            }
             strings.update(named_as_strings(data, "elf", [(path, 0, len(data))]))
         shipped.append(row)
-    result = dict(shipped=shipped, embedded=embedded, linked=linked, strings=strings, runtimePaths=runtime)
+    result = dict(
+        shipped=shipped,
+        embedded=embedded,
+        linked=linked,
+        strings=strings,
+        runtimePaths=runtime,
+    )
     if reference is not None:
         result["origins"] = origins
-        result["reference"] = {rel: dict(bytes=len(c), sha256=sha256(c)) for rel, c in reference.items()}
+        result["reference"] = {
+            rel: dict(bytes=len(c), sha256=sha256(c)) for rel, c in reference.items()
+        }
     return result
 
 
@@ -473,9 +555,12 @@ def main():
     parser.add_argument("--sha256", required=True)
     parser.add_argument("--artifact")
     parser.add_argument("--artifact-sha256")
-    parser.add_argument("--reference", help="a folder of known files, such as libraries from a pinned installer; "
-                        "a shipped file with the same sha256, or an embedded image whose bytes begin with a whole "
-                        "known file, is named by that file's path in the folder")
+    parser.add_argument(
+        "--reference",
+        help="a folder of known files, such as libraries from a pinned installer; "
+        "a shipped file with the same sha256, or an embedded image whose bytes begin with a whole "
+        "known file, is named by that file's path in the folder",
+    )
     args = parser.parse_args()
     if bool(args.artifact) != bool(args.artifact_sha256):
         parser.error("--artifact and --artifact-sha256 go together")
@@ -484,7 +569,10 @@ def main():
         blob = f.read()
     digest = sha256(blob)
     if digest != args.sha256.lower():
-        print(f"inspect-native: {name} is sha256 {digest}, not the pinned {args.sha256}", file=sys.stderr)
+        print(
+            f"inspect-native: {name} is sha256 {digest}, not the pinned {args.sha256}",
+            file=sys.stderr,
+        )
         return 1
     receipt = dict(
         tool=dict(name="inspect-native.py", sha256=sha256(open(__file__, "rb").read())),
@@ -496,15 +584,25 @@ def main():
         outer_digest = sha256(outer)
         expected = args.artifact_sha256.lower().removeprefix("sha256:")
         if outer_digest != expected:
-            print(f"inspect-native: the artifact is sha256 {outer_digest}, not the pinned {expected}", file=sys.stderr)
+            print(
+                f"inspect-native: the artifact is sha256 {outer_digest}, not the pinned {expected}",
+                file=sys.stderr,
+            )
             return 1
         with zipfile.ZipFile(io.BytesIO(outer)) as z:
             if name not in z.namelist() or z.read(name) != blob:
-                print(f"inspect-native: the artifact holds no member {name} equal to the asset", file=sys.stderr)
+                print(
+                    f"inspect-native: the artifact holds no member {name} equal to the asset",
+                    file=sys.stderr,
+                )
                 return 1
             listing = sorted(z.namelist())
-        receipt["artifact"] = dict(sha256=outer_digest, members=listing, assetMemberEqual=True)
-    receipt.update(inspect(blob, name, load_reference(args.reference) if args.reference else None))
+        receipt["artifact"] = dict(
+            sha256=outer_digest, members=listing, assetMemberEqual=True
+        )
+    receipt.update(
+        inspect(blob, name, load_reference(args.reference) if args.reference else None)
+    )
     json.dump(receipt, sys.stdout, indent=2, sort_keys=True)
     sys.stdout.write("\n")
     return 0

@@ -1,8 +1,12 @@
 import sys
 
 UNICODE_VERSION = "17.0.0"
-UNICODE_SOURCE = "https://www.unicode.org/Public/17.0.0/ucd/extracted/DerivedGeneralCategory.txt"
-UNICODE_SOURCE_SHA256 = "d62e5bab70ca74f099343f71224fa051cb1fdd61a1ab45c0488c44cfc0b6102e"
+UNICODE_SOURCE = (
+    "https://www.unicode.org/Public/17.0.0/ucd/extracted/DerivedGeneralCategory.txt"
+)
+UNICODE_SOURCE_SHA256 = (
+    "d62e5bab70ca74f099343f71224fa051cb1fdd61a1ab45c0488c44cfc0b6102e"
+)
 UNSAFE = (
     (0, 32),
     (127, 160),
@@ -40,9 +44,7 @@ def canonical(value):
         return True
     parts = value[1:].split("/")
     return all(part not in ("", ".", "..") for part in parts) and not any(
-        low <= ord(character) <= high
-        for character in value
-        for low, high in UNSAFE
+        low <= ord(character) <= high for character in value for low, high in UNSAFE
     )
 
 

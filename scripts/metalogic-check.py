@@ -122,8 +122,12 @@ def scan_lean_formatting(rel_path: str, text: str) -> None:
             elif text[i + 2] == "'":
                 i += 3
                 continue
-        if i + 1 < n and ((ch == "-" and text[i + 1] == "-") or (ch == "/" and text[i + 1] == "-")):
-            raise GateFailure("lean-comment", f"{rel_path} contains a comment at offset {i}")
+        if i + 1 < n and (
+            (ch == "-" and text[i + 1] == "-") or (ch == "/" and text[i + 1] == "-")
+        ):
+            raise GateFailure(
+                "lean-comment", f"{rel_path} contains a comment at offset {i}"
+            )
         i += 1
 
 
@@ -160,20 +164,30 @@ def scan_lean_keywords(rel_path: str, text: str) -> None:
                 j += 1
             word = text[i:j]
             if word in FORBIDDEN_LEAN_WORDS:
-                raise GateFailure("forbidden-lean-keyword", f"{rel_path} contains forbidden token '{word}'")
+                raise GateFailure(
+                    "forbidden-lean-keyword",
+                    f"{rel_path} contains forbidden token '{word}'",
+                )
             i = j
             continue
         i += 1
 
 
-def list_repo_files(repo_dir: Path, git_ref: str | None, allow_uncommitted: bool) -> list[str]:
+def list_repo_files(
+    repo_dir: Path, git_ref: str | None, allow_uncommitted: bool
+) -> list[str]:
     if allow_uncommitted:
         out = []
         for p in sorted(repo_dir.rglob("*")):
             if p.is_symlink() or p.is_dir():
                 continue
             rel = p.relative_to(repo_dir).as_posix()
-            if rel.startswith(".git/") or "/.lake/" in f"/{rel}" or "/compiled/" in f"/{rel}" or "/node_modules/" in f"/{rel}":
+            if (
+                rel.startswith(".git/")
+                or "/.lake/" in f"/{rel}"
+                or "/compiled/" in f"/{rel}"
+                or "/node_modules/" in f"/{rel}"
+            ):
                 continue
             out.append(rel)
         return sorted(out)
@@ -195,7 +209,9 @@ def list_repo_files(repo_dir: Path, git_ref: str | None, allow_uncommitted: bool
     return sorted(line for line in proc.stdout.splitlines() if line)
 
 
-def read_repo_blob(repo_dir: Path, rel_path: str, git_ref: str | None, allow_uncommitted: bool) -> bytes:
+def read_repo_blob(
+    repo_dir: Path, rel_path: str, git_ref: str | None, allow_uncommitted: bool
+) -> bytes:
     if allow_uncommitted:
         p = repo_dir / rel_path
         if not p.is_file():
@@ -765,19 +781,27 @@ def find_lean_bin(explicit_bin: str | None) -> tuple[Path, Path]:
     lake_exe = shutil.which("lake")
     if lean_exe and lake_exe:
         return Path(lean_exe), Path(lake_exe)
-    raise GateFailure("missing-lean-toolchain", "lean and lake not found on PATH or --lean-bin")
+    raise GateFailure(
+        "missing-lean-toolchain", "lean and lake not found on PATH or --lean-bin"
+    )
 
 
-def run_typify_reader(repo_dir: Path, reader_bin: str | None, args: list[str], cwd: Path) -> subprocess.CompletedProcess:
+def run_typify_reader(
+    repo_dir: Path, reader_bin: str | None, args: list[str], cwd: Path
+) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     if reader_bin:
         cmd = [reader_bin, *args]
     else:
         racket_exe = shutil.which("racket")
         if not racket_exe:
-            raise GateFailure("missing-racket", "neither --reader-bin nor racket on PATH")
+            raise GateFailure(
+                "missing-racket", "neither --reader-bin nor racket on PATH"
+            )
         cmd = [racket_exe, str(repo_dir / "src/main.rkt"), *args]
-    return subprocess.run(cmd, cwd=str(cwd), env=env, capture_output=True, text=True, check=False)
+    return subprocess.run(
+        cmd, cwd=str(cwd), env=env, capture_output=True, text=True, check=False
+    )
 
 
 def check_source_side(
@@ -788,19 +812,33 @@ def check_source_side(
     reader_bin: str | None,
 ) -> dict:
     lean_exe, lake_exe = find_lean_bin(lean_bin)
-    ver_proc = subprocess.run([str(lean_exe), "--version"], check=True, capture_output=True, text=True)
+    ver_proc = subprocess.run(
+        [str(lean_exe), "--version"], check=True, capture_output=True, text=True
+    )
     ver_line = ver_proc.stdout.splitlines()[0].strip()
     if EXPECTED_LEAN_VERSION_SUBSTR not in ver_line:
-        raise GateFailure("lean-version-mismatch", f"expected '{EXPECTED_LEAN_VERSION_SUBSTR}', got '{ver_line}'")
+        raise GateFailure(
+            "lean-version-mismatch",
+            f"expected '{EXPECTED_LEAN_VERSION_SUBSTR}', got '{ver_line}'",
+        )
 
     tracked_files = list_repo_files(repo_dir, source_ref, allow_uncommitted)
     lean_files = [f for f in tracked_files if f.endswith(".lean")]
 
-    toolchain_text = read_repo_blob(repo_dir, "lean/lean-toolchain", source_ref, allow_uncommitted).decode("utf-8").strip()
+    toolchain_text = (
+        read_repo_blob(repo_dir, "lean/lean-toolchain", source_ref, allow_uncommitted)
+        .decode("utf-8")
+        .strip()
+    )
     if toolchain_text != EXPECTED_TOOLCHAIN:
-        raise GateFailure("toolchain-file-mismatch", f"lean-toolchain is '{toolchain_text}', expected '{EXPECTED_TOOLCHAIN}'")
+        raise GateFailure(
+            "toolchain-file-mismatch",
+            f"lean-toolchain is '{toolchain_text}', expected '{EXPECTED_TOOLCHAIN}'",
+        )
 
-    lakefile_text = read_repo_blob(repo_dir, "lean/lakefile.toml", source_ref, allow_uncommitted).decode("utf-8")
+    lakefile_text = read_repo_blob(
+        repo_dir, "lean/lakefile.toml", source_ref, allow_uncommitted
+    ).decode("utf-8")
 
     expected_paths = []
     for law in FROZEN_LAWS:
@@ -808,17 +846,23 @@ def check_source_side(
         expected_paths.append(law["proofPath"])
 
     if len(set(expected_paths)) != 2 * len(FROZEN_LAWS):
-        raise GateFailure("duplicate-registered-lean-path", "registered law paths reuse a file")
+        raise GateFailure(
+            "duplicate-registered-lean-path", "registered law paths reuse a file"
+        )
 
     lean_contents: dict[str, str] = {}
     all_modules: list[str] = []
     for rel in lean_files:
         if not rel.startswith("lean/"):
-            raise GateFailure("stray-lean-file", f"tracked Lean file outside lean/: {rel}")
-        sub = rel[len("lean/"):]
-        mod_name = sub[:-len(".lean")].replace("/", ".")
+            raise GateFailure(
+                "stray-lean-file", f"tracked Lean file outside lean/: {rel}"
+            )
+        sub = rel[len("lean/") :]
+        mod_name = sub[: -len(".lean")].replace("/", ".")
         all_modules.append(mod_name)
-        raw = read_repo_blob(repo_dir, rel, source_ref, allow_uncommitted).decode("utf-8")
+        raw = read_repo_blob(repo_dir, rel, source_ref, allow_uncommitted).decode(
+            "utf-8"
+        )
         scan_lean_formatting(rel, raw)
         lean_contents[rel] = raw
 
@@ -826,7 +870,11 @@ def check_source_side(
         tmp = Path(tmp_str)
         lean_work = tmp / "lean"
         lean_work.mkdir(parents=True)
-        for cfg in ("lean/lean-toolchain", "lean/lakefile.toml", "lean/lake-manifest.json"):
+        for cfg in (
+            "lean/lean-toolchain",
+            "lean/lakefile.toml",
+            "lean/lake-manifest.json",
+        ):
             if cfg in tracked_files:
                 (lean_work / Path(cfg).name).write_bytes(
                     read_repo_blob(repo_dir, cfg, source_ref, allow_uncommitted)
@@ -861,7 +909,9 @@ def check_source_side(
                 f"tracked .lean files {sorted(lean_files)} missing required files from {sorted(expected_paths)}",
             )
 
-        conf_bytes = read_repo_blob(repo_dir, "test/metalogic-conformance.json", source_ref, allow_uncommitted)
+        conf_bytes = read_repo_blob(
+            repo_dir, "test/metalogic-conformance.json", source_ref, allow_uncommitted
+        )
         conf_path = tmp / "conformance.json"
         conf_path.write_bytes(conf_bytes)
         out_json_path = tmp / "audit-out.json"
@@ -873,8 +923,7 @@ def check_source_side(
             for l in FROZEN_LAWS
         )
         probe_code = (
-            LEAN_INSPECTOR_TEMPLATE
-            .replace("__IMPORTS__", imports_block)
+            LEAN_INSPECTOR_TEMPLATE.replace("__IMPORTS__", imports_block)
             .replace("__MODULES_ARRAY__", mods_array)
             .replace("__LAW_TUPLES__", law_tuples)
             .replace("__CONFORMANCE_JSON__", conf_path.as_posix())
@@ -899,7 +948,9 @@ def check_source_side(
         for rel, raw in lean_contents.items():
             scan_lean_keywords(rel, raw)
 
-        if len(lean_files) != 2 * len(FROZEN_LAWS) or sorted(lean_files) != sorted(expected_paths):
+        if len(lean_files) != 2 * len(FROZEN_LAWS) or sorted(lean_files) != sorted(
+            expected_paths
+        ):
             raise GateFailure(
                 "lean-inventory-mismatch",
                 f"tracked .lean files {sorted(lean_files)} != expected 2N={2 * len(FROZEN_LAWS)} files {sorted(expected_paths)}",
@@ -908,7 +959,10 @@ def check_source_side(
         for law in FROZEN_LAWS:
             for mkey in ("statementModule", "proofModule"):
                 if f'"{law[mkey]}"' not in lakefile_text:
-                    raise GateFailure("lakefile-target-missing", f"{law[mkey]} missing from lakefile.toml")
+                    raise GateFailure(
+                        "lakefile-target-missing",
+                        f"{law[mkey]} missing from lakefile.toml",
+                    )
 
         audit_data = json.loads(out_json_path.read_text(encoding="utf-8"))
 
@@ -925,14 +979,22 @@ def check_source_side(
             did = dspec["id"]
             ld = lean_decls[did]
             if ld["valid"] != dspec["expectValid"]:
-                raise GateFailure("lean-decl-verdict-mismatch", f"{did}: Lean valid={ld['valid']} != {dspec['expectValid']}")
+                raise GateFailure(
+                    "lean-decl-verdict-mismatch",
+                    f"{did}: Lean valid={ld['valid']} != {dspec['expectValid']}",
+                )
             dfile = racket_dir / f"{did}.typify"
             dfile.write_text(ld["source"], encoding="utf-8")
-            proc = run_typify_reader(repo_dir, reader_bin, ["check", str(dfile), "--json"], racket_dir)
+            proc = run_typify_reader(
+                repo_dir, reader_bin, ["check", str(dfile), "--json"], racket_dir
+            )
             rdoc = json.loads(proc.stdout)
             rok = bool(rdoc.get("ok") is True and proc.returncode == 0)
             if rok != dspec["expectValid"]:
-                raise GateFailure("reader-decl-verdict-mismatch", f"{did}: reader ok={rok} != {dspec['expectValid']}")
+                raise GateFailure(
+                    "reader-decl-verdict-mismatch",
+                    f"{did}: reader ok={rok} != {dspec['expectValid']}",
+                )
             if not dspec["expectValid"]:
                 codes = [diag.get("code") for diag in rdoc.get("diagnostics", [])]
                 if dspec["expectedDiagnosticCode"] not in codes:
@@ -948,7 +1010,10 @@ def check_source_side(
             dspec = decl_spec_by_id[did]
             lp = lean_progs[pid]
             if lp["accepted"] != pspec["expectAccepted"]:
-                raise GateFailure("lean-prog-verdict-mismatch", f"{pid}: Lean accepted={lp['accepted']}")
+                raise GateFailure(
+                    "lean-prog-verdict-mismatch",
+                    f"{pid}: Lean accepted={lp['accepted']}",
+                )
             dfile = racket_dir / f"{did}.typify"
             pfile = racket_dir / f"{pid}.prog"
             pfile.write_text("\n".join(pspec["lines"]) + "\n", encoding="utf-8")
@@ -961,9 +1026,15 @@ def check_source_side(
             rdoc = json.loads(proc.stdout)
             rok = bool(rdoc.get("ok") is True and proc.returncode == 0)
             if rok != pspec["expectAccepted"]:
-                raise GateFailure("reader-prog-verdict-mismatch", f"{pid}: reader ok={rok} != {pspec['expectAccepted']}")
+                raise GateFailure(
+                    "reader-prog-verdict-mismatch",
+                    f"{pid}: reader ok={rok} != {pspec['expectAccepted']}",
+                )
             if pspec["expectAccepted"]:
-                if lp["terms"] != pspec["expectedTerms"] or rdoc.get("terms") != pspec["expectedTerms"]:
+                if (
+                    lp["terms"] != pspec["expectedTerms"]
+                    or rdoc.get("terms") != pspec["expectedTerms"]
+                ):
                     raise GateFailure(
                         "cross-reader-terms-mismatch",
                         f"{pid}: Lean={lp['terms']} Reader={rdoc.get('terms')} Expected={pspec['expectedTerms']}",
@@ -1031,7 +1102,9 @@ def extract_display_math_blocks(md_text: str) -> list[str]:
                 body.append(lines[j])
                 j += 1
             if j >= len(lines):
-                raise GateFailure("unclosed-display-math", "unclosed $$ display-math block")
+                raise GateFailure(
+                    "unclosed-display-math", "unclosed $$ display-math block"
+                )
             blocks.append("\n".join(body).strip())
             i = j + 1
             continue
@@ -1050,33 +1123,62 @@ def check_full_gate(
     reader_bin: str | None,
     allow_placeholder_sha: bool = False,
 ) -> dict:
-    src_result = check_source_side(repo_dir, source_ref, allow_uncommitted, lean_bin, reader_bin)
+    src_result = check_source_side(
+        repo_dir, source_ref, allow_uncommitted, lean_bin, reader_bin
+    )
     if expected_source_sha:
         commit_for_links = expected_source_sha
-        source_sha, source_tree = expected_source_sha, "working-copy" if allow_uncommitted else resolve_git_commit_and_tree(repo_dir, source_ref)[1]
+        source_sha, source_tree = (
+            expected_source_sha,
+            "working-copy"
+            if allow_uncommitted
+            else resolve_git_commit_and_tree(repo_dir, source_ref)[1],
+        )
         if not allow_uncommitted:
             actual_sha, source_tree = resolve_git_commit_and_tree(repo_dir, source_ref)
             if actual_sha != expected_source_sha:
-                raise GateFailure("source-sha-mismatch", f"HEAD {actual_sha} != {expected_source_sha}")
+                raise GateFailure(
+                    "source-sha-mismatch", f"HEAD {actual_sha} != {expected_source_sha}"
+                )
     else:
-        source_sha, source_tree = ("working-copy", "working-copy") if allow_uncommitted else resolve_git_commit_and_tree(repo_dir, source_ref)
+        source_sha, source_tree = (
+            ("working-copy", "working-copy")
+            if allow_uncommitted
+            else resolve_git_commit_and_tree(repo_dir, source_ref)
+        )
         commit_for_links = source_sha
 
     if commit_for_links == "0" * 40 and not allow_placeholder_sha:
-        raise GateFailure("placeholder-source-sha", "0{40} placeholder SHA is forbidden in full gate")
-    if not allow_uncommitted and (not re.fullmatch(r"[0-9a-f]{40}", commit_for_links) or commit_for_links == "0" * 40):
-        raise GateFailure("placeholder-source-sha", f"Invalid source commit SHA for permanent links: {commit_for_links}")
+        raise GateFailure(
+            "placeholder-source-sha", "0{40} placeholder SHA is forbidden in full gate"
+        )
+    if not allow_uncommitted and (
+        not re.fullmatch(r"[0-9a-f]{40}", commit_for_links)
+        or commit_for_links == "0" * 40
+    ):
+        raise GateFailure(
+            "placeholder-source-sha",
+            f"Invalid source commit SHA for permanent links: {commit_for_links}",
+        )
 
-    wiki_sha, wiki_tree = ("working-copy", "working-copy") if allow_uncommitted else resolve_git_commit_and_tree(wiki_dir, wiki_ref)
+    wiki_sha, wiki_tree = (
+        ("working-copy", "working-copy")
+        if allow_uncommitted
+        else resolve_git_commit_and_tree(wiki_dir, wiki_ref)
+    )
     wiki_files = list_repo_files(wiki_dir, wiki_ref, allow_uncommitted)
     tracked_source_files = set(list_repo_files(repo_dir, source_ref, allow_uncommitted))
 
     section_pages = [
-        f for f in wiki_files
-        if Path(f).name == WIKI_SECTION_WELCOME or (Path(f).name.startswith(WIKI_LAW_PREFIX) and f.endswith(".md"))
+        f
+        for f in wiki_files
+        if Path(f).name == WIKI_SECTION_WELCOME
+        or (Path(f).name.startswith(WIKI_LAW_PREFIX) and f.endswith(".md"))
     ]
     if WIKI_SECTION_WELCOME not in section_pages:
-        raise GateFailure("missing-welcome-page", f"{WIKI_SECTION_WELCOME} missing from wiki")
+        raise GateFailure(
+            "missing-welcome-page", f"{WIKI_SECTION_WELCOME} missing from wiki"
+        )
 
     discovered_law_pages = [p for p in section_pages if p != WIKI_SECTION_WELCOME]
     expected_law_pages = [l["wikiPage"] for l in FROZEN_LAWS]
@@ -1095,17 +1197,26 @@ def check_full_gate(
         )
 
     for nav_page in ("Home.md", "Language.md"):
-        nav_text = read_repo_blob(wiki_dir, nav_page, wiki_ref, allow_uncommitted).decode("utf-8")
+        nav_text = read_repo_blob(
+            wiki_dir, nav_page, wiki_ref, allow_uncommitted
+        ).decode("utf-8")
         nav_targets = [t.split("#", 1)[0] for _, t in extract_markdown_links(nav_text)]
         if "Metalogic" not in nav_targets:
-            raise GateFailure("section-not-discoverable", f"{nav_page} does not link to Metalogic")
+            raise GateFailure(
+                "section-not-discoverable", f"{nav_page} does not link to Metalogic"
+            )
 
-    welcome_bytes = read_repo_blob(wiki_dir, WIKI_SECTION_WELCOME, wiki_ref, allow_uncommitted)
+    welcome_bytes = read_repo_blob(
+        wiki_dir, WIKI_SECTION_WELCOME, wiki_ref, allow_uncommitted
+    )
     welcome_text = welcome_bytes.decode("utf-8")
     if "\r" in welcome_text:
         raise GateFailure("wiki-crlf", f"{WIKI_SECTION_WELCOME} contains CR")
     if not welcome_text.startswith("As of v1.0.0\n"):
-        raise GateFailure("wiki-stamp-missing", f"{WIKI_SECTION_WELCOME} missing 'As of v1.0.0' header")
+        raise GateFailure(
+            "wiki-stamp-missing",
+            f"{WIKI_SECTION_WELCOME} missing 'As of v1.0.0' header",
+        )
 
     welcome_links = extract_markdown_links(welcome_text)
     law_link_targets = [
@@ -1131,7 +1242,9 @@ def check_full_gate(
         if "\r" in page_text:
             raise GateFailure("wiki-crlf", f"{page_name} contains CR")
         if not page_text.startswith("As of v1.0.0\n"):
-            raise GateFailure("wiki-stamp-missing", f"{page_name} missing 'As of v1.0.0' header")
+            raise GateFailure(
+                "wiki-stamp-missing", f"{page_name} missing 'As of v1.0.0' header"
+            )
 
         math_blocks = extract_display_math_blocks(page_text)
         if len(math_blocks) != 1:
@@ -1155,14 +1268,25 @@ def check_full_gate(
                 f"{page_name} must have exact 2 source links, found {len(ext_links)}: {ext_links}",
             )
         expected_stmt_url = f"https://github.com/{REPO_SLUG}/blob/{commit_for_links}/{law['statementPath']}"
-        expected_proof_url = f"https://github.com/{REPO_SLUG}/blob/{commit_for_links}/{law['proofPath']}"
-        if ext_links != [("Statement", expected_stmt_url), ("Proof", expected_proof_url)]:
+        expected_proof_url = (
+            f"https://github.com/{REPO_SLUG}/blob/{commit_for_links}/{law['proofPath']}"
+        )
+        if ext_links != [
+            ("Statement", expected_stmt_url),
+            ("Proof", expected_proof_url),
+        ]:
             raise GateFailure(
                 "source-link-mismatch",
                 f"{page_name} links {ext_links} != [('Statement', '{expected_stmt_url}'), ('Proof', '{expected_proof_url}')]",
             )
-        if law["statementPath"] not in tracked_source_files or law["proofPath"] not in tracked_source_files:
-            raise GateFailure("link-escapes-inventory", f"{page_name} link target missing from Git inventory")
+        if (
+            law["statementPath"] not in tracked_source_files
+            or law["proofPath"] not in tracked_source_files
+        ):
+            raise GateFailure(
+                "link-escapes-inventory",
+                f"{page_name} link target missing from Git inventory",
+            )
 
         verified_pages[page_name] = sha256_bytes(raw_page)
 
@@ -1180,7 +1304,9 @@ def check_full_gate(
     }
 
 
-def copy_clean_tree(src: Path, dst: Path, files: list[str], ref: str | None, allow_uncommitted: bool) -> None:
+def copy_clean_tree(
+    src: Path, dst: Path, files: list[str], ref: str | None, allow_uncommitted: bool
+) -> None:
     for rel in files:
         target = dst / rel
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -1201,7 +1327,9 @@ def run_controls(
     src_files = list_repo_files(repo_dir, source_ref, allow_uncommitted)
     wiki_files = list_repo_files(wiki_dir, wiki_ref, allow_uncommitted)
     link_sha = expected_source_sha or (
-        "working-copy" if allow_uncommitted else resolve_git_commit_and_tree(repo_dir, source_ref)[0]
+        "working-copy"
+        if allow_uncommitted
+        else resolve_git_commit_and_tree(repo_dir, source_ref)[0]
     )
 
     results = []
@@ -1217,7 +1345,14 @@ def run_controls(
         reader_bin,
         allow_placeholder_sha=allow_placeholder_sha,
     )
-    results.append({"control": "unmodified-pair-green", "expected": "green", "actual": "green", "pass": True})
+    results.append(
+        {
+            "control": "unmodified-pair-green",
+            "expected": "green",
+            "actual": "green",
+            "pass": True,
+        }
+    )
 
     def expect_red(name: str, expected_codes: set[str], mutator) -> None:
         with tempfile.TemporaryDirectory(prefix=f"metalogic-ctrl-{name}-") as tmp_str:
@@ -1241,26 +1376,36 @@ def run_controls(
                 )
             except GateFailure as exc:
                 ok = exc.code in expected_codes
-                results.append({
-                    "control": name,
-                    "expected": "red",
-                    "actual": "red",
-                    "code": exc.code,
-                    "pass": ok,
-                })
+                results.append(
+                    {
+                        "control": name,
+                        "expected": "red",
+                        "actual": "red",
+                        "code": exc.code,
+                        "pass": ok,
+                    }
+                )
                 if not ok:
                     raise GateFailure(
                         "unexpected-control-code",
                         f"control {name} failed with {exc.code} ({exc.detail}), expected one of {expected_codes}",
                     )
                 return
-            raise GateFailure("control-passed-unexpectedly", f"negative control {name} unexpectedly passed")
+            raise GateFailure(
+                "control-passed-unexpectedly",
+                f"negative control {name} unexpectedly passed",
+            )
 
     def mut_quantifier(_s: Path, w: Path) -> None:
         p = w / "Metalogic-Formality.md"
         txt = p.read_text(encoding="utf-8")
         assert "\\forall d : \\mathsf{Decl}" in txt
-        p.write_text(txt.replace("\\forall d : \\mathsf{Decl}", "\\exists d : \\mathsf{Decl}", 1), encoding="utf-8")
+        p.write_text(
+            txt.replace(
+                "\\forall d : \\mathsf{Decl}", "\\exists d : \\mathsf{Decl}", 1
+            ),
+            encoding="utf-8",
+        )
 
     def mut_reversed_rel(_s: Path, w: Path) -> None:
         p = w / "Metalogic-Ontology.md"
@@ -1284,15 +1429,24 @@ def run_controls(
 
     def mut_orphan_lean(s: Path, _w: Path) -> None:
         extra = s / "lean/TypifyMetalogic/OrphanHelper.lean"
-        extra.write_text("namespace TypifyMetalogic\ndef orphanVal : Nat := 1\nend TypifyMetalogic\n", encoding="utf-8")
+        extra.write_text(
+            "namespace TypifyMetalogic\ndef orphanVal : Nat := 1\nend TypifyMetalogic\n",
+            encoding="utf-8",
+        )
 
     def mut_unimported_compile_err(s: Path, _w: Path) -> None:
         extra = s / "lean/TypifyMetalogic/UnimportedBroken.lean"
-        extra.write_text("namespace TypifyMetalogic\ndef brokenVal : Nat := \"not-a-nat\"\nend TypifyMetalogic\n", encoding="utf-8")
+        extra.write_text(
+            'namespace TypifyMetalogic\ndef brokenVal : Nat := "not-a-nat"\nend TypifyMetalogic\n',
+            encoding="utf-8",
+        )
 
     def mut_unimported_sorry(s: Path, _w: Path) -> None:
         extra = s / "lean/TypifyMetalogic/UnimportedSorry.lean"
-        extra.write_text("namespace TypifyMetalogic\ntheorem unimported_claim : False := by sorry\nend TypifyMetalogic\n", encoding="utf-8")
+        extra.write_text(
+            "namespace TypifyMetalogic\ntheorem unimported_claim : False := by sorry\nend TypifyMetalogic\n",
+            encoding="utf-8",
+        )
 
     def mut_orphan_wiki(_s: Path, w: Path) -> None:
         extra = w / "Metalogic-Orphan.md"
@@ -1304,18 +1458,22 @@ def run_controls(
         lf = s / "lean/lakefile.toml"
         lf.write_text(
             "\n".join(
-                ln for ln in lf.read_text(encoding="utf-8").splitlines()
+                ln
+                for ln in lf.read_text(encoding="utf-8").splitlines()
                 if "Ontology" not in ln
-            ) + "\n",
+            )
+            + "\n",
             encoding="utf-8",
         )
         (w / "Metalogic-Ontology.md").unlink()
         wm = w / "Metalogic.md"
         wm.write_text(
             "\n".join(
-                ln for ln in wm.read_text(encoding="utf-8").splitlines()
+                ln
+                for ln in wm.read_text(encoding="utf-8").splitlines()
                 if "Metalogic-Ontology" not in ln
-            ) + "\n",
+            )
+            + "\n",
             encoding="utf-8",
         )
 
@@ -1342,19 +1500,47 @@ def run_controls(
         txt = p.read_text(encoding="utf-8")
         bad_sha = "f" * 40 if link_sha == "0" * 40 else "0" * 40
         assert f"/blob/{link_sha}/" in txt
-        p.write_text(txt.replace(f"/blob/{link_sha}/", f"/blob/{bad_sha}/", 1), encoding="utf-8")
+        p.write_text(
+            txt.replace(f"/blob/{link_sha}/", f"/blob/{bad_sha}/", 1), encoding="utf-8"
+        )
 
-    expect_red("changed-visible-quantifier", {"formula-correspondence-mismatch"}, mut_quantifier)
-    expect_red("reversed-binary-relation", {"formula-correspondence-mismatch"}, mut_reversed_rel)
+    expect_red(
+        "changed-visible-quantifier",
+        {"formula-correspondence-mismatch"},
+        mut_quantifier,
+    )
+    expect_red(
+        "reversed-binary-relation",
+        {"formula-correspondence-mismatch"},
+        mut_reversed_rel,
+    )
     expect_red("swapped-proof-theorem-type", {"kernel-audit-failed"}, mut_swapped_proof)
     expect_red("orphan-lean-file", {"lean-inventory-mismatch"}, mut_orphan_lean)
-    expect_red("unimported-module-compile-error", {"lake-build-failed"}, mut_unimported_compile_err)
+    expect_red(
+        "unimported-module-compile-error",
+        {"lake-build-failed"},
+        mut_unimported_compile_err,
+    )
     expect_red("unimported-module-sorry", {"kernel-audit-failed"}, mut_unimported_sorry)
-    expect_red("orphan-wiki-page", {"wiki-section-count-mismatch", "wiki-law-inventory-mismatch"}, mut_orphan_wiki)
-    expect_red("removed-required-triple", {"lean-inventory-mismatch", "wiki-section-count-mismatch"}, mut_removed_triple)
+    expect_red(
+        "orphan-wiki-page",
+        {"wiki-section-count-mismatch", "wiki-law-inventory-mismatch"},
+        mut_orphan_wiki,
+    )
+    expect_red(
+        "removed-required-triple",
+        {"lean-inventory-mismatch", "wiki-section-count-mismatch"},
+        mut_removed_triple,
+    )
     expect_red("proof-sorry-placeholder", {"kernel-audit-failed"}, mut_proof_sorry)
-    expect_red("unused-helper-sorry-placeholder", {"kernel-audit-failed"}, mut_unused_helper_sorry)
-    expect_red("wiki-link-placeholder-sha", {"source-link-mismatch"}, mut_wiki_link_placeholder)
+    expect_red(
+        "unused-helper-sorry-placeholder",
+        {"kernel-audit-failed"},
+        mut_unused_helper_sorry,
+    )
+    expect_red(
+        "wiki-link-placeholder-sha", {"source-link-mismatch"}, mut_wiki_link_placeholder
+    )
 
     return {
         "schema": "typify-metalogic-controls-v1",
@@ -1366,7 +1552,9 @@ def run_controls(
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mode", choices=["render-tex", "ci", "full", "controls"], required=True)
+    ap.add_argument(
+        "--mode", choices=["render-tex", "ci", "full", "controls"], required=True
+    )
     ap.add_argument("--repo-dir", default=".")
     ap.add_argument("--wiki-dir")
     ap.add_argument("--source-ref")
@@ -1385,7 +1573,9 @@ def main() -> int:
             res = check_source_side(
                 repo_dir,
                 args.source_ref,
-                args.allow_uncommitted if args.mode == "render-tex" else args.allow_uncommitted,
+                args.allow_uncommitted
+                if args.mode == "render-tex"
+                else args.allow_uncommitted,
                 args.lean_bin,
                 args.reader_bin,
             )
@@ -1396,7 +1586,9 @@ def main() -> int:
             }
         elif args.mode == "full":
             if not args.wiki_dir:
-                raise GateFailure("missing-wiki-dir", "--wiki-dir is required for --mode full")
+                raise GateFailure(
+                    "missing-wiki-dir", "--wiki-dir is required for --mode full"
+                )
             payload = check_full_gate(
                 repo_dir,
                 Path(args.wiki_dir).resolve(),
@@ -1410,7 +1602,9 @@ def main() -> int:
             )
         else:
             if not args.wiki_dir:
-                raise GateFailure("missing-wiki-dir", "--wiki-dir is required for --mode controls")
+                raise GateFailure(
+                    "missing-wiki-dir", "--wiki-dir is required for --mode controls"
+                )
             payload = run_controls(
                 repo_dir,
                 Path(args.wiki_dir).resolve(),
@@ -1425,7 +1619,9 @@ def main() -> int:
     except GateFailure as exc:
         err_obj = {"pass": False, "errorCode": exc.code, "detail": exc.detail}
         if args.output:
-            Path(args.output).write_text(json.dumps(err_obj, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            Path(args.output).write_text(
+                json.dumps(err_obj, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
         print(json.dumps(err_obj, sort_keys=True), file=sys.stderr)
         return 1
 

@@ -6,11 +6,11 @@
       "language": "Witness",
       "expectValid": true,
       "metaLines": [
-        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
-        {"kind": "isClass", "name": "peer", "literals": ["ada", "ben"]},
-        {"kind": "termUnary", "ctor": "member", "argClass": "person"},
-        {"kind": "formUnary", "verb": "member", "slot": "person"},
-        {"kind": "doesUnary", "ctor": "member", "slot": "person"}
+        { "kind": "isClass", "name": "person", "literals": ["ada", "ben"] },
+        { "kind": "isClass", "name": "peer", "literals": ["ada", "ben"] },
+        { "kind": "termUnary", "ctor": "member", "argClass": "person" },
+        { "kind": "formUnary", "verb": "member", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "member", "slot": "person" }
       ]
     },
     {
@@ -18,14 +18,30 @@
       "language": "Witness",
       "expectValid": true,
       "metaLines": [
-        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
-        {"kind": "isClass", "name": "peer", "literals": ["ada", "ben"]},
-        {"kind": "termUnary", "ctor": "member", "argClass": "person"},
-        {"kind": "formUnary", "verb": "member", "slot": "person"},
-        {"kind": "doesUnary", "ctor": "member", "slot": "person"},
-        {"kind": "termBinary", "ctor": "knows", "argClass1": "person", "argClass2": "peer"},
-        {"kind": "formBinary", "verb": "knows", "slot1": "person", "sep": " = ", "slot2": "peer"},
-        {"kind": "doesBinary", "ctor": "knows", "slot1": "person", "slot2": "peer"}
+        { "kind": "isClass", "name": "person", "literals": ["ada", "ben"] },
+        { "kind": "isClass", "name": "peer", "literals": ["ada", "ben"] },
+        { "kind": "termUnary", "ctor": "member", "argClass": "person" },
+        { "kind": "formUnary", "verb": "member", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "member", "slot": "person" },
+        {
+          "kind": "termBinary",
+          "ctor": "knows",
+          "argClass1": "person",
+          "argClass2": "peer"
+        },
+        {
+          "kind": "formBinary",
+          "verb": "knows",
+          "slot1": "person",
+          "sep": " = ",
+          "slot2": "peer"
+        },
+        {
+          "kind": "doesBinary",
+          "ctor": "knows",
+          "slot1": "person",
+          "slot2": "peer"
+        }
       ]
     },
     {
@@ -34,11 +50,27 @@
       "expectValid": false,
       "expectedDiagnosticCode": "E_CLASS_OVERLAP",
       "metaLines": [
-        {"kind": "isClass", "name": "lefty", "literals": ["a=", "b"]},
-        {"kind": "isClass", "name": "righty", "literals": ["c"]},
-        {"kind": "termBinary", "ctor": "pair", "argClass1": "lefty", "argClass2": "righty"},
-        {"kind": "formBinary", "verb": "pair", "slot1": "lefty", "sep": "==", "slot2": "righty"},
-        {"kind": "doesBinary", "ctor": "pair", "slot1": "lefty", "slot2": "righty"}
+        { "kind": "isClass", "name": "lefty", "literals": ["a=", "b"] },
+        { "kind": "isClass", "name": "righty", "literals": ["c"] },
+        {
+          "kind": "termBinary",
+          "ctor": "pair",
+          "argClass1": "lefty",
+          "argClass2": "righty"
+        },
+        {
+          "kind": "formBinary",
+          "verb": "pair",
+          "slot1": "lefty",
+          "sep": "==",
+          "slot2": "righty"
+        },
+        {
+          "kind": "doesBinary",
+          "ctor": "pair",
+          "slot1": "lefty",
+          "slot2": "righty"
+        }
       ]
     },
     {
@@ -47,12 +79,12 @@
       "expectValid": false,
       "expectedDiagnosticCode": "E_FORM_SHADOW",
       "metaLines": [
-        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
-        {"kind": "termUnary", "ctor": "member", "argClass": "person"},
-        {"kind": "formUnary", "verb": "member", "slot": "person"},
-        {"kind": "doesUnary", "ctor": "member", "slot": "person"},
-        {"kind": "formUnary", "verb": "member", "slot": "person"},
-        {"kind": "doesUnary", "ctor": "member", "slot": "person"}
+        { "kind": "isClass", "name": "person", "literals": ["ada", "ben"] },
+        { "kind": "termUnary", "ctor": "member", "argClass": "person" },
+        { "kind": "formUnary", "verb": "member", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "member", "slot": "person" },
+        { "kind": "formUnary", "verb": "member", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "member", "slot": "person" }
       ]
     },
     {
@@ -61,10 +93,10 @@
       "expectValid": false,
       "expectedDiagnosticCode": "E_DECLARATION",
       "metaLines": [
-        {"kind": "isClass", "name": "value", "literals": ["ada"]},
-        {"kind": "termUnary", "ctor": "member", "argClass": "value"},
-        {"kind": "formUnary", "verb": "member", "slot": "value"},
-        {"kind": "doesUnary", "ctor": "member", "slot": "value"}
+        { "kind": "isClass", "name": "value", "literals": ["ada"] },
+        { "kind": "termUnary", "ctor": "member", "argClass": "value" },
+        { "kind": "formUnary", "verb": "member", "slot": "value" },
+        { "kind": "doesUnary", "ctor": "member", "slot": "value" }
       ]
     },
     {
@@ -73,11 +105,16 @@
       "expectValid": false,
       "expectedDiagnosticCode": "E_TERM_CLASS",
       "metaLines": [
-        {"kind": "isClass", "name": "person", "literals": ["ada", "ben"]},
-        {"kind": "isClass", "name": "peer", "literals": ["ada", "ben"]},
-        {"kind": "termBinary", "ctor": "member", "argClass1": "person", "argClass2": "peer"},
-        {"kind": "formUnary", "verb": "member", "slot": "person"},
-        {"kind": "doesUnary", "ctor": "member", "slot": "person"}
+        { "kind": "isClass", "name": "person", "literals": ["ada", "ben"] },
+        { "kind": "isClass", "name": "peer", "literals": ["ada", "ben"] },
+        {
+          "kind": "termBinary",
+          "ctor": "member",
+          "argClass1": "person",
+          "argClass2": "peer"
+        },
+        { "kind": "formUnary", "verb": "member", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "member", "slot": "person" }
       ]
     }
   ],
@@ -129,7 +166,10 @@
       "declarationId": "witness-extended",
       "lines": ["member : ada", "knows : ada = ben"],
       "expectAccepted": true,
-      "expectedTerms": [["member", "ada"], ["knows", "ada", "ben"]]
+      "expectedTerms": [
+        ["member", "ada"],
+        ["knows", "ada", "ben"]
+      ]
     },
     {
       "id": "ext-accept-reversed-binary",

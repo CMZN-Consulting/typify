@@ -14,8 +14,10 @@ CONTROLS = ("flipped-byte", "extra-file", "missing-file", "rewritten-manifest")
 def files_exactly(directory, names):
     entries = {p.name: p for p in directory.iterdir()}
     if set(entries) != set(names):
-        raise ValueError(f"{directory}: missing {sorted(set(names) - entries.keys())}, "
-                         f"unexpected {sorted(entries.keys() - set(names))}")
+        raise ValueError(
+            f"{directory}: missing {sorted(set(names) - entries.keys())}, "
+            f"unexpected {sorted(entries.keys() - set(names))}"
+        )
     for path in entries.values():
         if path.is_symlink() or not path.is_file() or not path.stat().st_size:
             raise ValueError(f"expected a nonempty regular file at {path}")
@@ -37,8 +39,10 @@ def inventory(builds, verified=None):
         ext = ".zip" if platform.startswith("windows-") else ".tar.gz"
         asset = "typify-" + platform + ext
         manifest = platform + ".MANIFEST.txt"
-        rows = files_exactly(builds / ("build-" + platform + "-a"),
-                             [asset, asset + ".sha256", manifest, platform + ".build.json"])
+        rows = files_exactly(
+            builds / ("build-" + platform + "-a"),
+            [asset, asset + ".sha256", manifest, platform + ".build.json"],
+        )
         subjects[asset] = rows[asset]
         subjects[asset + "/typify/MANIFEST.txt"] = rows[manifest]
         if verified is not None:
@@ -49,52 +53,83 @@ def inventory(builds, verified=None):
 
 
 def verified_subjects(name, path, policy, expected):
-    output = subprocess.check_output(["gh", "attestation", "verify", path, *policy, "--format", "json"])
+    output = subprocess.check_output(
+        ["gh", "attestation", "verify", path, *policy, "--format", "json"]
+    )
     for result in json.loads(output):
         rows = result["verificationResult"]["statement"]["subject"]
         if subjects_match(rows, expected):
             signed = {row["name"]: row["digest"]["sha256"] for row in rows}
             if signed[name] == file_hash(path):
                 return signed
-    raise ValueError(f"{name}: no verified statement binds this file and all eight exact subjects")
+    raise ValueError(
+        f"{name}: no verified statement binds this file and all eight exact subjects"
+    )
 
 
 def verify_control(path, signed, policy):
     if file_hash(path) in signed.values():
         raise ValueError(f"{path.name}: control has a genuine signed digest")
-    result = subprocess.run(["gh", "attestation", "verify", path, *policy],
-                            capture_output=True, text=True)
+    result = subprocess.run(
+        ["gh", "attestation", "verify", path, *policy], capture_output=True, text=True
+    )
     # gh discards the underlying Sigstore error. Its issuer-stage refusal corroborates
     # the digest mismatch established above using the authenticated local statement.
     # Unknown CLI diagnostics must stop the check, even if the exit status is 1.
-    issuer_errors = {'Error: verifying with issuer "sigstore.dev"',
-                     'Error: verifying with issuer "GitHub, Inc."'}
-    if result.returncode != 1 or result.stdout.strip() or result.stderr.strip() not in issuer_errors:
-        raise ValueError(f"{path.name}: unexpected verification outcome (exit {result.returncode}): "
-                         f"{result.stderr.strip()}")
+    issuer_errors = {
+        'Error: verifying with issuer "sigstore.dev"',
+        'Error: verifying with issuer "GitHub, Inc."',
+    }
+    if (
+        result.returncode != 1
+        or result.stdout.strip()
+        or result.stderr.strip() not in issuer_errors
+    ):
+        raise ValueError(
+            f"{path.name}: unexpected verification outcome (exit {result.returncode}): "
+            f"{result.stderr.strip()}"
+        )
 
 
 def check(builds, verified, bundle, repo, ref, commit):
     subjects, negatives = inventory(builds, verified)
     digests = {name: file_hash(path) for name, path in subjects.items()}
-    policy = ["--repo", repo, "--signer-workflow", repo + "/.github/workflows/release.yml",
-              "--source-ref", ref, "--source-digest", commit, "--deny-self-hosted-runners"]
+    policy = [
+        "--repo",
+        repo,
+        "--signer-workflow",
+        repo + "/.github/workflows/release.yml",
+        "--source-ref",
+        ref,
+        "--source-digest",
+        commit,
+        "--deny-self-hosted-runners",
+    ]
     for name, path in subjects.items():
         verified_subjects(name, path, policy, digests)
     local_policy = [*policy, "--bundle", bundle]
     signed_by_archive = {}
     for asset, control in negatives:
         if asset not in signed_by_archive:
-            signed_by_archive[asset] = verified_subjects(asset, subjects[asset], local_policy, digests)
+            signed_by_archive[asset] = verified_subjects(
+                asset, subjects[asset], local_policy, digests
+            )
         verify_control(control, signed_by_archive[asset], local_policy)
-    print(f"Verified {len(subjects)} signed subjects and rejected {len(negatives)} altered archives")
+    print(
+        f"Verified {len(subjects)} signed subjects and rejected {len(negatives)} altered archives"
+    )
 
 
 def subjects_match(rows, wanted):
-    return len(rows) == len(wanted) and all(
-        type(row) is dict and row.get("digest") == {"sha256": wanted.get(row.get("name"))}
-        for row in rows
-    ) and {row["name"] for row in rows} == set(wanted)
+    return (
+        len(rows) == len(wanted)
+        and all(
+            type(row) is dict
+            and row.get("digest") == {"sha256": wanted.get(row.get("name"))}
+            for row in rows
+        )
+        and {row["name"] for row in rows} == set(wanted)
+    )
 
 
 if __name__ == "__main__":

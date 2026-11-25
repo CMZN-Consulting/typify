@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Verify OCI package publication, repository linking metadata, and tamper refusal."""
+
 import hashlib
 import http.server
 import importlib.util
@@ -10,7 +11,9 @@ import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC = importlib.util.spec_from_file_location("publish_packages", ROOT / "scripts" / "publish-packages.py")
+SPEC = importlib.util.spec_from_file_location(
+    "publish_packages", ROOT / "scripts" / "publish-packages.py"
+)
 MOD = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 SPEC.loader.exec_module(MOD)
@@ -53,7 +56,9 @@ def make_handler(state: MockOciState):
                 qs = urllib.parse.parse_qs(parsed.query)
                 scope = qs.get("scope", [""])[0]
                 state.tokens_issued.append(scope)
-                body = json.dumps({"token": f"tok-{len(state.tokens_issued)}"}).encode("utf-8")
+                body = json.dumps({"token": f"tok-{len(state.tokens_issued)}"}).encode(
+                    "utf-8"
+                )
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(body)))
@@ -62,7 +67,7 @@ def make_handler(state: MockOciState):
                 return
 
             if parsed.path.startswith("/v2/") and "/manifests/" in parsed.path:
-                raw_repo, ref = parsed.path[len("/v2/"):].split("/manifests/", 1)
+                raw_repo, ref = parsed.path[len("/v2/") :].split("/manifests/", 1)
                 repo = resolve_allowed_repo(raw_repo)
                 entry = state.manifests.get((repo, ref)) if repo is not None else None
                 if not entry:
@@ -83,7 +88,7 @@ def make_handler(state: MockOciState):
         def do_HEAD(self):
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path.startswith("/v2/") and "/blobs/" in parsed.path:
-                raw_repo, digest = parsed.path[len("/v2/"):].split("/blobs/", 1)
+                raw_repo, digest = parsed.path[len("/v2/") :].split("/blobs/", 1)
                 repo = resolve_allowed_repo(raw_repo)
                 data = state.blobs.get((repo, digest)) if repo is not None else None
                 if data is None:
@@ -99,8 +104,10 @@ def make_handler(state: MockOciState):
 
         def do_POST(self):
             parsed = urllib.parse.urlparse(self.path)
-            if parsed.path.startswith("/v2/") and parsed.path.endswith("/blobs/uploads/"):
-                raw_repo = parsed.path[len("/v2/"):-len("/blobs/uploads/")]
+            if parsed.path.startswith("/v2/") and parsed.path.endswith(
+                "/blobs/uploads/"
+            ):
+                raw_repo = parsed.path[len("/v2/") : -len("/blobs/uploads/")]
                 repo = resolve_allowed_repo(raw_repo)
                 if repo is None:
                     self.send_response(404)
@@ -123,7 +130,7 @@ def make_handler(state: MockOciState):
             body = self.rfile.read(length) if length > 0 else b""
 
             if parsed.path.startswith("/v2/") and "/blobs/uploads/" in parsed.path:
-                raw_repo, uid = parsed.path[len("/v2/"):].split("/blobs/uploads/", 1)
+                raw_repo, uid = parsed.path[len("/v2/") :].split("/blobs/uploads/", 1)
                 repo = resolve_allowed_repo(raw_repo)
                 if repo is None or state.uploads.get(uid) != repo:
                     self.send_response(404)
@@ -144,7 +151,7 @@ def make_handler(state: MockOciState):
                 return
 
             if parsed.path.startswith("/v2/") and "/manifests/" in parsed.path:
-                raw_repo, ref = parsed.path[len("/v2/"):].split("/manifests/", 1)
+                raw_repo, ref = parsed.path[len("/v2/") :].split("/manifests/", 1)
                 repo = resolve_allowed_repo(raw_repo)
                 if repo is None:
                     self.send_response(404)
@@ -210,23 +217,40 @@ def main() -> None:
                     ctype, raw = state.manifests[(pkg_repo, tag)]
                     assert ctype == MOD.OCI_MANIFEST_MEDIA_TYPE
                     doc = json.loads(raw.decode("utf-8"))
-                    assert doc["annotations"]["org.opencontainers.image.source"] == "https://github.com/CMZN-Consulting/typify"
-                    assert doc["annotations"]["org.opencontainers.image.url"] == "https://typify.science"
-                    titles = [layer["annotations"]["org.opencontainers.image.title"] for layer in doc["layers"]]
+                    assert (
+                        doc["annotations"]["org.opencontainers.image.source"]
+                        == "https://github.com/CMZN-Consulting/typify"
+                    )
+                    assert (
+                        doc["annotations"]["org.opencontainers.image.url"]
+                        == "https://typify.science"
+                    )
+                    titles = [
+                        layer["annotations"]["org.opencontainers.image.title"]
+                        for layer in doc["layers"]
+                    ]
                     assert titles[0] == spec["asset"]
                     assert titles[1] == f"{spec['platform']}.MANIFEST.txt"
                     cfg_raw = state.blobs[(pkg_repo, doc["config"]["digest"])]
                     cfg = json.loads(cfg_raw.decode("utf-8"))
-                    assert cfg["config"]["Labels"]["org.opencontainers.image.source"] == "https://github.com/CMZN-Consulting/typify"
+                    assert (
+                        cfg["config"]["Labels"]["org.opencontainers.image.source"]
+                        == "https://github.com/CMZN-Consulting/typify"
+                    )
 
             idx_type, idx_raw = state.manifests[("cmzn-consulting/typify", "v1.0.0")]
             assert idx_type == MOD.OCI_INDEX_MEDIA_TYPE
             idx_doc = json.loads(idx_raw.decode("utf-8"))
-            assert idx_doc["annotations"]["org.opencontainers.image.source"] == "https://github.com/CMZN-Consulting/typify"
+            assert (
+                idx_doc["annotations"]["org.opencontainers.image.source"]
+                == "https://github.com/CMZN-Consulting/typify"
+            )
             assert len(idx_doc["manifests"]) == 4
 
             # Verify tampered archive byte is refused before publishing.
-            tampered_path = builds / "build-linux-x86_64-a" / "typify-linux-x86_64.tar.gz"
+            tampered_path = (
+                builds / "build-linux-x86_64-a" / "typify-linux-x86_64.tar.gz"
+            )
             tampered_path.write_bytes(b"corrupted-bytes")
             refused = False
             try:
@@ -246,7 +270,9 @@ def main() -> None:
         server.shutdown()
         server.server_close()
 
-    print("pass  publish-packages verified across 4 platform packages, multi-platform index, and tamper refusal")
+    print(
+        "pass  publish-packages verified across 4 platform packages, multi-platform index, and tamper refusal"
+    )
 
 
 if __name__ == "__main__":

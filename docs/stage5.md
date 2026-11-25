@@ -33,14 +33,14 @@ Each primitive ID is the triple `[declaringLanguage, name, argumentTypes]`, with
 
 The independent enumerators freeze the inputs before any comparisons. Alongside the operator IDs, scope includes the following.
 
-| Scope member | Contents |
-| --- | --- |
-| `operatorsSha256` | Canonical digest of `mutation.operatorDefinitions`. Each entry has `id`, `operatorSha256` and `eligibilitySha256`. Repeat the digest in `mutation.operatorsSha256`. |
-| `eligible` | Ordered post-deduplication site IDs. Each ID is `[layer, qualifiedClauseSite, operatorId]`. |
-| `mutationSites` | One entry per site ID, with the SHA-256 of the mutated source bytes in `mutantSha256` and its allowed `reach` pairs `[subjectId, field]`. Collapse byte-identical mutants before this inventory. |
-| `mutationCases` | Ordered cases with an `id` and a `projections` array. Every case includes `plan`. A case may also require `tree`. The case ID `load` is reserved. |
+| Scope member         | Contents                                                                                                                                                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `operatorsSha256`    | Canonical digest of `mutation.operatorDefinitions`. Each entry has `id`, `operatorSha256` and `eligibilitySha256`. Repeat the digest in `mutation.operatorsSha256`.                                                                                        |
+| `eligible`           | Ordered post-deduplication site IDs. Each ID is `[layer, qualifiedClauseSite, operatorId]`.                                                                                                                                                                |
+| `mutationSites`      | One entry per site ID, with the SHA-256 of the mutated source bytes in `mutantSha256` and its allowed `reach` pairs `[subjectId, field]`. Collapse byte-identical mutants before this inventory.                                                           |
+| `mutationCases`      | Ordered cases with an `id` and a `projections` array. Every case includes `plan`. A case may also require `tree`. The case ID `load` is reserved.                                                                                                          |
 | `mutationRowsSha256` | Digest of `oracle.mutationRows` in blind-author order. Each entry describes one scalar with `id`, `subject`, `field`, `law` (1 for mounts, 4 for tree/plan), `author`, `provenance: "blind-declaration"`, `case`, `projection`, `selector` and `expected`. |
-| `equivalencesSha256` | Digest of `mutation.preRunEquivalences`, including an empty array when appropriate. |
+| `equivalencesSha256` | Digest of `mutation.preRunEquivalences`, including an empty array when appropriate.                                                                                                                                                                        |
 
 Use `{"present":false}` for an absent scalar and `{"present":true,"value":null}` for a present JSON null. Present strings, booleans and numbers use the same wrapper. A completed comparison records the frozen row ID in `row`, plus its `expected` and observed `actual` wrappers. The `baseline` in `mutation` has `status: "measured"`, `calls` and `observations` over the entire blind table. A failed baseline voids the run.
 

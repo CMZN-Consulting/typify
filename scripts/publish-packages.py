@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Publish verified Typify platform distributions as OCI packages on GitHub Packages (ghcr.io)."""
+
 import argparse
 import base64
 import hashlib
@@ -67,7 +68,9 @@ def parse_sha256_file(path: Path, expected_asset: str) -> str:
         raise ValueError(f"Malformed sha256 file: {path}")
     asset_name = parts[-1].lstrip("*")
     if asset_name != expected_asset:
-        raise ValueError(f"Asset mismatch in {path}: got {asset_name}, expected {expected_asset}")
+        raise ValueError(
+            f"Asset mismatch in {path}: got {asset_name}, expected {expected_asset}"
+        )
     return parts[0]
 
 
@@ -141,7 +144,9 @@ class OciRegistryClient:
             body = exc.read()
             if status not in expected_statuses:
                 detail = body.decode("utf-8", errors="replace")[:500]
-                raise RuntimeError(f"OCI {method} {url} failed with HTTP {status}: {detail}") from exc
+                raise RuntimeError(
+                    f"OCI {method} {url} failed with HTTP {status}: {detail}"
+                ) from exc
         if status not in expected_statuses:
             raise RuntimeError(f"OCI {method} {url} unexpected status {status}")
         return status, resp_headers, body
@@ -170,7 +175,9 @@ class OciRegistryClient:
         )
         location = hdrs.get("location")
         if not location:
-            raise RuntimeError(f"Missing Location header starting blob upload for {repo_name}")
+            raise RuntimeError(
+                f"Missing Location header starting blob upload for {repo_name}"
+            )
         sep = "&" if "?" in location else "?"
         put_target = f"{location}{sep}digest={urllib.parse.quote(digest, safe=':')}"
         self._request(
@@ -185,10 +192,14 @@ class OciRegistryClient:
             expected_statuses=(201,),
         )
         if not self.blob_exists(repo_name, digest):
-            raise RuntimeError(f"Uploaded blob {digest} not found on HEAD verification in {repo_name}")
+            raise RuntimeError(
+                f"Uploaded blob {digest} not found on HEAD verification in {repo_name}"
+            )
         return digest, size
 
-    def put_manifest(self, repo_name: str, reference: str, media_type: str, manifest_bytes: bytes) -> str:
+    def put_manifest(
+        self, repo_name: str, reference: str, media_type: str, manifest_bytes: bytes
+    ) -> str:
         expected_digest = f"sha256:{sha256_hex(manifest_bytes)}"
         self._request(
             repo_name,
@@ -248,7 +259,9 @@ def publish_all(
     tags = build_tags(tag)
     registry_host = urllib.parse.urlparse(registry_url).netloc
 
-    client = OciRegistryClient(registry_url=registry_url, username=username, token=token)
+    client = OciRegistryClient(
+        registry_url=registry_url, username=username, token=token
+    )
 
     index_descriptors = []
     published_packages = []
@@ -262,7 +275,11 @@ def publish_all(
         manifest_txt_name = f"{platform}.MANIFEST.txt"
         manifest_txt_path = bdir / manifest_txt_name
 
-        if not archive_path.is_file() or not sha_path.is_file() or not manifest_txt_path.is_file():
+        if (
+            not archive_path.is_file()
+            or not sha_path.is_file()
+            or not manifest_txt_path.is_file()
+        ):
             raise FileNotFoundError(f"Missing verified build inputs in {bdir}")
 
         archive_bytes = archive_path.read_bytes()
@@ -324,13 +341,17 @@ def publish_all(
                     "mediaType": "text/plain; charset=utf-8",
                     "digest": man_digest,
                     "size": man_size,
-                    "annotations": {"org.opencontainers.image.title": manifest_txt_name},
+                    "annotations": {
+                        "org.opencontainers.image.title": manifest_txt_name
+                    },
                 },
                 {
                     "mediaType": "text/plain; charset=utf-8",
                     "digest": sha_digest,
                     "size": sha_size,
-                    "annotations": {"org.opencontainers.image.title": f"{asset_name}.sha256"},
+                    "annotations": {
+                        "org.opencontainers.image.title": f"{asset_name}.sha256"
+                    },
                 },
             ],
             "annotations": dict(labels),
@@ -339,9 +360,13 @@ def publish_all(
 
         manifest_digest = ""
         for t in tags:
-            manifest_digest = client.put_manifest(pkg_repo, t, OCI_MANIFEST_MEDIA_TYPE, manifest_bytes)
+            manifest_digest = client.put_manifest(
+                pkg_repo, t, OCI_MANIFEST_MEDIA_TYPE, manifest_bytes
+            )
 
-        client.put_manifest(base_pkg, manifest_digest, OCI_MANIFEST_MEDIA_TYPE, manifest_bytes)
+        client.put_manifest(
+            base_pkg, manifest_digest, OCI_MANIFEST_MEDIA_TYPE, manifest_bytes
+        )
 
         index_descriptors.append(
             {
@@ -392,7 +417,9 @@ def publish_all(
     index_bytes = canonical_json(index_obj)
     index_digest = ""
     for t in tags:
-        index_digest = client.put_manifest(base_pkg, t, OCI_INDEX_MEDIA_TYPE, index_bytes)
+        index_digest = client.put_manifest(
+            base_pkg, t, OCI_INDEX_MEDIA_TYPE, index_bytes
+        )
 
     return {
         "schema": "typify-release-packages-v1",
@@ -408,7 +435,12 @@ def publish_all(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--builds", type=Path, required=True, help="Directory holding build-<platform>-a folders")
+    ap.add_argument(
+        "--builds",
+        type=Path,
+        required=True,
+        help="Directory holding build-<platform>-a folders",
+    )
     ap.add_argument("--repository", required=True, help="GitHub OWNER/REPO")
     ap.add_argument("--tag", required=True, help="Release tag, e.g. v1.0.0")
     ap.add_argument("--commit", required=True, help="Exact 40-hex commit SHA")
@@ -417,10 +449,20 @@ def main() -> int:
     ap.add_argument("--output", type=Path, required=True)
     args = ap.parse_args()
 
-    username = os.environ.get("GHCR_USERNAME") or os.environ.get("GITHUB_ACTOR") or "x-access-token"
-    token = os.environ.get("GHCR_TOKEN") or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    username = (
+        os.environ.get("GHCR_USERNAME")
+        or os.environ.get("GITHUB_ACTOR")
+        or "x-access-token"
+    )
+    token = (
+        os.environ.get("GHCR_TOKEN")
+        or os.environ.get("GITHUB_TOKEN")
+        or os.environ.get("GH_TOKEN")
+    )
     if not token:
-        print("Missing GHCR_TOKEN / GITHUB_TOKEN for package publication", file=sys.stderr)
+        print(
+            "Missing GHCR_TOKEN / GITHUB_TOKEN for package publication", file=sys.stderr
+        )
         return 1
 
     receipt = publish_all(
@@ -434,7 +476,9 @@ def main() -> int:
         homepage=args.homepage,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     return 0
 
 

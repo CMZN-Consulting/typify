@@ -9,7 +9,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-gate = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts/check-release-extension.py"))
+gate = runpy.run_path(
+    str(Path(__file__).resolve().parents[1] / "scripts/check-release-extension.py")
+)
 
 
 class SemanticComparisonTests(unittest.TestCase):
@@ -28,7 +30,10 @@ class SemanticComparisonTests(unittest.TestCase):
 
     def test_asserted_field_comparison_keeps_array_order_and_length(self):
         want = {"items": [{"code": "E", "range": {"line": 1}}]}
-        got = {"items": [{"code": "E", "range": {"line": 2}, "other": 3}, {}], "different": True}
+        got = {
+            "items": [{"code": "E", "range": {"line": 2}, "other": 3}, {}],
+            "different": True,
+        }
         self.assertEqual(
             list(gate["differences"](want, got, object_subset=True)),
             [
@@ -45,7 +50,9 @@ class SemanticComparisonTests(unittest.TestCase):
             "stderr": "",
         }
 
-    def test_native_semantics_cover_asserted_diagnostic_fields_and_exact_result_objects(self):
+    def test_native_semantics_cover_asserted_diagnostic_fields_and_exact_result_objects(
+        self,
+    ):
         diag = {
             "code": "E_X",
             "file": "a.typify",
@@ -59,7 +66,12 @@ class SemanticComparisonTests(unittest.TestCase):
             "invocation": ["typify", "check", "a.typify", "--json"],
             "stdout_json": {"ok": False, "terms": [], "diagnostics": [diag]},
         }
-        actual = {**diag, "severity": "error", "message": "D", "data": {"k": "red", "runtime": 0}}
+        actual = {
+            **diag,
+            "severity": "error",
+            "message": "D",
+            "data": {"k": "red", "runtime": 0},
+        }
         del actual["provenance"]
         packet = self.capture({"ok": False, "terms": [], "diagnostics": [actual]}, 1)
         self.assertEqual(gate["primary_differences"](spec, packet, Path(".")), [])
@@ -101,12 +113,19 @@ class SemanticComparisonTests(unittest.TestCase):
                 spec = {
                     "exit_code": 0,
                     "invocation": argv,
-                    "stdout_json": {"inputs": {"root": {"$fixtureRoot": "root"}}, "diagnostics": []},
+                    "stdout_json": {
+                        "inputs": {"root": {"$fixtureRoot": "root"}},
+                        "diagnostics": [],
+                    },
                 }
                 expected_path = gate["fixture_root"](cwd, argv)
-                primary = self.capture({"inputs": {"root": expected_path}, "diagnostics": []})
+                primary = self.capture(
+                    {"inputs": {"root": expected_path}, "diagnostics": []}
+                )
                 self.assertEqual(gate["primary_differences"](spec, primary, cwd), [])
-                self.assertTrue(gate["primary_differences"](spec, primary, cwd / "somewhere-else"))
+                self.assertTrue(
+                    gate["primary_differences"](spec, primary, cwd / "somewhere-else")
+                )
 
     def test_main_resolves_temporary_fixture_directory_before_execution(self):
         with tempfile.TemporaryDirectory() as outer:
@@ -141,14 +160,22 @@ class SemanticComparisonTests(unittest.TestCase):
                 return DummyCtx()
 
             with (
-                patch.object(sys, "argv", ["check-release-extension.py", str(exe), str(archive), str(report)]),
-                patch.object(tempfile, "TemporaryDirectory", return_value=FakeTempDir()),
+                patch.object(
+                    sys,
+                    "argv",
+                    ["check-release-extension.py", str(exe), str(archive), str(report)],
+                ),
+                patch.object(
+                    tempfile, "TemporaryDirectory", return_value=FakeTempDir()
+                ),
                 patch.dict(gate["CAPTURE"], {"unpack_extension": fake_unpack}),
                 patch.dict(
                     gate["main"].__globals__,
                     {
                         "inventory": lambda _f: ([], {}),
-                        "reader_identity": lambda _e, _f: {"build": gate["READER_BUILD"]},
+                        "reader_identity": lambda _e, _f: {
+                            "build": gate["READER_BUILD"]
+                        },
                         "measure": lambda *_a: [{"id": "x", "differences": []}],
                         "save_report": lambda *_a: {"pass": True},
                     },
@@ -173,21 +200,40 @@ class SemanticComparisonTests(unittest.TestCase):
         cwd = Path.cwd()
         lsp_wire = {
             "documents": [
-                {"uri": (cwd / "example.typify").as_uri(), "diagnostics": [{"code": "E_X", "range": lsp}]}
+                {
+                    "uri": (cwd / "example.typify").as_uri(),
+                    "diagnostics": [{"code": "E_X", "range": lsp}],
+                }
             ],
             "unlocated": [],
         }
         expected = gate["expected_projection"]("sarif", [sarif], [diag], cwd)
-        self.assertEqual(expected[0]["locations"][0]["physicalLocation"]["region"]["byteLength"], 5)
+        self.assertEqual(
+            expected[0]["locations"][0]["physicalLocation"]["region"]["byteLength"], 5
+        )
         sarif_wire = {"runs": [{"results": expected}]}
-        for fmt, claims, obj in (("lsp", [lsp], lsp_wire), ("sarif", [sarif], sarif_wire)):
-            self.assertEqual(gate["projection_differences"](fmt, claims, spec, self.capture(obj, 1), cwd), [])
+        for fmt, claims, obj in (
+            ("lsp", [lsp], lsp_wire),
+            ("sarif", [sarif], sarif_wire),
+        ):
+            self.assertEqual(
+                gate["projection_differences"](
+                    fmt, claims, spec, self.capture(obj, 1), cwd
+                ),
+                [],
+            )
         lsp_wire["documents"][0]["uri"] = (cwd / "other.typify").as_uri()
         expected[0]["locations"][0]["physicalLocation"]["region"]["byteLength"] = 6
         self.assertTrue(
-            gate["projection_differences"]("sarif", [sarif], spec, self.capture(sarif_wire, 1), cwd)
+            gate["projection_differences"](
+                "sarif", [sarif], spec, self.capture(sarif_wire, 1), cwd
+            )
         )
-        self.assertTrue(gate["projection_differences"]("lsp", [lsp], spec, self.capture(lsp_wire, 1), cwd))
+        self.assertTrue(
+            gate["projection_differences"](
+                "lsp", [lsp], spec, self.capture(lsp_wire, 1), cwd
+            )
+        )
 
     def test_transcript_inventory_and_raw_streams(self):
         rows = [
@@ -199,13 +245,21 @@ class SemanticComparisonTests(unittest.TestCase):
             runs = [{"id": r["id"]} for r in rows]
             f.write_text(json.dumps(rows))
             self.assertEqual(gate["read_transcript"](f, runs)[rows[0]["id"]], rows[0])
-            for bad in (rows[::-1], rows[:1], [rows[0], rows[0]], [{**rows[0], "stderr": "!"}, rows[1]]):
+            for bad in (
+                rows[::-1],
+                rows[:1],
+                [rows[0], rows[0]],
+                [{**rows[0], "stderr": "!"}, rows[1]],
+            ):
                 f.write_text(json.dumps(bad))
                 with self.assertRaises(ValueError):
                     gate["read_transcript"](f, runs)
 
     def test_actual_nonzero_and_streams_survive(self):
-        command = ["-c", "import os\nos.write(1,b'\\xff\\r\\n')\nos.write(2,b'\\x00')\nraise SystemExit(7)"]
+        command = [
+            "-c",
+            "import os\nos.write(1,b'\\xff\\r\\n')\nos.write(2,b'\\x00')\nraise SystemExit(7)",
+        ]
         with tempfile.TemporaryDirectory() as directory:
             row = gate["native_run"](sys.executable, command, directory)
         self.assertEqual(row["exit"], 7)
@@ -213,12 +267,22 @@ class SemanticComparisonTests(unittest.TestCase):
         self.assertEqual(base64.b64decode(row["stderr"], validate=True), b"\x00")
 
     def test_reader_identity_uses_build_pin(self):
-        for build, admitted in [(gate["READER_BUILD"], True), ("sha256:" + "0" * 64, False)]:
+        for build, admitted in [
+            (gate["READER_BUILD"], True),
+            ("sha256:" + "0" * 64, False),
+        ]:
             version = {"version": "1.0.0", "build": build, "diagnostics": []}
-            result = subprocess.CompletedProcess([], 0, json.dumps(version).encode(), b"")
-            with self.subTest(build=build), patch.object(subprocess, "run", return_value=result):
+            result = subprocess.CompletedProcess(
+                [], 0, json.dumps(version).encode(), b""
+            )
+            with (
+                self.subTest(build=build),
+                patch.object(subprocess, "run", return_value=result),
+            ):
                 if admitted:
-                    self.assertEqual(gate["reader_identity"]("reader", ".")["build"], build)
+                    self.assertEqual(
+                        gate["reader_identity"]("reader", ".")["build"], build
+                    )
                 else:
                     with self.assertRaises(ValueError):
                         gate["reader_identity"]("reader", ".")
@@ -229,13 +293,20 @@ class SemanticComparisonTests(unittest.TestCase):
             "exit": 1,
             "stdout": "AP8=",
             "stderr": "Cg==",
-            "differences": [{"path": "/field", "expected": None, "observed": "private-value"}],
+            "differences": [
+                {"path": "/field", "expected": None, "observed": "private-value"}
+            ],
         }
         with tempfile.TemporaryDirectory() as directory:
             dest = Path(directory) / "report.json"
-            summary = gate["save_report"](dest, {"build": "typed"}, [row], "archive", "tree")
+            summary = gate["save_report"](
+                dest, {"build": "typed"}, [row], "archive", "tree"
+            )
             self.assertFalse(summary["pass"])
-            self.assertEqual((summary["invocations"], summary["failures"], summary["differences"]), (1, 1, 1))
+            self.assertEqual(
+                (summary["invocations"], summary["failures"], summary["differences"]),
+                (1, 1, 1),
+            )
             self.assertNotIn("private-value", json.dumps(summary))
             self.assertNotIn("invented-id", json.dumps(summary))
             self.assertEqual(json.loads(dest.read_bytes())["results"], [row])

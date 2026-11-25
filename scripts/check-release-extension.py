@@ -40,7 +40,9 @@ def differences(expected, observed, path="", *, object_subset=False):
         for i in range(max(len(expected), len(observed))):
             left = expected[i] if i < len(expected) else MISSING
             right = observed[i] if i < len(observed) else MISSING
-            yield from differences(left, right, child_path(path, i), object_subset=object_subset)
+            yield from differences(
+                left, right, child_path(path, i), object_subset=object_subset
+            )
     elif type(expected) is not type(observed) or expected != observed:
         delta = {"path": path}
         if expected is not MISSING:
@@ -69,8 +71,14 @@ def native_run(executable, argv, directory):
 def reader_identity(executable, directory):
     result = native_run(executable, ["--version", "--json"], directory)
     actual = CAPTURE["json_document"](base64.b64decode(result["stdout"], validate=True))
-    if result["exit"] != 0 or actual != {"version": "1.0.0", "build": READER_BUILD, "diagnostics": []}:
-        raise ValueError("reader version or source build differs from the approved candidate")
+    if result["exit"] != 0 or actual != {
+        "version": "1.0.0",
+        "build": READER_BUILD,
+        "diagnostics": [],
+    }:
+        raise ValueError(
+            "reader version or source build differs from the approved candidate"
+        )
     return actual
 
 
@@ -89,7 +97,10 @@ def save_report(destination, reader, observations, archive_digest, tree_digest):
         "differences": count,
         "pass": total > 0 and failed == 0,
     }
-    primary = [sum(not d["path"].startswith("/projections/") for d in r["differences"]) for r in observations]
+    primary = [
+        sum(not d["path"].startswith("/projections/") for d in r["differences"])
+        for r in observations
+    ]
     summary["primary"] = {
         "invocations": total,
         "failedInvocations": sum(n > 0 for n in primary),
@@ -98,7 +109,10 @@ def save_report(destination, reader, observations, archive_digest, tree_digest):
     summary["projections"] = {}
     for fmt in ("lsp", "sarif"):
         per_run = [
-            sum(d["path"].startswith("/projections/" + fmt + "/") for d in r["differences"])
+            sum(
+                d["path"].startswith("/projections/" + fmt + "/")
+                for d in r["differences"]
+            )
             for r in observations
             if fmt in r.get("projections", {})
         ]
@@ -109,7 +123,10 @@ def save_report(destination, reader, observations, archive_digest, tree_digest):
         }
     raw = (
         json.dumps(
-            dict(summary, results=observations), ensure_ascii=True, sort_keys=True, separators=(",", ":")
+            dict(summary, results=observations),
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
         )
         + "\n"
     ).encode("ascii")
@@ -127,9 +144,9 @@ def read_json(path):
 
 
 def compact(obj):
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode(
-        "utf-8"
-    )
+    return json.dumps(
+        obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    ).encode("utf-8")
 
 
 def inventory(root):
@@ -140,7 +157,8 @@ def inventory(root):
     )
     require(
         len(files) == 75
-        and CAPTURE["digest"](b"".join(compact(pair) + b"\n" for pair in files)) == TREE_SHA256,
+        and CAPTURE["digest"](b"".join(compact(pair) + b"\n" for pair in files))
+        == TREE_SHA256,
         "independent extension tree digest or file inventory differs",
     )
     index = read_json(root / "capture.json")
@@ -149,7 +167,11 @@ def inventory(root):
         "unexpected index shape",
     )
     ids = [r["id"] for r in index["runs"]]
-    manifest = {"archiveSha256": ARCHIVE_SHA256, "ids": ids, "doubleFailureId": index["doubleFailureId"]}
+    manifest = {
+        "archiveSha256": ARCHIVE_SHA256,
+        "ids": ids,
+        "doubleFailureId": index["doubleFailureId"],
+    }
     CAPTURE["release_manifest"](compact(manifest), MANIFEST_SHA256)
     # The index is a self-contained archive member. The capture manifest binds its distinguished ID separately.
     runs = CAPTURE["extension_runs"](compact(index), manifest)
@@ -157,12 +179,18 @@ def inventory(root):
     case_count = 0
     for directory in sorted(p for p in root.iterdir() if p.is_dir()):
         case = read_json(directory / "expected.json")
-        require(case["case_id"] == directory.name, "expected file names a different case")
+        require(
+            case["case_id"] == directory.name, "expected file names a different case"
+        )
         case_count += 1
         specs = ([case] if "invocation" in case else []) + case.get("subcases", [])
         require(bool(specs), "case has no invocations")
         for spec in specs:
-            ident = case["case_id"] if spec is case else case["case_id"] + "/" + spec["name"]
+            ident = (
+                case["case_id"]
+                if spec is case
+                else case["case_id"] + "/" + spec["name"]
+            )
             require(ident not in expect, "duplicate expected invocation")
             require(
                 set(spec)
@@ -186,7 +214,10 @@ def inventory(root):
                 "unknown frozen expectation or metadata member",
             )
             require(
-                spec["verdict"] == {0: "accepted", 1: "refused", 2: "usage_or_io_error"}[spec["exit_code"]],
+                spec["verdict"]
+                == {0: "accepted", 1: "refused", 2: "usage_or_io_error"}[
+                    spec["exit_code"]
+                ],
                 "frozen verdict and exit conflict",
             )
             require(
@@ -223,7 +254,10 @@ def read_transcript(path, runs):
         for key in ("stdout", "stderr"):
             require(
                 isinstance(r[key], str)
-                and base64.b64encode(base64.b64decode(r[key], validate=True)).decode("ascii") == r[key],
+                and base64.b64encode(base64.b64decode(r[key], validate=True)).decode(
+                    "ascii"
+                )
+                == r[key],
                 "native stream is not canonical base64",
             )
     return {r["id"]: r for r in rows}
@@ -258,33 +292,49 @@ def assert_diagnostic(expected, actual, path):
             for field, wanted in value.items():
                 result.extend(
                     differences(
-                        wanted, actual[key].get(field, MISSING), child_path(child_path(path, key), field)
+                        wanted,
+                        actual[key].get(field, MISSING),
+                        child_path(child_path(path, key), field),
                     )
                 )
         else:
-            result.extend(differences(value, actual.get(key, MISSING), child_path(path, key)))
+            result.extend(
+                differences(value, actual.get(key, MISSING), child_path(path, key))
+            )
     return result
 
 
 def primary_differences(spec, native, directory):
     result = list(differences(spec["exit_code"], native["exit"], "/exit_code"))
     try:
-        actual = CAPTURE["json_document"](base64.b64decode(native["stdout"], validate=True))
+        actual = CAPTURE["json_document"](
+            base64.b64decode(native["stdout"], validate=True)
+        )
     except (ValueError, UnicodeError):
         return result + [{"path": "/stdout_json", "reason": "invalid-json"}]
     # Everything except the explicitly scoped diagnostic envelopes is an exact JSON assertion.
     want = dict(spec["stdout_json"])
     if not isinstance(actual, dict):
         return result + list(differences(want, actual, "/stdout_json"))
-    if isinstance(want.get("inputs"), dict) and isinstance(want["inputs"].get("root"), dict):
-        require(want["inputs"]["root"] == {"$fixtureRoot": "root"}, "invalid fixture-root expectation")
-        want["inputs"] = {**want["inputs"], "root": fixture_root(directory, spec["invocation"])}
+    if isinstance(want.get("inputs"), dict) and isinstance(
+        want["inputs"].get("root"), dict
+    ):
+        require(
+            want["inputs"]["root"] == {"$fixtureRoot": "root"},
+            "invalid fixture-root expectation",
+        )
+        want["inputs"] = {
+            **want["inputs"],
+            "root": fixture_root(directory, spec["invocation"]),
+        }
     diagnostics = want.pop("diagnostics")
     observed = dict(actual)
     observed_diagnostics = observed.pop("diagnostics", MISSING)
     result.extend(differences(want, observed, "/stdout_json"))
     if not isinstance(observed_diagnostics, list):
-        result.extend(differences(diagnostics, observed_diagnostics, "/stdout_json/diagnostics"))
+        result.extend(
+            differences(diagnostics, observed_diagnostics, "/stdout_json/diagnostics")
+        )
     else:
         for i in range(max(len(diagnostics), len(observed_diagnostics))):
             p = child_path("/stdout_json/diagnostics", i)
@@ -292,12 +342,16 @@ def primary_differences(spec, native, directory):
                 result.extend(
                     differences(
                         diagnostics[i] if i < len(diagnostics) else MISSING,
-                        observed_diagnostics[i] if i < len(observed_diagnostics) else MISSING,
+                        observed_diagnostics[i]
+                        if i < len(observed_diagnostics)
+                        else MISSING,
                         p,
                     )
                 )
             else:
-                result.extend(assert_diagnostic(diagnostics[i], observed_diagnostics[i], p))
+                result.extend(
+                    assert_diagnostic(diagnostics[i], observed_diagnostics[i], p)
+                )
     return result
 
 
@@ -307,7 +361,10 @@ def projection_expectations(spec):
         ("sarif", "sarif_projection", "sarif_projections"),
     ):
         if singular in spec or plural in spec:
-            require(not (singular in spec and plural in spec), "duplicate projection assertion forms")
+            require(
+                not (singular in spec and plural in spec),
+                "duplicate projection assertion forms",
+            )
             entries = [spec[singular]] if singular in spec else spec[plural]
             require(
                 isinstance(entries, list) and len(entries) == len(spec["diagnostics"]),
@@ -342,7 +399,9 @@ def expected_projection(fmt, claims, diagnostics, directory):
                 "locations": [
                     {
                         "physicalLocation": {
-                            "artifactLocation": {"uri": urllib.parse.quote(diag["file"], safe="/")},
+                            "artifactLocation": {
+                                "uri": urllib.parse.quote(diag["file"], safe="/")
+                            },
                             "region": region,
                         }
                     }
@@ -354,7 +413,10 @@ def expected_projection(fmt, claims, diagnostics, directory):
 
 def normalized_projection(fmt, doc):
     if fmt == "sarif":
-        require(isinstance(doc.get("runs"), list) and len(doc["runs"]) == 1, "invalid SARIF run inventory")
+        require(
+            isinstance(doc.get("runs"), list) and len(doc["runs"]) == 1,
+            "invalid SARIF run inventory",
+        )
         rows = doc["runs"][0]["results"]
         require(isinstance(rows, list), "invalid SARIF results")
         return rows
@@ -365,12 +427,16 @@ def normalized_projection(fmt, doc):
     for x in doc["documents"]:
         uri = x["uri"]
         require(
-            isinstance(uri, str) and uri not in seen and isinstance(x["diagnostics"], list),
+            isinstance(uri, str)
+            and uri not in seen
+            and isinstance(x["diagnostics"], list),
             "duplicate or malformed LSP document",
         )
         seen.add(uri)
         if x["diagnostics"]:
-            result[uri] = [{"code": d["code"], "range": d["range"]} for d in x["diagnostics"]]
+            result[uri] = [
+                {"code": d["code"], "range": d["range"]} for d in x["diagnostics"]
+            ]
     return result
 
 
@@ -378,12 +444,22 @@ def projection_differences(fmt, claims, spec, native, directory):
     p = child_path("/projections", fmt)
     result = list(differences(spec["exit_code"], native["exit"], p + "/exit_code"))
     try:
-        raw = CAPTURE["json_document"](base64.b64decode(native["stdout"], validate=True))
+        raw = CAPTURE["json_document"](
+            base64.b64decode(native["stdout"], validate=True)
+        )
         actual = normalized_projection(fmt, raw)
         expected = expected_projection(fmt, claims, spec["diagnostics"], directory)
-        result.extend(differences(expected, actual, p + "/output", object_subset=(fmt == "sarif")))
+        result.extend(
+            differences(expected, actual, p + "/output", object_subset=(fmt == "sarif"))
+        )
     except (ValueError, KeyError, TypeError, AttributeError, IndexError) as error:
-        result.append({"path": p + "/output", "reason": "invalid-projection", "detail": str(error)})
+        result.append(
+            {
+                "path": p + "/output",
+                "reason": "invalid-projection",
+                "detail": str(error),
+            }
+        )
     return result
 
 
@@ -398,7 +474,13 @@ def execute_bound(executable, argv, directory):
             "stderr": base64.b64encode(error.stderr or b"").decode("ascii"),
         }
     except OSError as error:
-        return {"exit": None, "outcome": "launch-error", "detail": str(error), "stdout": "", "stderr": ""}
+        return {
+            "exit": None,
+            "outcome": "launch-error",
+            "detail": str(error),
+            "stdout": "",
+            "stderr": "",
+        }
 
 
 def measure(executable, root, runs, specs, primary, primary_root):
@@ -408,7 +490,11 @@ def measure(executable, root, runs, specs, primary, primary_root):
         directory = root / run["cwd"]
         spec = specs[ident]
         argv = run["argv"][1:]
-        raw = primary[ident] if primary is not None else execute_bound(executable, argv, directory)
+        raw = (
+            primary[ident]
+            if primary is not None
+            else execute_bound(executable, argv, directory)
+        )
         delta = primary_differences(spec, raw, primary_root / run["cwd"])
         projected = {}
         for fmt, claims in projection_expectations(spec):
@@ -416,7 +502,9 @@ def measure(executable, root, runs, specs, primary, primary_root):
             operation = ["--" + fmt if a == "--json" else a for a in argv]
             projection = execute_bound(executable, operation, directory)
             projected[fmt] = projection
-            delta.extend(projection_differences(fmt, claims, spec, projection, directory))
+            delta.extend(
+                projection_differences(fmt, claims, spec, projection, directory)
+            )
         rows.append(
             {
                 "id": ident,
@@ -437,10 +525,14 @@ def main():
     parser.add_argument("extension_archive", type=Path)
     parser.add_argument("private_report", type=Path)
     parser.add_argument(
-        "--transcript", type=Path, help="previously captured primary extension invocations in frozen order"
+        "--transcript",
+        type=Path,
+        help="previously captured primary extension invocations in frozen order",
     )
     parser.add_argument(
-        "--root", type=Path, help="original absolute extraction directory used to capture that transcript"
+        "--root",
+        type=Path,
+        help="original absolute extraction directory used to capture that transcript",
     )
     args = parser.parse_args()
     if (args.transcript is None) != (args.root is None) or (
@@ -448,19 +540,36 @@ def main():
     ):
         parser.error("provide both --transcript and its absolute --root")
     if args.private_report.resolve() in {
-        x.resolve() for x in (args.executable, args.extension_archive, args.transcript) if x
+        x.resolve()
+        for x in (args.executable, args.extension_archive, args.transcript)
+        if x
     }:
-        parser.error("private report must differ from frozen inputs, executable and primary transcript")
+        parser.error(
+            "private report must differ from frozen inputs, executable and primary transcript"
+        )
     try:
         exe = args.executable.resolve(strict=True)
         with tempfile.TemporaryDirectory(prefix="typify-extension-") as tmp:
             fixture = Path(tmp).resolve(strict=True) / "fixtures"
-            with CAPTURE["unpack_extension"](args.extension_archive, fixture, ARCHIVE_SHA256):
+            with CAPTURE["unpack_extension"](
+                args.extension_archive, fixture, ARCHIVE_SHA256
+            ):
                 runs, specs = inventory(fixture)
-                primary = read_transcript(args.transcript, runs) if args.transcript else None
+                primary = (
+                    read_transcript(args.transcript, runs) if args.transcript else None
+                )
                 reader = reader_identity(exe, fixture)
-                rows = measure(exe, fixture, runs, specs, primary, args.root.resolve() if args.root else fixture)
-                summary = save_report(args.private_report, reader, rows, ARCHIVE_SHA256, TREE_SHA256)
+                rows = measure(
+                    exe,
+                    fixture,
+                    runs,
+                    specs,
+                    primary,
+                    args.root.resolve() if args.root else fixture,
+                )
+                summary = save_report(
+                    args.private_report, reader, rows, ARCHIVE_SHA256, TREE_SHA256
+                )
         print(json.dumps(summary, sort_keys=True))
         return 0 if summary["pass"] else 1
     except (
