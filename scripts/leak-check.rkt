@@ -13,7 +13,17 @@
 
 (define required-top-level '("README.md" "LICENSE" "src" "test" "scripts" ".github"))
 
-(define top-level (append required-top-level '("mcp" "docs" "lean" ".gitignore" ".gitattributes")))
+(define top-level
+  (append
+   required-top-level
+   '("mcp"
+     "docs"
+     "lean"
+     ".gitignore"
+     ".gitattributes"
+     ".formatterignore"
+     "package.json"
+     "bun.lock")))
 
 (define corpus-network-addresses
   (for/list

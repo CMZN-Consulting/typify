@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "format": "formatter write",
+    "format:check": "formatter check"
+  },
+  "devDependencies": {
+    "@cmzn-consulting/formatter": "github:CMZN-Consulting/formatter#v0.1.0"
+  }
+}

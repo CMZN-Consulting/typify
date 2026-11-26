@@ -739,7 +739,14 @@
     {
       "id": "repository-files",
       "license": "MIT",
-      "match": [".gitattributes", ".gitignore", ".github/**"],
+      "match": [
+        ".formatterignore",
+        ".gitattributes",
+        ".gitignore",
+        ".github/**",
+        "bun.lock",
+        "package.json"
+      ],
       "origin": "original"
     },
     {

@@ -1,0 +1,10 @@
+# Frozen evidence: the acceptance of stages one to three rests on these bytes,
+# their digests are recorded, and many are malformed on purpose.
+/test/corpus/
+/test/ask-gate/
+/test/release-fixtures/
+/test/overlays/v12-stage4.json
+
+# The licence: release archives carry it byte for byte, and its third-party
+# texts stand as their authors wrote them.
+/LICENSE
