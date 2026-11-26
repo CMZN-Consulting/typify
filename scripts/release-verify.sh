@@ -13,11 +13,21 @@ FIXTURE=
 OUTPUT=
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --platform) PLATFORM=${2:?}; shift 2 ;;
-    --builds) BUILDS=${2:?}; shift 2 ;;
-    --racket) RACKET=${2:?}; shift 2 ;;
-    --fixture) FIXTURE=${2:?}; shift 2 ;;
-    --output) OUTPUT=${2:?}; shift 2 ;;
+    --platform)
+      PLATFORM=${2:?}; shift 2
+      ;;
+    --builds)
+      BUILDS=${2:?}; shift 2
+      ;;
+    --racket)
+      RACKET=${2:?}; shift 2
+      ;;
+    --fixture)
+      FIXTURE=${2:?}; shift 2
+      ;;
+    --output)
+      OUTPUT=${2:?}; shift 2
+      ;;
     *) usage ;;
   esac
 done
@@ -43,10 +53,10 @@ WORK=$(mktemp -d)
 trap 'rm -rf -- "$WORK"' EXIT
 
 sha256_of() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum <"$1" | cut -d ' ' -f 1
+  if command -v sha256sum > /dev/null 2>&1; then
+    sha256sum < "$1" | cut -d ' ' -f 1
   else
-    shasum -a 256 <"$1" | cut -d ' ' -f 1
+    shasum -a 256 < "$1" | cut -d ' ' -f 1
   fi
 }
 
@@ -54,7 +64,9 @@ asset_of() {
   case "$1" in
     windows-x86_64) echo typify-windows-x86_64.zip ;;
     linux-x86_64 | linux-aarch64 | macos-aarch64) echo "typify-$1.tar.gz" ;;
-    *) printf 'unknown platform: %s\n' "$1" >&2; exit 2 ;;
+    *)
+      printf 'unknown platform: %s\n' "$1" >&2; exit 2
+      ;;
   esac
 }
 
@@ -73,12 +85,15 @@ rkt() { "$RACKET" "$(native_path "$REPOSITORY/$1")" "${@:2}"; }
 
 FAILURES=0
 pass() { printf 'pass  %s\n' "$1" | tee -a "$OUTPUT/summary.txt"; }
-fail() { printf 'FAIL  %s\n' "$1" | tee -a "$OUTPUT/summary.txt"; FAILURES=$((FAILURES + 1)); }
+fail() {
+  printf 'FAIL  %s\n' "$1" | tee -a "$OUTPUT/summary.txt"
+  FAILURES=$((FAILURES + 1))
+}
 expect() {
   local label=$1 want=$2 log=$3
   shift 3
   local status=0
-  "$@" >"$OUTPUT/$log" 2>"$OUTPUT/$log.stderr" || status=$?
+  "$@" > "$OUTPUT/$log" 2> "$OUTPUT/$log.stderr" || status=$?
   if { [ "$want" = 0 ] && [ "$status" = 0 ]; } || { [ "$want" = refuse ] && [ "$status" = 1 ]; }; then
     pass "$label"
   else
@@ -86,7 +101,7 @@ expect() {
   fi
 }
 
-: >"$OUTPUT/summary.txt"
+: > "$OUTPUT/summary.txt"
 ASSET=$(asset_of "$PLATFORM")
 PROGRAM=$(program_of "$PLATFORM")
 if [ "$WINDOWS" = 1 ]; then PYTHON=python; else PYTHON=python3; fi
@@ -120,7 +135,7 @@ done
 A=$BUILDS/build-$PLATFORM-a/$ASSET
 B=$BUILDS/build-$PLATFORM-b/$ASSET
 if [ -f "$A" ] && [ -f "$B" ]; then
-  rkt scripts/release.rkt compare "$(native_path "$A")" "$(native_path "$B")" --platform "$PLATFORM" >"$OUTPUT/compare-builds.json"
+  rkt scripts/release.rkt compare "$(native_path "$A")" "$(native_path "$B")" --platform "$PLATFORM" > "$OUTPUT/compare-builds.json"
   if cmp -s "$A" "$B"; then
     printf 'note  builds a and b are byte-identical\n' | tee -a "$OUTPUT/summary.txt"
   else

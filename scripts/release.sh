@@ -16,7 +16,9 @@ racket_pin() {
     linux-aarch64) printf '%s %s %s\n' racket-9.3-aarch64-linux-buster-cs.sh 26e4d1c3bf8954c4413fb6737af5d211d44c1e158e34e4c90e0af1cde6353c9a 264306763 ;;
     macos-aarch64) printf '%s %s %s\n' racket-9.3-aarch64-macosx-cs.dmg 21f4937ca0bf37c31e60c1d77f5fd20f175e3ad51f6197f27149055bc222e559 278994444 ;;
     windows-x86_64) printf '%s %s %s\n' racket-9.3-x86_64-win32-cs.exe 5bea9560f8bc6c9d31d55b52a2f83fb5947e57cf625e1865e6091a428c13fe60 194479288 ;;
-    *) printf 'unknown platform: %s\n' "$1" >&2; exit 2 ;;
+    *)
+      printf 'unknown platform: %s\n' "$1" >&2; exit 2
+      ;;
   esac
 }
 
@@ -26,15 +28,17 @@ host_platform() {
     Linux-aarch64 | Linux-arm64) echo linux-aarch64 ;;
     Darwin-arm64) echo macos-aarch64 ;;
     MINGW*-x86_64 | MSYS*-x86_64 | CYGWIN*-x86_64) echo windows-x86_64 ;;
-    *) printf 'this host has no release platform: %s\n' "$(uname -s)-$(uname -m)" >&2; exit 2 ;;
+    *)
+      printf 'this host has no release platform: %s\n' "$(uname -s)-$(uname -m)" >&2; exit 2
+      ;;
   esac
 }
 
 sha256_of() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum <"$1" | cut -d ' ' -f 1
+  if command -v sha256sum > /dev/null 2>&1; then
+    sha256sum < "$1" | cut -d ' ' -f 1
   else
-    shasum -a 256 <"$1" | cut -d ' ' -f 1
+    shasum -a 256 < "$1" | cut -d ' ' -f 1
   fi
 }
 
@@ -53,10 +57,18 @@ ROOT=
 RACKET_INSTALLER=
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --platform) PLATFORM=${2:?}; shift 2 ;;
-    --output) OUTPUT=${2:?}; shift 2 ;;
-    --root) ROOT=${2:?}; shift 2 ;;
-    --racket-installer | --racket-archive) RACKET_INSTALLER=${2:?}; shift 2 ;;
+    --platform)
+      PLATFORM=${2:?}; shift 2
+      ;;
+    --output)
+      OUTPUT=${2:?}; shift 2
+      ;;
+    --root)
+      ROOT=${2:?}; shift 2
+      ;;
+    --racket-installer | --racket-archive)
+      RACKET_INSTALLER=${2:?}; shift 2
+      ;;
     *) usage ;;
   esac
 done
@@ -67,7 +79,7 @@ if [ "$PLATFORM" != "$HOST" ]; then
   printf 'the host is %s, not %s\n' "$HOST" "$PLATFORM" >&2
   exit 2
 fi
-read -r RACKET_NAME RACKET_SHA256 RACKET_BYTES <<EOF
+read -r RACKET_NAME RACKET_SHA256 RACKET_BYTES << EOF
 $(racket_pin "$PLATFORM")
 EOF
 
@@ -92,9 +104,9 @@ if [ -e "$ROOT" ]; then
   fi
 fi
 mkdir -p -- "$ROOT"
-: >"$ROOT/$MARK"
+: > "$ROOT/$MARK"
 
-file_bytes() { wc -c <"$1" | tr -d ' '; }
+file_bytes() { wc -c < "$1" | tr -d ' '; }
 
 install_racket() {
   local installer=$1 destination=$2 status=0
@@ -130,7 +142,7 @@ install_racket() {
     windows-*)
       TYPIFY_INSTALLER=$(cygpath -w "$installer") TYPIFY_DESTINATION=$(cygpath -w "$destination") \
         powershell -NoProfile -NonInteractive -Command \
-          '$p = Start-Process -FilePath $env:TYPIFY_INSTALLER -ArgumentList ("/S /D=" + $env:TYPIFY_DESTINATION) -Wait -PassThru -ErrorAction Stop; exit $p.ExitCode' >&2
+        '$p = Start-Process -FilePath $env:TYPIFY_INSTALLER -ArgumentList ("/S /D=" + $env:TYPIFY_DESTINATION) -Wait -PassThru -ErrorAction Stop; exit $p.ExitCode' >&2
       ;;
   esac
 }
@@ -154,7 +166,9 @@ if [ "$PLATFORM" = windows-x86_64 ]; then
 else
   RACKET=$ROOT/racket/bin/racket
 fi
-[ -x "$RACKET" ] || { printf 'the Racket installation holds no %s\n' "$RACKET" >&2; exit 1; }
+[ -x "$RACKET" ] || {
+  printf 'the Racket installation holds no %s\n' "$RACKET" >&2; exit 1
+}
 
 unset PLTCOLLECTS PLTCOMPILEDROOTS PLTADDONDIR PLTUSERHOME PLT_ZO_DISABLE PLTCONFIGDIR PLT_CS_DEBUG
 export PLTUSERHOME="$(native_path "$ROOT/home")"

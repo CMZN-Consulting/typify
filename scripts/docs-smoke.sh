@@ -16,13 +16,27 @@ README=$REPOSITORY/README.md
 WORK=
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --archive) ARCHIVE=${2:?}; shift 2 ;;
-    --sha256) WANT_ARCHIVE=${2:?}; shift 2 ;;
-    --manifest-sha256) WANT_MANIFEST=${2:?}; shift 2 ;;
-    --tampered) TAMPERED=${2:?}; shift 2 ;;
-    --install-page) INSTALL_PAGE=${2:?}; shift 2 ;;
-    --readme) README=${2:?}; shift 2 ;;
-    --work) WORK=${2:?}; shift 2 ;;
+    --archive)
+      ARCHIVE=${2:?}; shift 2
+      ;;
+    --sha256)
+      WANT_ARCHIVE=${2:?}; shift 2
+      ;;
+    --manifest-sha256)
+      WANT_MANIFEST=${2:?}; shift 2
+      ;;
+    --tampered)
+      TAMPERED=${2:?}; shift 2
+      ;;
+    --install-page)
+      INSTALL_PAGE=${2:?}; shift 2
+      ;;
+    --readme)
+      README=${2:?}; shift 2
+      ;;
+    --work)
+      WORK=${2:?}; shift 2
+      ;;
     *) usage ;;
   esac
 done
@@ -36,20 +50,29 @@ if [ -n "$TAMPERED" ]; then
 fi
 
 case "$(uname -s)" in
-  MINGW* | MSYS* | CYGWIN*) WINDOWS=1; PROGRAM=typify/bin/typify.exe ;;
-  *) WINDOWS=0; PROGRAM=typify/bin/typify ;;
+  MINGW* | MSYS* | CYGWIN*)
+    WINDOWS=1
+    PROGRAM=typify/bin/typify.exe
+    ;;
+  *)
+    WINDOWS=0
+    PROGRAM=typify/bin/typify
+    ;;
 esac
 
 FAILURES=0
 pass() { printf 'pass  %s\n' "$1"; }
-fail() { printf 'FAIL  %s\n' "$1"; FAILURES=$((FAILURES + 1)); }
+fail() {
+  printf 'FAIL  %s\n' "$1"
+  FAILURES=$((FAILURES + 1))
+}
 note() { printf 'note  %s\n' "$1"; }
 
 sha256_of() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum <"$1" | cut -d ' ' -f 1
+  if command -v sha256sum > /dev/null 2>&1; then
+    sha256sum < "$1" | cut -d ' ' -f 1
   else
-    shasum -a 256 <"$1" | cut -d ' ' -f 1
+    shasum -a 256 < "$1" | cut -d ' ' -f 1
   fi
 }
 
@@ -99,7 +122,7 @@ tree_check() {
 
 runnable() {
   local found
-  found=$(type -P "$1" 2>/dev/null) && [ -n "$found" ] && [ -x "$found" ]
+  found=$(type -P "$1" 2> /dev/null) && [ -n "$found" ] && [ -x "$found" ]
 }
 
 racket_trace() {
@@ -125,10 +148,10 @@ if [ "$(sha256_of "$ARCHIVE")" = "$WANT_ARCHIVE" ]; then pass "archive hash"; el
 HAVE_CHECK=0
 if [ -f "$INSTALL_PAGE" ]; then
   if [ "$WINDOWS" = 1 ]; then
-    fenced_block "$INSTALL_PAGE" powershell 'Get-FileHash -Algorithm SHA256 -LiteralPath' >"$WORK/check.ps1"
+    fenced_block "$INSTALL_PAGE" powershell 'Get-FileHash -Algorithm SHA256 -LiteralPath' > "$WORK/check.ps1"
     [ -s "$WORK/check.ps1" ] && HAVE_CHECK=1
   else
-    fenced_block "$INSTALL_PAGE" sh 'sha256_of "$FILE"' >"$WORK/check.sh"
+    fenced_block "$INSTALL_PAGE" sh 'sha256_of "$FILE"' > "$WORK/check.sh"
     [ -s "$WORK/check.sh" ] && HAVE_CHECK=1
   fi
 fi
@@ -146,7 +169,7 @@ else
   fail "typify --version exited $VERSION_STATUS"
 fi
 
-if (cd "$WORK/genuine" && "./$PROGRAM" check typify/share/typify.typify --json >"$WORK/self-check.json"); then
+if (cd "$WORK/genuine" && "./$PROGRAM" check typify/share/typify.typify --json > "$WORK/self-check.json"); then
   pass "the installed reader accepts its self-declaration"
 else
   fail "the installed reader refused its self-declaration"
@@ -154,8 +177,8 @@ fi
 
 CATALOG=$WORK/catalog
 mkdir -p -- "$CATALOG"
-fenced_block "$README" typify 'declare : Catalog' >"$CATALOG/catalog-language.typify"
-fenced_block "$README" typify 'item : journal' >"$CATALOG/catalog.typify"
+fenced_block "$README" typify 'declare : Catalog' > "$CATALOG/catalog-language.typify"
+fenced_block "$README" typify 'item : journal' > "$CATALOG/catalog.typify"
 if ! grep -Fxq 'typify check catalog-language.typify Catalog catalog.typify --json' "$README"; then
   fail "the README shows the catalog check command"
 else
@@ -185,7 +208,7 @@ if [ -n "$TAMPERED" ]; then
       pass "$NAME: the archive hash refuses it"
     fi
     if [ "$HAVE_CHECK" = 1 ]; then
-      if ! unpack "$CANARY" "$WORK/canary" >/dev/null 2>&1; then
+      if ! unpack "$CANARY" "$WORK/canary" > /dev/null 2>&1; then
         fail "$NAME: it unpacks, so the documented tree check can judge it"
       elif tree_check "$WORK/canary"; then
         fail "$NAME: the documented tree check refuses it"
