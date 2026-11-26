@@ -1,0 +1,20 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "devDependencies": {
+        "@cmzn-consulting/formatter": "github:CMZN-Consulting/formatter#v0.1.0",
+      },
+    },
+  },
+  "packages": {
+    "@astral-sh/ruff-wasm-nodejs": ["@astral-sh/ruff-wasm-nodejs@0.17.6", "", {}, "sha512-gnDU+2SCeO86bgtpn0Hk2xegQS8xztuF7TbLI2obGimoJ/GK5gKfaFbseEFga+Dn+SNf4yLCB2+Plvhj8/o8iA=="],
+
+    "@cmzn-consulting/formatter": ["@cmzn-consulting/formatter@github:CMZN-Consulting/formatter#814b163", { "dependencies": { "@astral-sh/ruff-wasm-nodejs": "0.17.6", "prettier": "3.10.1", "sh-syntax": "0.8.7" }, "bin": { "formatter": "bin/formatter" } }, "CMZN-Consulting-formatter-814b163", "sha512-aTrqlecTtNcmvOv7k6di9f45Q5sLl44QtQSmzaE5uuvwiSidkOo6BsKTJ6q/43fVRfLa7aHlXe3/UHY3SvmLPQ=="],
+
+    "prettier": ["prettier@3.10.1", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-70vp3ZUYoPlFbF9uiTdXHUUCGEIp7d4+6p+8DYbkm2jP7x/3i/paXVF6dopSI3zd/CEitrZN1rc4i85xWmmXlg=="],
+
+    "sh-syntax": ["sh-syntax@0.8.7", "", {}, "sha512-zaJUdXFCbDFgtREm3KiqvX3dBlngGY0tumPzHvC5RqX67UuaBLIIZqb16MCbYLGyk5rPYrM+5FlghF+w6WdVUw=="],
+  }
+}
