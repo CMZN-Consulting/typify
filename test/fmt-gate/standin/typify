@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""A stand-in reader for the gate's own test.
+
+It answers `fmt` with the reference formatter and the command surface of the
+definition (sections 3.3 and 9), and hands every other command to a real
+reader: FMT_GATE_BASE_READER names its path. The environment variable
+FMT_GATE_FAULT puts one fault into `fmt`, so that the gate can be shown to fail:
+
+    strip-payload       strips blanks inside a payload
+    blank-before-bang   puts a blank before `!`
+    nbsp-blank          treats U+00A0 as a blank
+    sort-is             sorts runs of `is` lines
+    blank-prefix        applies rule 5 under a comment prefix that holds a blank
+    print-note          prints the notes of `check`
+    keep-blank-runs     keeps a run of two blank lines
+    crlf                writes CR LF
+    no-command          answers `fmt` as a reader without the command does
+"""
+
+import os
+import re
+import subprocess
+import sys
+
+sys.dont_write_bytecode = True  # the repository takes no compiled files
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(HERE))
+
+import ref_fmt  # noqa: E402
+
+FAULT = os.environ.get("FMT_GATE_FAULT", "")
+BASE = os.environ.get("FMT_GATE_BASE_READER", "typify")
+NBSP = " ".encode()
+
+USAGE = (
+    b":0:0: error: usage: typify fmt DECLARATIONS [LANGUAGE PROGRAM] "
+    b"[--write | --check] [E_USAGE]\n"
+)
+GENERAL = (
+    b":0:0: error: usage: typify check DECLARATIONS [LANGUAGE PROGRAM] [--bounds] "
+    b"[--json] | facts ROOT [E_USAGE]\n"
+)
+
+
+def strip_nbsp(line):
+    line = ref_fmt.strip_blanks(line)
+    while line.startswith(NBSP) or line.endswith(NBSP):
+        if line.startswith(NBSP):
+            line = line[len(NBSP) :]
+        if line.endswith(NBSP):
+            line = line[: -len(NBSP)]
+        line = ref_fmt.strip_blanks(line)
+    return line
+
+
+def canonical(data, prefix):
+    """The reference's canonical form, with the fault of FAULT when one is set."""
+    if FAULT not in (
+        "strip-payload",
+        "blank-before-bang",
+        "nbsp-blank",
+        "sort-is",
+        "keep-blank-runs",
+        "crlf",
+        "blank-prefix",
+    ):
+        return ref_fmt.canonical(data, prefix)
+    strip = strip_nbsp if FAULT == "nbsp-blank" else ref_fmt.strip_blanks
+    out, blank_run = [], 0
+    for raw in ref_fmt.split_lines(data):
+        line = strip(raw)
+        if not line:
+            blank_run += 1
+            if FAULT == "keep-blank-runs" and out:
+                out.append(b"")
+            elif out and blank_run == 1:
+                out.append(b"")
+            continue
+        blank_run = 0
+        text = ref_fmt.format_line(line, prefix)
+        if FAULT == "strip-payload" and not (prefix and line.startswith(prefix)):
+            text = re.sub(rb" {2,}", b" ", text)
+        if FAULT == "blank-before-bang" and text.endswith(b"!") and b":" not in text:
+            text = text[:-1] + b" !"
+        out.append(text)
+    while out and out[-1] == b"":
+        out.pop()
+    if FAULT == "sort-is":
+        done, run = [], []
+        for line in out + [b"\0"]:
+            if line.startswith(b"is : "):
+                run.append(line)
+            else:
+                done += sorted(run)
+                run = []
+                done.append(line)
+        out = done[:-1]
+    end = b"\r\n" if FAULT == "crlf" else b"\n"
+    return b"".join(line + end for line in out)
+
+
+def with_ends(data):
+    """The lines of a text with their line ends, as the text stands."""
+    lines = data.split(b"\n")
+    last = lines.pop()
+    out = [line + b"\n" for line in lines]
+    if last:
+        out.append(last)
+    return out
+
+
+def fmt(argv):
+    flags = [a for a in argv if a.startswith("--")]
+    names = [a for a in argv if not a.startswith("--")]
+    bad = [f for f in flags if f not in ("--write", "--check")]
+    if bad or len(names) not in (1, 3) or ("--write" in flags and "--check" in flags):
+        sys.stderr.buffer.write(USAGE)
+        return 2
+    base = [BASE, "check"] + names
+    done = subprocess.run(base, capture_output=True)
+    if done.returncode != 0:
+        sys.stderr.buffer.write(done.stderr)
+        return done.returncode
+    notes = done.stderr if FAULT == "print-note" else b""
+    with open(names[0], "rb") as handle:
+        declarations = handle.read()
+    path, data, prefix = names[0], declarations, ref_fmt.DEFAULT_PREFIX
+    if len(names) == 3:
+        path = names[2]
+        with open(path, "rb") as handle:
+            data = handle.read()
+        prefix = ref_fmt.declared_prefix(declarations, names[1].encode())
+        if ref_fmt.holds_blank(prefix) and FAULT != "blank-prefix":
+            sys.stderr.buffer.write(ref_fmt.BLANK_PREFIX_REFUSAL)
+            return 2
+    result = canonical(data, prefix)
+    sys.stderr.buffer.write(notes)
+    if "--check" in flags:
+        want = with_ends(result)
+        for number, line in enumerate(with_ends(data), 1):
+            if number > len(want) or line != want[number - 1]:
+                sys.stdout.write("%s:%d: not in canonical form\n" % (path, number))
+                return 1
+        return 0
+    if "--write" in flags:
+        if result != data:
+            try:
+                with open(path, "wb") as handle:
+                    handle.write(result)
+            except OSError:
+                sys.stderr.write("%s:0:0: error: The requested file cannot be written [E_FILE]\n" % path)
+                return 2
+        return 0
+    sys.stdout.buffer.write(result)
+    return 0
+
+
+def main(argv):
+    if argv[:1] == ["fmt"]:
+        if FAULT == "no-command":
+            sys.stderr.buffer.write(GENERAL)
+            return 2
+        return fmt(argv[1:])
+    os.execvp(BASE, [BASE] + argv)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
