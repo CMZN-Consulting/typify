@@ -1,0 +1,11 @@
+{
+  "title": "`--write` on the self-declaration writes nothing",
+  "cites": ["3.4 L5", "9 point 6"],
+  "args": ["fmt", "typify.typify", "--write"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "typify.typify"],
+  "readonly": ["typify.typify"]
+}

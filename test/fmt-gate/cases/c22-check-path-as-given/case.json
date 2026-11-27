@@ -1,0 +1,11 @@
+{
+  "title": "PATH is the file as the command line gives it, with its directory",
+  "cites": ["9 point 3"],
+  "args": ["fmt", "sub/catalog-language.typify", "--check"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 1,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "sub/catalog-language.typify"]
+}

@@ -1,0 +1,22 @@
+{
+  "title": "`--write` keeps a payload byte that is no valid UTF-8",
+  "cites": ["9 point 7", "9 point 6"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--write"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "files": {
+      "shapes.typify": "expect.after.shapes.typify.in"
+    }
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "bytes": {
+    "{{FF}}": "ff"
+  }
+}

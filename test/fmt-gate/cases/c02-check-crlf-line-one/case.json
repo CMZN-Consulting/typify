@@ -1,0 +1,17 @@
+{
+  "title": "a CR LF text differs on line 1: a line is compared with its end",
+  "cites": ["9 point 3"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--check"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 1,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

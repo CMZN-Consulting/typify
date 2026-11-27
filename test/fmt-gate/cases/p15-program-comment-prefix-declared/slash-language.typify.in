@@ -1,0 +1,33 @@
+#lang typify
+declare : Shapes
+file : shapes.typify
+comment : //
+is : label = /[A-Za-z0-9_:\/ >.!=#%-]+/
+is : words = /[a-z ]*/
+is : node = /[a-z][a-z0-9_-]*/
+is : free = /.+/
+term : ready
+term : note-line : label
+term : memo : words
+term : link : node label
+term : raw : free
+term : hash-tag : node
+form : ready!
+does : ready
+example : ready!
+form : note-line : <label>
+does : note-line <label>
+example : note-line : hello : world -> arrow-inside-colon
+form : memo : <words>
+does : memo <words>
+example : memo : some words
+form : <node> -> <label>
+does : link <node> <label>
+example : alpha -> beta -> gamma
+form : raw : <free>
+does : raw <free>
+example : raw : anything
+form : #<node> : go
+does : hash-tag <node>
+example : #here : go
+end!

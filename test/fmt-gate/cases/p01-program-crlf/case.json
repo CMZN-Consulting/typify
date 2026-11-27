@@ -1,0 +1,11 @@
+{
+  "title": "every line ends with one LF: CR LF becomes LF in a program",
+  "cites": ["3.2 rule 1", "3.1 row 1 ignored"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

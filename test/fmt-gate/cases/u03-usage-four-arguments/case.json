@@ -1,0 +1,16 @@
+{
+  "title": "`fmt` with four arguments: the usage line of `fmt`, exit 2",
+  "cites": ["9 point 4"],
+  "args": [
+    "fmt",
+    "catalog-language.typify",
+    "Catalog",
+    "catalog.typify",
+    "extra"
+  ],
+  "premise": "none",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  }
+}

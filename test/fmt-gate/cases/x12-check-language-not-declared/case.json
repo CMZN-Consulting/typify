@@ -1,0 +1,11 @@
+{
+  "title": "a language that the declarations do not declare: check's answer and status, nothing on stdout",
+  "cites": ["12 test 2", "9 point 5"],
+  "args": ["fmt", "shapes-language.typify", "Nope", "shapes.typify"],
+  "premise": "failed",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "shapes-language.typify", "Nope", "shapes.typify"]
+}

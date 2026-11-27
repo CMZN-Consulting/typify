@@ -1,0 +1,17 @@
+{
+  "title": "a comment with a trailing blank on line 1: line 1",
+  "cites": ["9 point 3", "3.2 rule 4"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--check"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 1,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

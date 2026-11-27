@@ -1,0 +1,11 @@
+{
+  "title": "the specimen of section 6, loose text to canonical form",
+  "cites": ["6 specimen", "3.2"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

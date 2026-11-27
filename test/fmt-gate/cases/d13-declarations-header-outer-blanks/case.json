@@ -1,0 +1,11 @@
+{
+  "title": "line 1 of a declarations file loses the blanks at its two ends and keeps its text",
+  "cites": ["3.2 rule 4", "3.2 rule 2", "3.1 row 4 read"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

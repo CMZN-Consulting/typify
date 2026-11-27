@@ -1,0 +1,4 @@
+note-line :  first  :  second  ->  third  
+note-line:a  b   c
+memo :  some   words 
+note-line : a -> b

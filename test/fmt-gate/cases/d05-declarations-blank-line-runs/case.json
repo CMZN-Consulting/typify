@@ -1,0 +1,11 @@
+{
+  "title": "a run of blank lines is one empty line, and a single blank line stays",
+  "cites": ["3.2 rule 3", "3.1 row 3 ignored", "3.4 L3"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

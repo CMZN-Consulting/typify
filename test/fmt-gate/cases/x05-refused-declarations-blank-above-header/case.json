@@ -1,0 +1,11 @@
+{
+  "title": "a declarations file with a blank line above line 1 is refused, not formatted",
+  "cites": ["9 point 5", "3.1 row 2 read"],
+  "args": ["fmt", "a-language.typify"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "a-language.typify"]
+}

@@ -1,0 +1,17 @@
+{
+  "title": "a body whose comment prefix holds a blank: nothing on stdout, a message, exit 2 (--check)",
+  "cites": ["9 point 1"],
+  "args": [
+    "fmt",
+    "blank-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--check"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  },
+  "check_args": ["check", "blank-language.typify", "Shapes", "shapes.typify"]
+}

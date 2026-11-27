@@ -1,0 +1,17 @@
+{
+  "title": "a loose arrow on line 7: line 7",
+  "cites": ["9 point 3", "3.2 rule 6"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--check"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 1,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

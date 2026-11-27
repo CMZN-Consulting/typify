@@ -1,0 +1,11 @@
+{
+  "title": "the declarations file of such a body is read under `#` and is formatted",
+  "cites": ["9 point 1: a declarations file is never refused for this"],
+  "args": ["fmt", "blank-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "blank-language.typify"]
+}

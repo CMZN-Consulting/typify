@@ -1,0 +1,11 @@
+{
+  "title": "the body that governs the program is Marked: its prefix holds a blank",
+  "cites": ["9 point 1: the body that governs the text"],
+  "args": ["fmt", "two-language.typify", "Marked", "marked.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  },
+  "check_args": ["check", "two-language.typify", "Marked", "marked.typify"]
+}

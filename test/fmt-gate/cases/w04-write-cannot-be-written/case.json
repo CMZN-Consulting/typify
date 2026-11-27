@@ -1,0 +1,18 @@
+{
+  "title": "`--write` on a file that cannot be written: E_FILE, exit 2, the file keeps its bytes",
+  "cites": ["9 point 6"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--write"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "readonly": ["shapes.typify"]
+}

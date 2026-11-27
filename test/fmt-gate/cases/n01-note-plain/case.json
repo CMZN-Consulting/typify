@@ -1,0 +1,11 @@
+{
+  "title": "an accepted text with a note: the form on stdout, stderr empty",
+  "cites": ["10"],
+  "args": ["fmt", "empty-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "empty-language.typify"]
+}

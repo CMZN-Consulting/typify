@@ -1,0 +1,11 @@
+{
+  "title": "under the prefix `a:` the program `a:b` is a comment line and its own form",
+  "cites": ["11 L3 as corrected", "3.2 rule 4", "3.4 L1"],
+  "args": ["fmt", "afix-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "afix-language.typify", "Shapes", "shapes.typify"]
+}

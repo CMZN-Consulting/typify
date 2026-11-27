@@ -1,0 +1,11 @@
+{
+  "title": "an accepted program under the same language: the line of 9 point 1, exit 2 (--check)",
+  "cites": ["12 test 3", "9 point 1"],
+  "args": ["fmt", "xs-language.typify", "Xs", "xs.typify", "--check"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  },
+  "check_args": ["check", "xs-language.typify", "Xs", "xs.typify"]
+}

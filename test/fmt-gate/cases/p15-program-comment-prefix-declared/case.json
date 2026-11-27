@@ -1,0 +1,16 @@
+{
+  "title": "a declared prefix `//`: its lines are comments, a `#` line is content",
+  "cites": [
+    "2 kernel line",
+    "3.2 rule 4",
+    "3.2 rule 5",
+    "3.2 body that governs"
+  ],
+  "args": ["fmt", "slash-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "slash-language.typify", "Shapes", "shapes.typify"]
+}

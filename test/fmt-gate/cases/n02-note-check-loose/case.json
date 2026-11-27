@@ -1,0 +1,11 @@
+{
+  "title": "`--check` on such a text: its line, stderr empty",
+  "cites": ["10", "9 point 3"],
+  "args": ["fmt", "empty-language.typify", "--check"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 1,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "empty-language.typify"]
+}

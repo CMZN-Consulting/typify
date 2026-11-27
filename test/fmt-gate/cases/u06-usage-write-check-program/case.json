@@ -1,0 +1,17 @@
+{
+  "title": "`--write` with `--check`, program form: the usage line of `fmt`, exit 2",
+  "cites": ["9 point 4"],
+  "args": [
+    "fmt",
+    "catalog-language.typify",
+    "Catalog",
+    "catalog.typify",
+    "--write",
+    "--check"
+  ],
+  "premise": "none",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "title": "a declarations file with a line of no kernel shape is refused",
+  "cites": ["9 point 5", "3.3 refused"],
+  "args": ["fmt", "a-language.typify"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "a-language.typify"]
+}

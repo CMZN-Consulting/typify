@@ -1,0 +1,11 @@
+{
+  "title": "the same, with `--check`: check's answer and status, nothing on stdout",
+  "cites": ["12 test 2", "9 point 5"],
+  "args": ["fmt", "missing-language.typify", "--check"],
+  "premise": "failed",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "missing-language.typify"]
+}

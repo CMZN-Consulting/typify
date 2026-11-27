@@ -1,0 +1,11 @@
+{
+  "title": "a comment keeps U+00A0, U+3000, U+FEFF and form feed: they are no blanks",
+  "cites": ["3.1 row 5 read", "2 blank", "3.2 rule 4"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

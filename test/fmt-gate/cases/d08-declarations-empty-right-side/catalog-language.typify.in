@@ -1,0 +1,5 @@
+#lang typify
+declare : Catalog
+comment:   
+file : catalog.typify
+end!

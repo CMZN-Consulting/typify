@@ -1,0 +1,19 @@
+{
+  "title": "`--write` turns a program of blank lines into a file of zero bytes",
+  "cites": ["9 point 2", "9 point 6"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--write"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "files": {
+      "shapes.typify": "expect.after.shapes.typify.in"
+    }
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

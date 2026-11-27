@@ -1,0 +1,9 @@
+#lang typify
+declare : Raw
+file : raw.typify
+term : t
+form : t!
+does : t
+example : t!
+note : t = a{{FF}}b
+end!

@@ -1,0 +1,11 @@
+{
+  "title": "a text with loose spacing and a refused code point is refused, not formatted",
+  "cites": ["9 point 5", "3.1 row 5 read"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

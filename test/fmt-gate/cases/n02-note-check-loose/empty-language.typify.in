@@ -1,0 +1,8 @@
+#lang typify
+
+declare:Empty
+  file:empty.typify  
+  is   :   none = "a" except "a"
+
+
+end!

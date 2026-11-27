@@ -1,0 +1,11 @@
+{
+  "title": "such a text in its form is printed as it is, stderr empty",
+  "cites": ["10", "3.4 L2"],
+  "args": ["fmt", "empty-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "empty-language.typify"]
+}

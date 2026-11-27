@@ -1,0 +1,11 @@
+{
+  "title": "the same, with `--write`: the file keeps its bytes",
+  "cites": ["9 point 5", "L4"],
+  "args": ["fmt", "a-language.typify", "--write"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "a-language.typify"]
+}

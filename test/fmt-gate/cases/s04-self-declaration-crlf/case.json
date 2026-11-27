@@ -1,0 +1,11 @@
+{
+  "title": "a CR LF copy is not the reader's own text byte for byte: refused",
+  "cites": ["3.4 L5", "3.3 refused", "9 point 5"],
+  "args": ["fmt", "typify.typify"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "typify.typify"]
+}

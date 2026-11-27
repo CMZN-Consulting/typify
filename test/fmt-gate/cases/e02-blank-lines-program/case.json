@@ -1,0 +1,10 @@
+{
+  "title": "blank lines alone have the empty text as canonical form",
+  "cites": ["9 point 2"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

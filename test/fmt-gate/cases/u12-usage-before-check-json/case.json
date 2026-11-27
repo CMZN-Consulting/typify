@@ -1,0 +1,10 @@
+{
+  "title": "`--json` with a declarations file that check refuses: the usage line comes before check's answer (12 test 1)",
+  "cites": ["12 test 1", "9 point 4"],
+  "args": ["fmt", "bad-language.typify", "--json"],
+  "premise": "none",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  }
+}

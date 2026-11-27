@@ -1,0 +1,11 @@
+{
+  "title": "a declarations file with two bodies is formatted as one text",
+  "cites": ["3.2", "3.3 first bullet"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

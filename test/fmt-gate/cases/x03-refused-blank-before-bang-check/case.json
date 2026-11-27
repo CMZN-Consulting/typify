@@ -1,0 +1,17 @@
+{
+  "title": "a blank before `!` is read, not folded: refused (--check)",
+  "cites": ["9 point 5", "3.1 row 4 read"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--check"
+  ],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

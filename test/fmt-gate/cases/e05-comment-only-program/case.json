@@ -1,0 +1,11 @@
+{
+  "title": "a program of one comment line has a line: its form ends with one LF",
+  "cites": ["9 point 2 (a comment line is a line)", "3.2 rule 1"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

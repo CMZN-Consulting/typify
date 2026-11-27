@@ -1,0 +1,11 @@
+{
+  "title": "no line moves, goes or is added: a body whose lines stand out of the usual order keeps it",
+  "cites": ["3.2 rule 8", "3.1 row 6 read", "1 no sorter"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

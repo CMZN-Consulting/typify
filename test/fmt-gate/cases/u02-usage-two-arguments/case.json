@@ -1,0 +1,10 @@
+{
+  "title": "`fmt DECLARATIONS LANGUAGE`: two arguments: the usage line of `fmt`, exit 2",
+  "cites": ["9 point 4"],
+  "args": ["fmt", "catalog-language.typify", "Catalog"],
+  "premise": "none",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  }
+}

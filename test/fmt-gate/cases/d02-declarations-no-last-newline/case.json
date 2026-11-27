@@ -1,0 +1,11 @@
+{
+  "title": "the text ends with exactly one LF: a missing last newline is added",
+  "cites": ["3.2 rule 1", "3.1 row 2 ignored"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

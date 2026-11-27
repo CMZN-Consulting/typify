@@ -1,0 +1,11 @@
+{
+  "title": "a bang line is unchanged, apart from the blanks at its ends",
+  "cites": ["3.2 rule 7", "3.2 rule 2"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

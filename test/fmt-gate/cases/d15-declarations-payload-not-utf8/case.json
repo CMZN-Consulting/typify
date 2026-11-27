@@ -1,0 +1,14 @@
+{
+  "title": "a payload byte that is no valid UTF-8 in a declarations file is kept",
+  "cites": ["9 point 7", "3.2 rule 5"],
+  "args": ["fmt", "raw-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "raw-language.typify"],
+  "bytes": {
+    "{{FF}}": "ff"
+  }
+}

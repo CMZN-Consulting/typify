@@ -1,0 +1,11 @@
+{
+  "title": "a declarations file with a loose first colon on line 4: line 4",
+  "cites": ["9 point 3", "3.2 rule 5"],
+  "args": ["fmt", "catalog-language.typify", "--check"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 1,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

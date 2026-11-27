@@ -1,0 +1,10 @@
+{
+  "title": "under the prefix `a-` both `a -> b` and `a->b` are their own forms: exit 0",
+  "cites": ["11", "9 point 3"],
+  "args": ["fmt", "dash-language.typify", "Shapes", "shapes.typify", "--check"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "dash-language.typify", "Shapes", "shapes.typify"]
+}

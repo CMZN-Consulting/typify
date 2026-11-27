@@ -1,0 +1,5 @@
+#lang typify
+declare : Shapes
+file : shapes.typify
+  not a line  
+end!

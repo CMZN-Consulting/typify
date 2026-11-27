@@ -1,0 +1,17 @@
+{
+  "title": "`--write --check` with a program that check refuses: the usage line comes before check's answer (12 test 1)",
+  "cites": ["12 test 1", "9 point 4"],
+  "args": [
+    "fmt",
+    "bad-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--write",
+    "--check"
+  ],
+  "premise": "none",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  }
+}

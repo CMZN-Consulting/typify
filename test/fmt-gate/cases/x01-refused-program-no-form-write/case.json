@@ -1,0 +1,17 @@
+{
+  "title": "a line that no form takes: refused (--write)",
+  "cites": ["9 point 5", "3.3 refused"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--write"
+  ],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

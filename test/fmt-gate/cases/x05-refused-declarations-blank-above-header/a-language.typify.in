@@ -1,0 +1,4 @@
+
+#lang typify
+declare : A
+end!

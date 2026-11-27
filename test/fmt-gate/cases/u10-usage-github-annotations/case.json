@@ -1,0 +1,10 @@
+{
+  "title": "`--github-annotations` has no projection of `fmt`: the usage line of `fmt`, exit 2",
+  "cites": ["9 point 4"],
+  "args": ["fmt", "catalog-language.typify", "--github-annotations"],
+  "premise": "none",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  }
+}

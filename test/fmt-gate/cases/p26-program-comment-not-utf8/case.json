@@ -1,0 +1,15 @@
+{
+  "title": "a comment line with bytes that are no valid UTF-8 is kept byte for byte",
+  "cites": ["9 point 7", "3.2 rule 4"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "bytes": {
+    "{{FF}}": "ff",
+    "{{FE}}": "fe"
+  }
+}

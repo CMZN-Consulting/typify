@@ -1,0 +1,10 @@
+{
+  "title": "the empty program is its own canonical form, zero bytes",
+  "cites": ["9 point 2"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

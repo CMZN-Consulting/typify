@@ -1,0 +1,11 @@
+{
+  "title": "the prefix of the body that governs counts, not that of another body of the file",
+  "cites": ["9 point 1: the body that governs the text", "3.2 rule 5"],
+  "args": ["fmt", "two-language.typify", "Shapes", "shapes.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "two-language.typify", "Shapes", "shapes.typify"]
+}

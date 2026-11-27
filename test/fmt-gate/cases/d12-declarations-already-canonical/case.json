@@ -1,0 +1,11 @@
+{
+  "title": "a canonical text is its own form",
+  "cites": ["3.4 L2"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

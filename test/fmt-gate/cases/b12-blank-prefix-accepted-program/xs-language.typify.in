@@ -1,0 +1,9 @@
+#lang typify
+declare : Xs
+file : xs.typify
+comment : x :
+is : word = /[^ ]+/
+term : x : word
+form : x : <word>
+does : x <word>
+end!

@@ -1,0 +1,11 @@
+{
+  "title": "every line of a declarations file ends with one LF: CR LF becomes LF",
+  "cites": ["3.2 rule 1", "3.1 row 1 ignored", "2 line end"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

@@ -1,0 +1,11 @@
+{
+  "title": "blanks inside a payload and around its second colon stay as written",
+  "cites": ["3.2 rule 5", "3.2 rule 8", "2 payload", "3.1 row 3 read"],
+  "args": ["fmt", "catalog-language.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "catalog-language.typify"]
+}

@@ -1,0 +1,2 @@
+raw : a{{FF}}b
+raw : {{FE}}{{FF}}

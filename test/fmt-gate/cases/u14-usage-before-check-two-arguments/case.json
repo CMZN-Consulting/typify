@@ -1,0 +1,10 @@
+{
+  "title": "two arguments with a refused declarations file: the usage line comes before check's answer (12 test 1)",
+  "cites": ["12 test 1", "9 point 4"],
+  "args": ["fmt", "bad-language.typify", "Shapes"],
+  "premise": "none",
+  "expect": {
+    "exit": 2,
+    "stderr": "expect.stderr"
+  }
+}

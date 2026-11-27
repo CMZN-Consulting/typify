@@ -1,0 +1,16 @@
+{
+  "title": "a program that is its own form: no output, exit 0",
+  "cites": ["9 point 3", "3.3 --check"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--check"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

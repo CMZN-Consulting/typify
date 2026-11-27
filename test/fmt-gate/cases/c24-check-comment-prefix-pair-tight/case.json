@@ -1,0 +1,10 @@
+{
+  "title": "under the prefix `a:` the program `a:b` is its own form: exit 0",
+  "cites": ["11", "9 point 3"],
+  "args": ["fmt", "afix-language.typify", "Shapes", "shapes.typify", "--check"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "afix-language.typify", "Shapes", "shapes.typify"]
+}

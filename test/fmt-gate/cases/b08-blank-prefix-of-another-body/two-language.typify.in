@@ -1,0 +1,18 @@
+#lang typify
+declare : Shapes
+file : shapes.typify
+is : words = /[a-z ]*/
+term : memo : words
+form : memo : <words>
+does : memo <words>
+example : memo : some words
+end!
+declare : Marked
+file : marked.typify
+comment : x :
+is : words = /[a-z ]*/
+term : memo : words
+form : memo : <words>
+does : memo <words>
+example : memo : some words
+end!

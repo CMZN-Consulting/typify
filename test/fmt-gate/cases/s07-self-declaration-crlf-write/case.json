@@ -1,0 +1,11 @@
+{
+  "title": "the same CR LF copy with `--write`: refused, the file keeps its bytes",
+  "cites": ["3.4 L5", "3.3 refused", "9 point 5"],
+  "args": ["fmt", "typify.typify", "--write"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "typify.typify"]
+}

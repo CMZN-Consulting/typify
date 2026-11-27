@@ -1,0 +1,13 @@
+{
+  "title": "`--write` on a file named with a directory writes that file",
+  "cites": ["9 point 6"],
+  "args": ["fmt", "sub/catalog-language.typify", "--write"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "files": {
+      "sub/catalog-language.typify": "expect.after.sub_catalog-language.typify.in"
+    }
+  },
+  "check_args": ["check", "sub/catalog-language.typify"]
+}

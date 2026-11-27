@@ -1,0 +1,11 @@
+{
+  "title": "a refused declarations file refuses the program under it: check's diagnostics",
+  "cites": ["9 point 5", "3.3 refused"],
+  "args": ["fmt", "bad-language.typify", "Shapes", "shapes.typify"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "bad-language.typify", "Shapes", "shapes.typify"]
+}

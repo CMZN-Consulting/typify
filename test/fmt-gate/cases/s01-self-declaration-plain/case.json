@@ -1,0 +1,11 @@
+{
+  "title": "the reader's self-declaration is its own canonical form",
+  "cites": ["3.4 L5"],
+  "args": ["fmt", "typify.typify"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "stdout": "expect.stdout"
+  },
+  "check_args": ["check", "typify.typify"]
+}

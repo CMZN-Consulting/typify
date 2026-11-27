@@ -1,0 +1,11 @@
+{
+  "title": "a CR that is no part of a line end: refused",
+  "cites": ["9 point 5", "2 line end", "3.1 row 1 read"],
+  "args": ["fmt", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"]
+}

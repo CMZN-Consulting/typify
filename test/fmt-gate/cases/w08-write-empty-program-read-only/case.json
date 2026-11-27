@@ -1,0 +1,17 @@
+{
+  "title": "`--write` on the empty program, which is its own form: nothing is written",
+  "cites": ["9 point 2", "9 point 6"],
+  "args": [
+    "fmt",
+    "shapes-language.typify",
+    "Shapes",
+    "shapes.typify",
+    "--write"
+  ],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "shapes-language.typify", "Shapes", "shapes.typify"],
+  "readonly": ["shapes.typify"]
+}

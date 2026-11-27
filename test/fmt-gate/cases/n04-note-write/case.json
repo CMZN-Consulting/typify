@@ -1,0 +1,13 @@
+{
+  "title": "`--write` on such a text: stdout and stderr empty",
+  "cites": ["10", "9 point 6"],
+  "args": ["fmt", "empty-language.typify", "--write"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0,
+    "files": {
+      "empty-language.typify": "expect.after.empty-language.typify.in"
+    }
+  },
+  "check_args": ["check", "empty-language.typify"]
+}

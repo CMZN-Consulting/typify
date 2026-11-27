@@ -1,0 +1,11 @@
+{
+  "title": "a program that check refuses, under a prefix that holds a blank: check's answer (--write)",
+  "cites": ["12 test 2 before test 3", "9 point 5"],
+  "args": ["fmt", "xs-language.typify", "Xs", "xs.typify", "--write"],
+  "premise": "refused",
+  "expect": {
+    "exit": 0,
+    "as_check": true
+  },
+  "check_args": ["check", "xs-language.typify", "Xs", "xs.typify"]
+}

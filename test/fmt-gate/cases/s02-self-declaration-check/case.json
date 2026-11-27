@@ -1,0 +1,10 @@
+{
+  "title": "`--check` on the self-declaration: no output, exit 0",
+  "cites": ["3.4 L5", "9 point 3"],
+  "args": ["fmt", "typify.typify", "--check"],
+  "premise": "accepted",
+  "expect": {
+    "exit": 0
+  },
+  "check_args": ["check", "typify.typify"]
+}

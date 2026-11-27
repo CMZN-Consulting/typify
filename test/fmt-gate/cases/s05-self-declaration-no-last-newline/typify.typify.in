@@ -1,0 +1,229 @@
+#lang typify
+
+declare : Typify
+version : 1
+cap : states = 4096
+cap : repetition = 256
+cap : depth = 8
+cap : length = 4096
+is : constructor = name
+is : law = /(shadow|first|join[ ][A-Za-z][A-Za-z0-9_-]*)([ ]stacking)?/
+is : limit = "states" | "repetition" | "depth" | "length"
+is : multiplicity = "1" | "0..1" | "1..*" | "*"
+is : name = letter (letter | /[0-9_-]/)*
+is : number = /0|[1-9][0-9]*/
+is : order-mode = "strict" | "free"
+is : ordering = "strict" | "free"
+is : pattern = /.*/
+is : prefix = /.*/
+is : production = /.*/
+is : scope-mode = "program" | "parent" | "root"
+is : term = /.*/
+is : text = /.*/
+is : value = /.*/
+is : verb = /[A-Za-z0-9][A-Za-z0-9-]*/
+is : width = /0|[1-9][0-9]*/
+primitive : ancestors : value
+effect : ancestors = external
+primitive : concat : value value
+effect : concat = external
+primitive : equal : value value
+effect : equal = external
+primitive : inherited : value
+effect : inherited = external
+primitive : join : value value
+effect : join = external
+primitive : parent : value
+effect : parent = external
+primitive : prefix : value value
+effect : prefix = external
+primitive : split : value
+effect : split = external
+primitive : suffix : value value
+effect : suffix = external
+primitive : declare-language : name
+effect : declare-language = external
+form : declare : <name>
+does : declare-language <name>
+example : declare : Catalog
+primitive : close-language
+effect : close-language = external
+form : end!
+does : close-language
+example : end!
+primitive : set-version : number
+effect : set-version = external
+form : version : <number>
+does : set-version <number>
+example : version : 1
+primitive : set-comment : prefix
+effect : set-comment = external
+form : comment : <prefix>
+does : set-comment <prefix>
+example : comment : #
+primitive : declare-class : name pattern
+effect : declare-class = external
+form : is : <name> = <pattern>
+does : declare-class <name> <pattern>
+example : is : category = "book" | "journal"
+primitive : declare-form : production
+effect : declare-form = external
+form : form : <production>
+does : declare-form <production>
+example : form : item : <category>
+primitive : declare-meaning : term
+effect : declare-meaning = external
+form : does : <term>
+does : declare-meaning <term>
+example : does : item <category>
+primitive : declare-example : value
+effect : declare-example = external
+form : example : <value>
+does : declare-example <value>
+example : example : item : book
+primitive : declare-constructor : name value
+effect : declare-constructor = external
+form : term : <name> : <value>
+does : declare-constructor <name> <value>
+example : term : item : category
+primitive : declare-nullary-constructor : name
+effect : declare-nullary-constructor = external
+form : term : <name>
+does : declare-nullary-constructor <name>
+example : term : stop
+primitive : declare-fact : name
+effect : declare-fact = external
+form : fact : <name>
+does : declare-fact <name>
+example : fact : item
+primitive : declare-primitive : name value
+effect : declare-primitive = external
+form : primitive : <name> : <value>
+does : declare-primitive <name> <value>
+example : primitive : output : category
+primitive : declare-nullary-primitive : name
+effect : declare-nullary-primitive = external
+form : primitive : <name>
+does : declare-nullary-primitive <name>
+example : primitive : stop
+primitive : declare-rule : term
+effect : declare-rule = external
+form : rule : <term>
+does : declare-rule <term>
+example : rule : item <x> -> output <x>
+primitive : declare-count : name multiplicity
+effect : declare-count = external
+form : count : <name> = <multiplicity>
+does : declare-count <name> <multiplicity>
+example : count : item = 1..*
+primitive : declare-keyed-count : name multiplicity width
+effect : declare-keyed-count = external
+form : count : <name> = <multiplicity> by <width>
+does : declare-keyed-count <name> <multiplicity> <width>
+example : count : item = 0..1 by 1
+primitive : set-order : order-mode
+effect : set-order = external
+form : order : <order-mode>
+does : set-order <order-mode>
+example : order : free
+primitive : set-file : value
+effect : set-file = external
+form : file : <value>
+does : set-file <value>
+example : file : catalog.typify
+primitive : require-file
+effect : require-file = external
+form : required!
+does : require-file
+example : required!
+primitive : allow-missing-file
+effect : allow-missing-file = external
+form : optional!
+does : allow-missing-file
+example : optional!
+primitive : mark-restriction
+effect : mark-restriction = external
+form : restricts!
+does : mark-restriction
+example : restricts!
+primitive : declare-default : value
+effect : declare-default = external
+form : default : <value>
+does : declare-default <value>
+example : default : item : book
+primitive : declare-reference : name
+effect : declare-reference = external
+form : sees : <name>
+does : declare-reference <name>
+example : sees : Catalog
+primitive : declare-note : constructor text
+effect : declare-note = external
+form : note : <constructor> = <text>
+does : declare-note <constructor> <text>
+example : note : item = quoting
+primitive : declare-cap : limit number
+effect : declare-cap = external
+form : cap : <limit> = <number>
+does : declare-cap <limit> <number>
+example : cap : states = 4096
+primitive : declare-cell : name law
+effect : declare-cell = external
+form : cell : <name> = <law>
+does : declare-cell <name> <law>
+example : cell : mounts = shadow
+primitive : declare-write : name value
+effect : declare-write = external
+form : writes : <name> : <value>
+does : declare-write <name> <value>
+example : writes : bind : mounts = put 1
+primitive : declare-read : name value
+effect : declare-read = external
+form : reads : <name> : <value>
+does : declare-read <name> <value>
+example : reads : bind : exists = reject
+primitive : declare-invariant : constructor name value
+effect : declare-invariant = external
+form : ensure : <constructor> : <name> = <value>
+does : declare-invariant <constructor> <name> <value>
+example : ensure : item : visible = (bound path)
+primitive : declare-join : name value
+effect : declare-join = external
+form : join : <name> : <value>
+does : declare-join <name> <value>
+example : join : modes : "ro" "rw" = "rw"
+primitive : declare-external : name
+effect : declare-external = external
+form : effect : <name> = external
+does : declare-external <name>
+example : effect : output = external
+primitive : declare-state : name
+effect : declare-state = external
+form : effect : <name> = state
+does : declare-state <name>
+example : effect : remember = state
+primitive : declare-stage : name number
+effect : declare-stage = external
+form : stage : <name> = <number>
+does : declare-stage <name> <number>
+example : stage : output = 0
+primitive : declare-guard : name value
+effect : declare-guard = external
+form : guard : <name> = <value>
+does : declare-guard <name> <value>
+example : guard : item = exists
+primitive : declare-scope : name scope-mode
+effect : declare-scope = external
+form : scope : <name> = <scope-mode>
+does : declare-scope <name> <scope-mode>
+example : scope : item = program
+primitive : declare-fuel : name number
+effect : declare-fuel = external
+form : fuel : <name> = <number>
+does : declare-fuel <name> <number>
+example : fuel : item = 32
+primitive : question : verb
+effect : question = external
+form : ? : <verb>
+does : question <verb>
+example : ? : form
+end!

@@ -1,0 +1,11 @@
+#lang typify
+declare : Catalog
+  count : item = 1..*
+term : item : category title
+is : title = /[^=]+/
+file : catalog.typify
+is : category = "book" | "journal"
+form : item : <category> = <title>
+does : item <category> <title>
+example : item : book = Algebra
+end!
