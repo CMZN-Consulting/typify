@@ -251,13 +251,18 @@ jobs:
     name: Lean / zero sorry
     needs: build
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: .release-wiki
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
@@ -288,11 +293,21 @@ jobs:
             --source-ref "${{ github.sha }}" --lean-bin "$RUNNER_TEMP/lean4/bin" \
             --reader-bin "$RUNNER_TEMP/unpack/typify/bin/typify" \
             --output "$RUNNER_TEMP/lean-zero-sorry.json"
+      - name: Check every law page of the wiki against its Lean statement and the released source
+        shell: bash
+        run: |
+          python3 -B scripts/metalogic-check.py --mode full --repo-dir . \
+            --wiki-dir "$GITHUB_WORKSPACE/.release-wiki" \
+            --source-ref "${{ github.sha }}" --lean-bin "$RUNNER_TEMP/lean4/bin" \
+            --reader-bin "$RUNNER_TEMP/unpack/typify/bin/typify" \
+            --output "$RUNNER_TEMP/lean-full-gate.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: release-lean-zero-sorry
-          path: ${{ runner.temp }}/lean-zero-sorry.json
+          path: |
+            ${{ runner.temp }}/lean-zero-sorry.json
+            ${{ runner.temp }}/lean-full-gate.json
           if-no-files-found: error
           retention-days: 30
 
