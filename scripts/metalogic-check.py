@@ -52,10 +52,10 @@ FROZEN_LAWS = [
         "wikiLinkTarget": "Metalogic-Ontology",
         "statementPath": "lean/TypifyMetalogic/OntologyStatement.lean",
         "statementModule": "TypifyMetalogic.OntologyStatement",
-        "statementConst": "TypifyMetalogic.OntologyLaw",
+        "statementConst": "TypifyMetalogic.OntologyVocabularyLaw",
         "proofPath": "lean/TypifyMetalogic/OntologyProof.lean",
         "proofModule": "TypifyMetalogic.OntologyProof",
-        "proofConst": "TypifyMetalogic.ontology_law",
+        "proofConst": "TypifyMetalogic.ontology_vocabulary_law",
     },
 ]
 
@@ -261,12 +261,15 @@ inductive SortAst where
 inductive TermAst where
   | var (name : String)
   | sym (tex : String) (args : List TermAst)
+  | listLit (elems : List TermAst)
   deriving Repr
 
 inductive FormulaAst where
   | pred (tex : String) (args : List TermAst)
   | varPred (name : String) (args : List TermAst)
   | eq (lhs : TermAst) (rhs : TermAst)
+  | neq (lhs : TermAst) (rhs : TermAst)
+  | mem (elem : TermAst) (coll : TermAst)
   | notF (inner : FormulaAst)
   | andF (lhs : FormulaAst) (rhs : FormulaAst)
   | iffF (lhs : FormulaAst) (rhs : FormulaAst)
@@ -289,10 +292,11 @@ def joinComma : List String → String
   | [x] => x
   | x :: xs => x ++ ", " ++ joinComma xs
 
-def renderTerm : TermAst → String
+partial def renderTerm : TermAst → String
   | TermAst.var v => v
   | TermAst.sym t [] => t
   | TermAst.sym t args => t ++ "(" ++ joinComma (args.map renderTerm) ++ ")"
+  | TermAst.listLit elems => "[" ++ joinComma (elems.map renderTerm) ++ "]"
 
 def fPrec : FormulaAst → Nat
   | FormulaAst.forallF _ _ _ => 1
@@ -302,6 +306,8 @@ def fPrec : FormulaAst → Nat
   | FormulaAst.andF _ _ => 4
   | FormulaAst.notF _ => 5
   | FormulaAst.eq _ _ => 6
+  | FormulaAst.neq _ _ => 6
+  | FormulaAst.mem _ _ => 6
   | FormulaAst.pred _ _ => 6
   | FormulaAst.varPred _ _ => 6
 
@@ -314,6 +320,8 @@ def renderFormula : FormulaAst → String
   | FormulaAst.varPred v [] => v
   | FormulaAst.varPred v args => v ++ "(" ++ joinComma (args.map renderTerm) ++ ")"
   | FormulaAst.eq l r => renderTerm l ++ " = " ++ renderTerm r
+  | FormulaAst.neq l r => renderTerm l ++ " \\neq " ++ renderTerm r
+  | FormulaAst.mem elem coll => renderTerm elem ++ " \\in " ++ renderTerm coll
   | FormulaAst.notF inner =>
     let sub := renderFormula inner
     "\\lnot " ++ wrapIf (fPrec inner < 5) sub
@@ -327,7 +335,7 @@ def renderFormula : FormulaAst → String
     sl ++ " \\iff " ++ sr
   | FormulaAst.impF l r =>
     let sl := wrapIf (fPrec l <= 2) (renderFormula l)
-    let sr := wrapIf (fPrec r < 2) (renderFormula r)
+    let sr := wrapIf (fPrec r < 2 || fPrec r == 3) (renderFormula r)
     sl ++ " \\implies " ++ sr
   | FormulaAst.forallF v s body =>
     "\\forall " ++ v ++ " : " ++ renderSort s ++ ",\\; " ++ renderFormula body
@@ -335,18 +343,23 @@ def renderFormula : FormulaAst → String
     "\\exists " ++ v ++ " : " ++ renderSort s ++ ",\\; " ++ renderFormula body
 
 def baseSortTable : List (Name × String) :=
-  [ (`TypifyMetalogic.Decl, "\\mathsf{Decl}"),
+  [ (`String, "\\mathsf{String}"),
+    (`TypifyMetalogic.Decl, "\\mathsf{Decl}"),
     (`TypifyMetalogic.SourceLine, "\\mathsf{Line}"),
     (`TypifyMetalogic.SourceProgram, "\\mathsf{Prog}"),
     (`TypifyMetalogic.FactTerm, "\\mathsf{Term}"),
     (`TypifyMetalogic.TermList, "\\mathsf{TermList}"),
     (`TypifyMetalogic.DeclData, "\\mathsf{DeclData}"),
     (`TypifyMetalogic.AssertionList, "\\mathsf{AssertList}"),
-    (`TypifyMetalogic.IndName, "\\mathsf{Name}") ]
+    (`TypifyMetalogic.IndName, "\\mathsf{Name}"),
+    (`TypifyMetalogic.Vocabulary, "\\mathsf{Vocab}"),
+    (`TypifyMetalogic.VocabAssertion, "\\mathsf{VocabAssert}") ]
 
 def termSymTable : List (Name × Nat × Nat × String) :=
   [ (`TypifyMetalogic.witnessBaseDecl, 0, 0, "\\mathsf{d}_{\\mathsf{base}}"),
+    (`TypifyMetalogic.witnessExtDecl, 0, 0, "\\mathsf{d}_{\\mathsf{ext}}"),
     (`TypifyMetalogic.ontologyDecl, 0, 0, "\\mathsf{d}_{\\mathsf{ont}}"),
+    (`TypifyMetalogic.witnessVocabulary, 0, 0, "\\mathsf{v}_{\\mathsf{wit}}"),
     (`TypifyMetalogic.witnessKnowsTerm, 0, 0, "\\mathsf{t}_{\\mathsf{knows}}"),
     (`TypifyMetalogic.nameAda, 0, 0, "\\mathsf{ada}"),
     (`TypifyMetalogic.nameBen, 0, 0, "\\mathsf{ben}"),
@@ -357,16 +370,30 @@ def termSymTable : List (Name × Nat × Nat × String) :=
     (`TypifyMetalogic.encodeAssertions, 0, 1, "\\mathsf{encode}"),
     (`TypifyMetalogic.decodeTerms, 0, 1, "\\mathsf{decode}"),
     (`TypifyMetalogic.singleBinary, 0, 2, "\\mathsf{singleRel}"),
+    (`TypifyMetalogic.vocabularyDecl, 0, 1, "\\mathsf{vocabDecl}"),
+    (`TypifyMetalogic.Vocabulary.subjectClass, 0, 1, "\\mathsf{subjCls}"),
+    (`TypifyMetalogic.Vocabulary.objectClass, 0, 1, "\\mathsf{objCls}"),
+    (`TypifyMetalogic.Vocabulary.names, 0, 1, "\\mathsf{names}"),
+    (`TypifyMetalogic.Vocabulary.classes, 0, 1, "\\mathsf{classes}"),
+    (`TypifyMetalogic.Vocabulary.relations, 0, 1, "\\mathsf{rels}"),
+    (`TypifyMetalogic.VocabAssertion.unary, 0, 2, "\\mathsf{unaryAssert}"),
+    (`TypifyMetalogic.VocabAssertion.binary, 0, 3, "\\mathsf{binAssert}"),
+    (`TypifyMetalogic.encodeVocabAssertions, 0, 1, "\\mathsf{encodeVocab}"),
+    (`TypifyMetalogic.decodeVocabTerms, 0, 2, "\\mathsf{decodeVocab}"),
     (`Option.some, 1, 1, "\\mathsf{some}"),
     (`Option.none, 1, 0, "\\mathsf{none}") ]
 
 def predSymTable : List (Name × Nat × String) :=
   [ (`TypifyMetalogic.WellFormedDecl, 1, "\\mathsf{WFDecl}"),
+    (`TypifyMetalogic.WellFormedVocabulary, 1, "\\mathsf{WFVocab}"),
     (`TypifyMetalogic.FragmentLine, 1, "\\mathsf{FragLine}"),
     (`TypifyMetalogic.DerivesLine, 3, "\\mathsf{Derives}"),
     (`TypifyMetalogic.AcceptsLine, 2, "\\mathsf{Accepts}"),
     (`TypifyMetalogic.FreshExtension, 2, "\\mathsf{FreshExt}"),
     (`TypifyMetalogic.AdmissibleAssertions, 1, "\\mathsf{Admissible}"),
+    (`TypifyMetalogic.AdmissibleIn, 2, "\\mathsf{AdmissibleIn}"),
+    (`TypifyMetalogic.SatisfiesVocabSource, 5, "\\mathsf{SatVocabSrc}"),
+    (`TypifyMetalogic.SatisfiesVocabOutput, 6, "\\mathsf{SatVocabOut}"),
     (`Nonempty, 1, "\\mathsf{Nonempty}") ]
 
 def lookupSortBase (n : Name) : Option String :=
@@ -415,6 +442,19 @@ def getAppSpine (e : Expr) : Expr × List Expr :=
     | _ => (cur, acc)
   go e []
 
+partial def extractListLiteral? (e : Expr) : Option (List Expr) :=
+  let (hd, args) := getAppSpine e
+  match hd with
+  | Expr.const `List.nil _ =>
+    if args.length == 1 then some [] else none
+  | Expr.const `List.cons _ =>
+    if h : args.length = 3 then
+      match extractListLiteral? args[2] with
+      | some rest => some (args[1] :: rest)
+      | none => none
+    else none
+  | _ => none
+
 partial def reflectSort (ctx : List (String × Bool)) (e : Expr) : Except String SortAst := do
   match e with
   | Expr.sort (Level.zero) => pure SortAst.propSort
@@ -423,6 +463,9 @@ partial def reflectSort (ctx : List (String × Bool)) (e : Expr) : Except String
     match lookupSortBase n with
     | some tex => pure (SortAst.base tex)
     | none => throw s!"unmapped sort constant: {n}"
+  | Expr.app (Expr.const `List _) elemExpr =>
+    let es ← reflectSort ctx elemExpr
+    pure (SortAst.base ("\\mathsf{List}(" ++ renderSort es ++ ")"))
   | Expr.bvar idx =>
     match ctx[idx]? with
     | some (v, true) => pure (SortAst.var v)
@@ -437,30 +480,47 @@ partial def reflectSort (ctx : List (String × Bool)) (e : Expr) : Except String
   | _ => throw s!"unsupported sort expr: {repr e}"
 
 partial def reflectTerm (ctx : List (String × Bool)) (e : Expr) : Except String TermAst := do
-  let (hd, args) := getAppSpine e
-  match hd with
-  | Expr.bvar idx =>
-    match ctx[idx]? with
-    | some (v, _) =>
-      let rargs ← args.mapM (reflectTerm ctx)
-      if rargs.isEmpty then pure (TermAst.var v)
-      else pure (TermAst.sym v rargs)
-    | none => throw s!"unbound term bvar #{idx}"
-  | Expr.const n _ =>
-    match lookupTermSym n with
-    | some (dropN, arity, tex) =>
-      if args.length != dropN + arity then
-        throw s!"term arity mismatch on {n}: got {args.length}, expected {dropN + arity}"
-      let kept := args.drop dropN
-      let rargs ← kept.mapM (reflectTerm ctx)
-      pure (TermAst.sym tex rargs)
-    | none =>
-      match lookupSortBase n with
-      | some tex =>
-        if args.isEmpty then pure (TermAst.sym tex [])
-        else throw s!"unexpected arguments on sort constant {n}"
-      | none => throw s!"unmapped term constant: {n}"
-  | _ => throw s!"unsupported term head: {repr hd}"
+  match extractListLiteral? e with
+  | some rawElems =>
+    let rElems ← rawElems.mapM (reflectTerm ctx)
+    pure (TermAst.listLit rElems)
+  | none =>
+    let (hd, args) := getAppSpine e
+    match hd with
+    | Expr.bvar idx =>
+      match ctx[idx]? with
+      | some (v, _) =>
+        let rargs ← args.mapM (reflectTerm ctx)
+        if rargs.isEmpty then pure (TermAst.var v)
+        else pure (TermAst.sym v rargs)
+      | none => throw s!"unbound term bvar #{idx}"
+    | Expr.proj `TypifyMetalogic.Vocabulary idx structExpr =>
+      if !(args.isEmpty) then
+        throw "unexpected arguments on Vocabulary projection"
+      let tex ← match idx with
+        | 0 => pure "\\mathsf{subjCls}"
+        | 1 => pure "\\mathsf{objCls}"
+        | 2 => pure "\\mathsf{names}"
+        | 3 => pure "\\mathsf{classes}"
+        | 4 => pure "\\mathsf{rels}"
+        | _ => throw s!"unknown Vocabulary field index: {idx}"
+      let st ← reflectTerm ctx structExpr
+      pure (TermAst.sym tex [st])
+    | Expr.const n _ =>
+      match lookupTermSym n with
+      | some (dropN, arity, tex) =>
+        if args.length != dropN + arity then
+          throw s!"term arity mismatch on {n}: got {args.length}, expected {dropN + arity}"
+        let kept := args.drop dropN
+        let rargs ← kept.mapM (reflectTerm ctx)
+        pure (TermAst.sym tex rargs)
+      | none =>
+        match lookupSortBase n with
+        | some tex =>
+          if args.isEmpty then pure (TermAst.sym tex [])
+          else throw s!"unexpected arguments on sort constant {n}"
+        | none => throw s!"unmapped term constant: {n}"
+    | _ => throw s!"unsupported term head: {repr hd}"
 
 partial def reflectFormula (ctx : List (String × Bool)) (e : Expr) : Except String FormulaAst := do
   match e with
@@ -503,6 +563,18 @@ partial def reflectFormula (ctx : List (String × Bool)) (e : Expr) : Except Str
         let r ← reflectTerm ctx args[2]
         pure (FormulaAst.eq l r)
       else throw "Eq arity != 3"
+    | Expr.const `Ne _ =>
+      if h : args.length = 3 then
+        let l ← reflectTerm ctx args[1]
+        let r ← reflectTerm ctx args[2]
+        pure (FormulaAst.neq l r)
+      else throw "Ne arity != 3"
+    | Expr.const `Membership.mem _ =>
+      if h : args.length = 5 then
+        let coll ← reflectTerm ctx args[3]
+        let elem ← reflectTerm ctx args[4]
+        pure (FormulaAst.mem elem coll)
+      else throw s!"Membership.mem arity != 5: got {args.length}"
     | Expr.const `Exists _ =>
       if h : args.length = 2 then
         match args[1] with
@@ -578,7 +650,21 @@ def runRendererSelfTests : Except String Nat := do
   match reflectFormula [] unmappedExpr with
   | Except.ok _ => throw "unmapped symbol was not rejected"
   | Except.error _ => pure ()
-  pure 7
+  let impIff := renderFormula (FormulaAst.impF p (FormulaAst.iffF q r))
+  let iffImp := renderFormula (FormulaAst.iffF (FormulaAst.impF p q) r)
+  if impIff == iffImp then
+    throw "implication vs biconditional precedence collision"
+  if (impIff.splitOn "\\left(").length < 2 then
+    throw s!"impF over iffF missing explicit parentheses: {impIff}"
+  let neqAB := renderFormula (FormulaAst.neq (TermAst.var "a") (TermAst.var "b"))
+  let neqBA := renderFormula (FormulaAst.neq (TermAst.var "b") (TermAst.var "a"))
+  if neqAB == neqBA then
+    throw "inequality argument order collision"
+  let memAB := renderFormula (FormulaAst.mem (TermAst.var "a") (TermAst.var "b"))
+  let memBA := renderFormula (FormulaAst.mem (TermAst.var "b") (TermAst.var "a"))
+  if memAB == memBA then
+    throw "membership argument order collision"
+  pure 9
 
 def jsonEsc (s : String) : String :=
   let rec go : List Char → String
@@ -760,6 +846,12 @@ def runAudit : IO Unit := do
       ",\"axioms\":" ++ jsonStrList axNames ++
       ",\"tex\":" ++ jsonEsc tex ++ "}"
     ]
+
+  match env.find? `TypifyMetalogic.ontology_law with
+  | some (ConstantInfo.thmInfo tv) =>
+    if tv.type != Expr.const `TypifyMetalogic.OntologyLaw [] then
+      throw (IO.userError s!"derived ontology_law has unexpected type: {repr tv.type}")
+  | _ => throw (IO.userError "missing derived theorem TypifyMetalogic.ontology_law : TypifyMetalogic.OntologyLaw")
 
   let confJson ← evalConformanceJson
   let out :=
@@ -1410,8 +1502,8 @@ def run_controls(
     def mut_reversed_rel(_s: Path, w: Path) -> None:
         p = w / "Metalogic-Ontology.md"
         txt = p.read_text(encoding="utf-8")
-        target = "R(\\mathsf{val}(\\mathsf{ada}), \\mathsf{val}(\\mathsf{ben}))"
-        repl = "R(\\mathsf{val}(\\mathsf{ben}), \\mathsf{val}(\\mathsf{ada}))"
+        target = "\\mathsf{binAssert}(r, x, y)"
+        repl = "\\mathsf{binAssert}(r, y, x)"
         assert target in txt
         p.write_text(txt.replace(target, repl, 1), encoding="utf-8")
 
@@ -1480,7 +1572,7 @@ def run_controls(
     def mut_proof_sorry(s: Path, _w: Path) -> None:
         p = s / "lean/TypifyMetalogic/OntologyProof.lean"
         p.write_text(
-            "import TypifyMetalogic.OntologyStatement\nnamespace TypifyMetalogic\ntheorem ontology_law : OntologyLaw := by sorry\nend TypifyMetalogic\n",
+            "import TypifyMetalogic.OntologyStatement\nnamespace TypifyMetalogic\ntheorem ontology_vocabulary_law : OntologyVocabularyLaw := by sorry\ntheorem ontology_law : OntologyLaw := by sorry\nend TypifyMetalogic\n",
             encoding="utf-8",
         )
 

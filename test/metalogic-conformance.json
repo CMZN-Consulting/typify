@@ -45,6 +45,79 @@
       ]
     },
     {
+      "id": "vocab-specimen",
+      "language": "SpecimenVocab",
+      "expectValid": true,
+      "metaLines": [
+        {
+          "kind": "isClass",
+          "name": "person",
+          "literals": ["ada", "ben", "cem"]
+        },
+        {
+          "kind": "isClass",
+          "name": "peer",
+          "literals": ["ada", "ben", "cem"]
+        },
+        { "kind": "termUnary", "ctor": "member", "argClass": "person" },
+        { "kind": "termUnary", "ctor": "mentor", "argClass": "person" },
+        {
+          "kind": "termBinary",
+          "ctor": "knows",
+          "argClass1": "person",
+          "argClass2": "peer"
+        },
+        {
+          "kind": "termBinary",
+          "ctor": "mentors",
+          "argClass1": "person",
+          "argClass2": "peer"
+        },
+        { "kind": "formUnary", "verb": "member", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "member", "slot": "person" },
+        { "kind": "formUnary", "verb": "mentor", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "mentor", "slot": "person" },
+        {
+          "kind": "formBinary",
+          "verb": "knows",
+          "slot1": "person",
+          "sep": " = ",
+          "slot2": "peer"
+        },
+        {
+          "kind": "doesBinary",
+          "ctor": "knows",
+          "slot1": "person",
+          "slot2": "peer"
+        },
+        {
+          "kind": "formBinary",
+          "verb": "mentors",
+          "slot1": "person",
+          "sep": " = ",
+          "slot2": "peer"
+        },
+        {
+          "kind": "doesBinary",
+          "ctor": "mentors",
+          "slot1": "person",
+          "slot2": "peer"
+        }
+      ]
+    },
+    {
+      "id": "vocab-unary-only",
+      "language": "UnaryOnlyVocab",
+      "expectValid": true,
+      "metaLines": [
+        { "kind": "isClass", "name": "item", "literals": ["solo"] },
+        { "kind": "isClass", "name": "target", "literals": ["solo"] },
+        { "kind": "termUnary", "ctor": "active", "argClass": "item" },
+        { "kind": "formUnary", "verb": "active", "slot": "item" },
+        { "kind": "doesUnary", "ctor": "active", "slot": "item" }
+      ]
+    },
+    {
       "id": "decl-reject-separator-overlap",
       "language": "OverlapControl",
       "expectValid": false,
@@ -70,6 +143,75 @@
           "ctor": "pair",
           "slot1": "lefty",
           "slot2": "righty"
+        }
+      ]
+    },
+    {
+      "id": "decl-reject-name-holds-separator",
+      "language": "SepInNameControl",
+      "expectValid": false,
+      "expectedDiagnosticCode": "E_CLASS_OVERLAP",
+      "metaLines": [
+        {
+          "kind": "isClass",
+          "name": "person",
+          "literals": ["ada = ben", "cem"]
+        },
+        {
+          "kind": "isClass",
+          "name": "peer",
+          "literals": ["ada = ben", "cem"]
+        },
+        {
+          "kind": "termBinary",
+          "ctor": "knows",
+          "argClass1": "person",
+          "argClass2": "peer"
+        },
+        {
+          "kind": "formBinary",
+          "verb": "knows",
+          "slot1": "person",
+          "sep": " = ",
+          "slot2": "peer"
+        },
+        {
+          "kind": "doesBinary",
+          "ctor": "knows",
+          "slot1": "person",
+          "slot2": "peer"
+        }
+      ]
+    },
+    {
+      "id": "decl-reject-shared-class-relation-symbol",
+      "language": "SharedSymbolControl",
+      "expectValid": false,
+      "expectedDiagnosticCode": "E_DECLARATION",
+      "metaLines": [
+        { "kind": "isClass", "name": "person", "literals": ["ada", "ben"] },
+        { "kind": "isClass", "name": "peer", "literals": ["ada", "ben"] },
+        { "kind": "termUnary", "ctor": "links", "argClass": "person" },
+        {
+          "kind": "termBinary",
+          "ctor": "links",
+          "argClass1": "person",
+          "argClass2": "peer"
+        },
+        { "kind": "formUnary", "verb": "links", "slot": "person" },
+        { "kind": "doesUnary", "ctor": "links", "slot": "person" },
+        {
+          "kind": "formBinary",
+          "verb": "links",
+          "slot1": "person",
+          "sep": " = ",
+          "slot2": "peer"
+        },
+        {
+          "kind": "doesBinary",
+          "ctor": "links",
+          "slot1": "person",
+          "slot2": "peer"
         }
       ]
     },
@@ -198,6 +340,44 @@
       "lines": ["knows : ada  = ben"],
       "expectAccepted": false,
       "expectedDiagnosticCode": "E_CLASS"
+    },
+    {
+      "id": "specimen-accept-mentor-and-mentors",
+      "declarationId": "vocab-specimen",
+      "lines": ["mentor : ada", "mentors : ada = cem"],
+      "expectAccepted": true,
+      "expectedTerms": [
+        ["mentor", "ada"],
+        ["mentors", "ada", "cem"]
+      ]
+    },
+    {
+      "id": "specimen-accept-reversed-mentors",
+      "declarationId": "vocab-specimen",
+      "lines": ["mentors : cem = ada"],
+      "expectAccepted": true,
+      "expectedTerms": [["mentors", "cem", "ada"]]
+    },
+    {
+      "id": "specimen-reject-unknown-name-dan",
+      "declarationId": "vocab-specimen",
+      "lines": ["mentors : ada = dan"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_CLASS"
+    },
+    {
+      "id": "unary-only-accept-solo",
+      "declarationId": "vocab-unary-only",
+      "lines": ["active : solo"],
+      "expectAccepted": true,
+      "expectedTerms": [["active", "solo"]]
+    },
+    {
+      "id": "unary-only-reject-undeclared-relation",
+      "declarationId": "vocab-unary-only",
+      "lines": ["knows : solo = solo"],
+      "expectAccepted": false,
+      "expectedDiagnosticCode": "E_FORM_NONE"
     }
   ]
 }

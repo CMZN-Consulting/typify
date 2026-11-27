@@ -102,4 +102,148 @@ def OntologyLaw : Prop :=
       ¬ SatisfiesOutput D val P R
         (readProgram ontologyDecl (encodeAssertions (singleBinary nameBen nameAda))))
 
+structure Vocabulary where
+  subjectClass : String
+  objectClass : String
+  names : List String
+  classes : List String
+  relations : List String
+
+def relationSeparator : String := " = "
+
+def isPlainName (s : String) : Bool :=
+  match s.toList with
+  | [] => false
+  | c :: cs =>
+    (isAlphaAscii c || isDigitAscii c) &&
+    cs.all (fun x => isAlphaAscii x || isDigitAscii x || (x == '_') || (x == '-'))
+
+def isPredicateSymbol (v : Vocabulary) (s : String) : Bool :=
+  isNameToken s && isVerbToken s && (s != v.subjectClass) && (s != v.objectClass)
+
+def wellFormedVocabularyBool (v : Vocabulary) : Bool :=
+  isNameToken v.subjectClass &&
+  isNameToken v.objectClass &&
+  (v.subjectClass != v.objectClass) &&
+  (v.names != []) &&
+  noDupKeys id v.names &&
+  v.names.all isPlainName &&
+  noDupKeys id (v.classes ++ v.relations) &&
+  (v.classes ++ v.relations).all (isPredicateSymbol v)
+
+def WellFormedVocabulary (v : Vocabulary) : Prop :=
+  wellFormedVocabularyBool v = true
+
+def vocabularyDecl (v : Vocabulary) : Decl :=
+  { classes :=
+      [ { name := v.subjectClass, literals := v.names },
+        { name := v.objectClass, literals := v.names } ],
+    terms :=
+      v.classes.map (fun p => TermDecl.mk p [v.subjectClass]) ++
+      v.relations.map (fun r => TermDecl.mk r [v.subjectClass, v.objectClass]),
+    forms :=
+      v.classes.map (fun p => FormDecl.unary p v.subjectClass p v.subjectClass) ++
+      v.relations.map (fun r =>
+        FormDecl.binary r v.subjectClass relationSeparator v.objectClass r
+          v.subjectClass v.objectClass) }
+
+def witnessVocabulary : Vocabulary :=
+  { subjectClass := "person", objectClass := "peer",
+    names := ["ada", "ben"], classes := ["member"], relations := ["knows"] }
+
+inductive VocabAssertion where
+  | unary (cls : String) (subject : String)
+  | binary (rel : String) (subject : String) (object : String)
+  deriving DecidableEq, Repr
+
+def isAdmissibleIn (v : Vocabulary) : VocabAssertion → Bool
+  | VocabAssertion.unary p x => v.classes.contains p && v.names.contains x
+  | VocabAssertion.binary r x y =>
+    v.relations.contains r && v.names.contains x && v.names.contains y
+
+def AdmissibleIn (v : Vocabulary) (assertions : List VocabAssertion) : Prop :=
+  assertions.all (isAdmissibleIn v) = true
+
+def encodeVocabAssertion : VocabAssertion → SourceLine
+  | VocabAssertion.unary p x => String.append p (String.append " : " x)
+  | VocabAssertion.binary r x y =>
+    String.append r (String.append " : " (String.append x (String.append relationSeparator y)))
+
+def encodeVocabAssertions (assertions : List VocabAssertion) : SourceProgram :=
+  assertions.map encodeVocabAssertion
+
+def decodeVocabTerm (v : Vocabulary) : FactTerm → Option VocabAssertion
+  | FactTerm.mk ctor [x] =>
+    if v.classes.contains ctor then some (VocabAssertion.unary ctor x) else none
+  | FactTerm.mk ctor [x, y] =>
+    if v.relations.contains ctor then some (VocabAssertion.binary ctor x y) else none
+  | _ => none
+
+def decodeVocabTerms (v : Vocabulary) : TermList → Option (List VocabAssertion)
+  | [] => some []
+  | t :: ts =>
+    match decodeVocabTerm v t, decodeVocabTerms v ts with
+    | some a, some rest => some (a :: rest)
+    | _, _ => none
+
+def HoldsVocabAssertion (D : Type) (val : String → D)
+    (P : String → D → Prop) (R : String → D → D → Prop) : VocabAssertion → Prop
+  | VocabAssertion.unary p x => P p (val x)
+  | VocabAssertion.binary r x y => R r (val x) (val y)
+
+def SatisfiesVocabSource (D : Type) (val : String → D)
+    (P : String → D → Prop) (R : String → D → D → Prop) : List VocabAssertion → Prop
+  | [] => True
+  | a :: rest => HoldsVocabAssertion D val P R a ∧ SatisfiesVocabSource D val P R rest
+
+def HoldsVocabTerm (v : Vocabulary) (D : Type) (val : String → D)
+    (P : String → D → Prop) (R : String → D → D → Prop) : FactTerm → Prop
+  | FactTerm.mk ctor [x] => ctor ∈ v.classes ∧ P ctor (val x)
+  | FactTerm.mk ctor [x, y] => ctor ∈ v.relations ∧ R ctor (val x) (val y)
+  | _ => False
+
+def SatisfiesVocabTerms (v : Vocabulary) (D : Type) (val : String → D)
+    (P : String → D → Prop) (R : String → D → D → Prop) : TermList → Prop
+  | [] => True
+  | t :: ts => HoldsVocabTerm v D val P R t ∧ SatisfiesVocabTerms v D val P R ts
+
+def SatisfiesVocabOutput (v : Vocabulary) (D : Type) (val : String → D)
+    (P : String → D → Prop) (R : String → D → D → Prop) : Option TermList → Prop
+  | none => False
+  | some ts => SatisfiesVocabTerms v D val P R ts
+
+def OntologyVocabularyLaw : Prop :=
+  (WellFormedVocabulary witnessVocabulary ∧ vocabularyDecl witnessVocabulary = witnessExtDecl) ∧
+  ∀ (v : Vocabulary),
+    WellFormedVocabulary v →
+    (WellFormedDecl (vocabularyDecl v) ∧
+     (∀ (assertions : List VocabAssertion),
+       AdmissibleIn v assertions →
+       ∃ (terms : TermList),
+         readProgram (vocabularyDecl v) (encodeVocabAssertions assertions) = Option.some terms ∧
+         decodeVocabTerms v terms = Option.some assertions) ∧
+     (∀ (prog : SourceProgram) (terms : TermList),
+       readProgram (vocabularyDecl v) prog = Option.some terms →
+       ∃ (assertions : List VocabAssertion),
+         AdmissibleIn v assertions ∧ decodeVocabTerms v terms = Option.some assertions) ∧
+     (∀ (D : Type),
+       Nonempty D →
+       ∀ (val : String → D) (P : String → D → Prop) (R : String → D → D → Prop)
+         (assertions : List VocabAssertion),
+         AdmissibleIn v assertions →
+         (SatisfiesVocabSource D val P R assertions ↔
+          SatisfiesVocabOutput v D val P R
+            (readProgram (vocabularyDecl v) (encodeVocabAssertions assertions)))) ∧
+     (∀ (r x y : String),
+       r ∈ v.relations → x ∈ v.names → y ∈ v.names → x ≠ y →
+       ∃ (D : Type),
+         Nonempty D ∧
+         ∃ (val : String → D) (P : String → D → Prop) (R : String → D → D → Prop),
+           SatisfiesVocabOutput v D val P R
+             (readProgram (vocabularyDecl v)
+               (encodeVocabAssertions [VocabAssertion.binary r x y])) ∧
+           ¬ SatisfiesVocabOutput v D val P R
+             (readProgram (vocabularyDecl v)
+               (encodeVocabAssertions [VocabAssertion.binary r y x]))))
+
 end TypifyMetalogic
