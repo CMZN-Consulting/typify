@@ -193,6 +193,17 @@ else
   fi
 fi
 
+# Each README text is its own canonical form under the unpacked reader's fmt.
+for TEXT in 'catalog-language.typify' 'catalog-language.typify Catalog catalog.typify'; do
+  # shellcheck disable=SC2086 # TEXT holds the command's arguments, split on purpose.
+  FORMAT_OUTPUT=$(cd "$CATALOG" && PATH="$WORK/genuine/typify/bin:$PATH" typify fmt $TEXT --check 2>&1) && FORMAT_STATUS=0 || FORMAT_STATUS=$?
+  if [ "$FORMAT_STATUS" = 0 ] && [ -z "$FORMAT_OUTPUT" ]; then
+    pass "typify fmt $TEXT --check: the README text is its own canonical form"
+  else
+    fail "typify fmt $TEXT --check: exit $FORMAT_STATUS, output $FORMAT_OUTPUT"
+  fi
+done
+
 if [ -n "$TAMPERED" ]; then
   ASSET=$(basename -- "$ARCHIVE")
   for KIND in flipped-byte extra-file missing-file rewritten-manifest; do
