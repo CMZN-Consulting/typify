@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TYPIFY_PREVIOUS_RELEASE: 487dc51e3afe1d251866f7a77312184da5e5c779
+  TYPIFY_PREVIOUS_RELEASE: 2f698800995a39f334ed2d3f66d6dc1baa0ec21c
 
 jobs:
   build:

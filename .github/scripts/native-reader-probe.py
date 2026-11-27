@@ -12,9 +12,9 @@ import tempfile
 from pathlib import Path
 
 
-SOURCE_TREE = "242b5ca929beb1225da7f21c1eb52dcb1fb7bb04"
+SOURCE_TREE = "dc8d7113c0e75c1517f59f42507191dffd0e0c85"
 READER_VERSION = (
-    "1.0.0 sha256:1c084bfd9da45bf19aa474d953f01f2182580d4d186fd4382f7159298a13b04a"
+    "1.0.1 sha256:a2882c2c2c436752117e33e1708ce6677f3ef5441e2601d4aa8f9d8109fc3436"
 )
 TARGETS = {
     "ubuntu-22.04": (

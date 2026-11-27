@@ -15,7 +15,7 @@ from pathlib import Path
 
 CAPTURE = runpy.run_path(str(Path(__file__).with_name("capture-release-corpus.py")))
 READER_REVISION = "e7adaaf04b490ded03a6aab4aae5d3aafbb6d52b"
-READER_BUILD = "sha256:1c084bfd9da45bf19aa474d953f01f2182580d4d186fd4382f7159298a13b04a"
+READER_BUILD = "sha256:a2882c2c2c436752117e33e1708ce6677f3ef5441e2601d4aa8f9d8109fc3436"
 ARCHIVE_SHA256 = "ecbbfa7fc5a53be40c0b82a15f7fd23fb83be7bd420724fd5c9b2e44c2d98e76"
 MANIFEST_SHA256 = "816b1a48a59f6700503488ac8ae8eac193dc97b395db3ab23cde6f690b3a934c"
 TREE_SHA256 = "e72fcb35971504350c1d5180faa3b4be055712083b2e8d838d317988254ce57f"
@@ -72,7 +72,7 @@ def reader_identity(executable, directory):
     result = native_run(executable, ["--version", "--json"], directory)
     actual = CAPTURE["json_document"](base64.b64decode(result["stdout"], validate=True))
     if result["exit"] != 0 or actual != {
-        "version": "1.0.0",
+        "version": "1.0.1",
         "build": READER_BUILD,
         "diagnostics": [],
     }:

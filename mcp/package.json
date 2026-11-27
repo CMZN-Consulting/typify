@@ -1,6 +1,6 @@
 {
   "name": "typify-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "private": true,
   "description": "An MCP server for authoring languages and programs with the Typify reader.",

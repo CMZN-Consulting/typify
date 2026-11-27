@@ -271,7 +271,7 @@ class SemanticComparisonTests(unittest.TestCase):
             (gate["READER_BUILD"], True),
             ("sha256:" + "0" * 64, False),
         ]:
-            version = {"version": "1.0.0", "build": build, "diagnostics": []}
+            version = {"version": "1.0.1", "build": build, "diagnostics": []}
             result = subprocess.CompletedProcess(
                 [], 0, json.dumps(version).encode(), b""
             )

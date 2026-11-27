@@ -1304,10 +1304,10 @@ def check_full_gate(
     welcome_text = welcome_bytes.decode("utf-8")
     if "\r" in welcome_text:
         raise GateFailure("wiki-crlf", f"{WIKI_SECTION_WELCOME} contains CR")
-    if not welcome_text.startswith("As of v1.0.0\n"):
+    if not welcome_text.startswith("As of v1.0.1\n"):
         raise GateFailure(
             "wiki-stamp-missing",
-            f"{WIKI_SECTION_WELCOME} missing 'As of v1.0.0' header",
+            f"{WIKI_SECTION_WELCOME} missing 'As of v1.0.1' header",
         )
 
     welcome_links = extract_markdown_links(welcome_text)
@@ -1333,9 +1333,9 @@ def check_full_gate(
         page_text = raw_page.decode("utf-8")
         if "\r" in page_text:
             raise GateFailure("wiki-crlf", f"{page_name} contains CR")
-        if not page_text.startswith("As of v1.0.0\n"):
+        if not page_text.startswith("As of v1.0.1\n"):
             raise GateFailure(
-                "wiki-stamp-missing", f"{page_name} missing 'As of v1.0.0' header"
+                "wiki-stamp-missing", f"{page_name} missing 'As of v1.0.1' header"
             )
 
         math_blocks = extract_display_math_blocks(page_text)
@@ -1542,7 +1542,7 @@ def run_controls(
 
     def mut_orphan_wiki(_s: Path, w: Path) -> None:
         extra = w / "Metalogic-Orphan.md"
-        extra.write_text("As of v1.0.0\n\nUnindexed page.\n", encoding="utf-8")
+        extra.write_text("As of v1.0.1\n\nUnindexed page.\n", encoding="utf-8")
 
     def mut_removed_triple(s: Path, w: Path) -> None:
         (s / "lean/TypifyMetalogic/OntologyStatement.lean").unlink()

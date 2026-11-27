@@ -2,7 +2,7 @@
 
 (define collection "typify")
 
-(define version "1.0.0")
+(define version "1.0.1")
 
 (define deps '("base"))
 

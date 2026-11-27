@@ -11,7 +11,7 @@
 
 (provide typify-version typify-build)
 
-(define typify-version "1.0.0")
+(define typify-version "1.0.1")
 
 (define-syntax (reader-source-build stx)
   (define root (path-only (syntax-source stx)))

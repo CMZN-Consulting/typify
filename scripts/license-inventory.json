@@ -849,6 +849,12 @@
         "test/ask-gate/reference/**"
       ],
       "origin": "contributed"
+    },
+    {
+      "id": "fmt-gate",
+      "license": "MIT",
+      "match": ["test/fmt-gate/**"],
+      "origin": "original"
     }
   ],
   "license-file": "LICENSE",
