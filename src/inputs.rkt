@@ -95,9 +95,9 @@
   (when (current-root-inputs)
     (observe! 'facts (cons name arguments) (hash 'fact name 'args arguments 'held held?))))
 
-(define (input-source-text kind display-path physical-path)
+(define (input-source-text kind display-path physical-path #:bytes (given #f))
   (define observed-path (and (current-root-inputs) (portable-path display-path)))
-  (define bytes (file->bytes physical-path))
+  (define bytes (or given (file->bytes physical-path)))
   (when observed-path
     (observe! kind observed-path (hash 'path observed-path 'sha256 (digest bytes))))
   (record-source-text

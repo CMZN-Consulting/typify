@@ -21,7 +21,8 @@
          "plan.rkt"
          "questions.rkt"
          "tree.rkt"
-         "syntax.rkt")
+         "syntax.rkt"
+         "fmt.rkt")
 
 (provide run-command execute-command render-bounds render-tree render-plan display-diagnostics)
 
@@ -31,6 +32,8 @@
    ((hash? value) (for/hash (((key item) (in-hash value))) (values key (public-data item))))
    ((list? value) (map public-data value))
    (else value)))
+
+(define current-source-bytes (make-parameter #f))
 
 (define (read-source path (kind 'programs))
   (with-handlers
@@ -43,7 +46,26 @@
         (src-span path 1 1 1 1 0 0)
         #:data
         (hash 'path (string-replace path "\\" "/"))))))
-   (input-source-text kind path path)))
+   (define sources (current-source-bytes))
+   (cond
+    (sources
+     (define bytes (file->bytes path))
+     (hash-set! sources path bytes)
+     (input-source-text kind path path #:bytes bytes))
+    (else (input-source-text kind path path)))))
+
+(define (write-source path bytes)
+  (with-handlers
+   ((exn:fail:filesystem?
+     (lambda (error)
+       (raise-typify
+        "E_FILE"
+        "The requested file cannot be written"
+        #:span
+        (src-span path 1 1 1 1 0 0)
+        #:data
+        (hash 'path (string-replace path "\\" "/"))))))
+   (call-with-output-file path (lambda (output) (write-bytes bytes output)) #:exists 'truncate)))
 
 (define (load-declarations/diagnostics path)
   (define-values
@@ -156,6 +178,28 @@
        (hash 'actual path)))
     bindings)))
 
+(define (checked-program path name program)
+  (define-values (declarations diagnostics) (load-declarations/diagnostics path))
+  (define body (select-language declarations name))
+  (define captures (program-captures body program))
+  (define checked
+    (check-program/diagnostics
+     (read-source program)
+     body
+     #:file
+     program
+     #:captures
+     captures
+     #:guard
+     #f))
+  (define complete
+    (hash-set
+     checked
+     'diagnostics
+     (diagnostics-sort (append diagnostics (hash-ref checked 'diagnostics '())))))
+  (raise-diagnostics (hash-ref complete 'diagnostics))
+  (values body complete))
+
 (define (checked-bounds bodies diagnostics)
   (hash 'ok #t 'bounds (bounds-report bodies) 'diagnostics (map diagnostic->jsexpr diagnostics)))
 
@@ -237,7 +281,25 @@
 
 (define projection-options '("--sarif" "--lsp" "--github-annotations"))
 
+(define fmt-options '("--write" "--check"))
+
+(define (command-word arguments)
+  (let loop ((remaining arguments))
+    (cond
+     ((null? remaining) #f)
+     ((equal? (car remaining) "--") (and (pair? (cdr remaining)) (cadr remaining)))
+     ((equal? (car remaining) "--facts")
+      (and (pair? (cdr remaining))
+           (not (string-prefix? (cadr remaining) "--"))
+           (loop (cddr remaining))))
+     ((and (string-prefix? (car remaining) "--") (not (equal? (car remaining) "--version")))
+      (loop (cdr remaining)))
+     (else (car remaining)))))
+
+(define (fmt-command? arguments) (equal? (command-word arguments) "fmt"))
+
 (define (parse-options arguments)
+  (define fmt? (fmt-command? arguments))
   (let loop ((remaining arguments) (positionals '()) (options (hash)))
     (cond
      ((null? remaining) (values (reverse positionals) options))
@@ -250,7 +312,8 @@
         (raise-typify "E_USAGE" "--facts needs one file" #:data (hash 'actual "--facts")))
       (loop (cddr remaining) positionals (hash-set options "--facts" (cadr remaining))))
      ((or (member (car remaining) '("--json" "--gbnf" "--bounds"))
-          (member (car remaining) projection-options))
+          (member (car remaining) projection-options)
+          (and fmt? (member (car remaining) fmt-options)))
       (when (hash-has-key? options (car remaining))
         (raise-typify
          "E_USAGE"
@@ -281,6 +344,32 @@
          #:on-failure-report
          (on-failure-report void))
   (define-values (positional options) (parse-options arguments))
+  (define (fmt-usage actual)
+    (raise-typify
+     "E_USAGE"
+     "usage: typify fmt DECLARATIONS [LANGUAGE PROGRAM] [--write | --check]"
+     #:data
+     (hash 'actual actual)))
+  (when (and (pair? positional) (equal? (car positional) "fmt"))
+    (define refused
+      (findf (lambda (flag) (hash-has-key? options flag)) (cons "--json" projection-options)))
+    (when refused (fmt-usage refused))
+    (when (and (hash-has-key? options "--write") (hash-has-key? options "--check"))
+      (fmt-usage "--check")))
+  (define (formatted-response path original prefix)
+    (define formatted (canonical-bytes original prefix))
+    (cond
+     ((hash-has-key? options "--write")
+      (unless (equal? formatted original) (write-source path formatted))
+      (hash 'fmt (hash 'status 0)))
+     ((hash-has-key? options "--check")
+      (define line (first-different-line original formatted))
+      (hash
+       'fmt
+       (if line
+         (hash 'status 1 'text (format "~a:~a: not in canonical form\n" path line))
+         (hash 'status 0))))
+     (else (hash 'fmt (hash 'status 0 'bytes formatted)))))
   (define outputs
     (filter
      (lambda (flag) (hash-has-key? options flag))
@@ -347,28 +436,30 @@
         (checked-bounds (hash-values declarations) diagnostics)
         (checked-response (hash 'diagnostics diagnostics))))
      ((list "check" path name program)
-      (define-values (declarations diagnostics) (load-declarations/diagnostics path))
-      (define body (select-language declarations name))
-      (define captures (program-captures body program))
-      (define checked
-        (check-program/diagnostics
-         (read-source program)
-         body
-         #:file
-         program
-         #:captures
-         captures
-         #:guard
-         #f))
-      (define complete
-        (hash-set
-         checked
-         'diagnostics
-         (diagnostics-sort (append diagnostics (hash-ref checked 'diagnostics '())))))
-      (raise-diagnostics (hash-ref complete 'diagnostics))
+      (define-values (body complete) (checked-program path name program))
       (if bounds?
         (checked-bounds (list body) (hash-ref complete 'diagnostics))
         (checked-response complete body)))
+     ((list "fmt" path)
+      (define sources (make-hash))
+      (define-values
+       (declarations diagnostics)
+       (parameterize ((current-source-bytes sources)) (load-declarations/diagnostics path)))
+      (formatted-response path (hash-ref sources path) "#"))
+     ((list "fmt" path name program)
+      (define sources (make-hash))
+      (define-values
+       (body complete)
+       (parameterize ((current-source-bytes sources)) (checked-program path name program)))
+      (define prefix (language-comment body))
+      (when (for/or ((char (in-string prefix))) (memv char '(#\space #\tab)))
+        (raise-typify
+         "E_USAGE"
+         "fmt does not format a text whose comment prefix holds a blank"
+         #:data
+         (hash 'actual prefix)))
+      (formatted-response program (hash-ref sources program) prefix))
+     ((cons "fmt" _) (fmt-usage "fmt"))
      ((list "facts" root) (collect-facts root))
      ((list "tree" path root)
       (define-values (declarations diagnostics) (load-declarations/diagnostics path))
@@ -572,9 +663,11 @@
 (define (execute-command arguments)
   (define flags (takef arguments (lambda (item) (not (equal? item "--")))))
   (define projection (findf (lambda (flag) (member flag projection-options)) flags))
-  (if projection
-    (with-projection-sources (lambda () (execute-with-output arguments flags projection)))
-    (execute-with-output arguments flags #f)))
+  (cond
+   ((fmt-command? arguments) (execute-with-output arguments '() #f))
+   (projection
+    (with-projection-sources (lambda () (execute-with-output arguments flags projection))))
+   (else (execute-with-output arguments flags #f))))
 
 (define (execute-with-output arguments flags projection)
   (define json? (and (member "--json" flags) #t))
@@ -629,6 +722,10 @@
    (cond
     (projection (write-diagnostic-projection projection diagnostics))
     ((equal? arguments '("--version")) (printf "~a ~a\n" typify-version typify-build))
+    ((hash-has-key? result 'fmt)
+     (define formatted (hash-ref result 'fmt))
+     (when (hash-has-key? formatted 'bytes) (write-bytes (hash-ref formatted 'bytes)))
+     (when (hash-has-key? formatted 'text) (display (hash-ref formatted 'text))))
     ((and (hash-has-key? result 'bounds) (not json-output?))
      (display (render-bounds (hash-ref result 'bounds))))
     ((and (hash-has-key? result 'terms) (hash-has-key? result 'ok) (not json-output?)) (void))
@@ -636,7 +733,10 @@
     ((and (hash-has-key? result 'text) (not json-output?)) (display (hash-ref result 'text)))
     (else (displayln (canonical-json result))))
    (values
-    (if (for/or ((item (in-list diagnostics))) (equal? (hash-ref item 'severity) "error")) 1 0)
+    (cond
+     ((hash-has-key? result 'fmt) (hash-ref (hash-ref result 'fmt) 'status))
+     ((for/or ((item (in-list diagnostics))) (equal? (hash-ref item 'severity) "error")) 1)
+     (else 0))
     diagnostics)))
 
 (module+
